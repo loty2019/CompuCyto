@@ -1,0 +1,100 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-gray-100 text-gray-800 leading-relaxed;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply bg-blue-500 text-white border-none px-5 py-2.5 rounded cursor-pointer text-sm transition-colors duration-300;
+    font-family: inherit;
+  }
+
+  .btn:hover:not(:disabled) {
+    @apply bg-blue-700;
+  }
+
+  .btn:disabled {
+    @apply opacity-60 cursor-not-allowed;
+  }
+
+  .btn-danger {
+    @apply bg-red-500;
+  }
+
+  .btn-danger:hover:not(:disabled) {
+    @apply bg-red-700;
+  }
+
+  .btn-success {
+    @apply bg-green-500;
+  }
+
+  .btn-success:hover:not(:disabled) {
+    @apply bg-green-600;
+  }
+
+  .btn-small {
+    @apply px-3 py-1.5 text-xs;
+  }
+
+  .card {
+    @apply bg-white p-5 rounded-lg shadow-md;
+  }
+
+  .card h2 {
+    @apply text-gray-800 mb-4 text-lg border-b-2 border-blue-500 pb-2;
+  }
+
+  .control-group {
+    @apply mb-4;
+  }
+
+  label {
+    @apply block mb-1.5 text-gray-600 text-sm;
+  }
+
+  input[type="number"],
+  input[type="text"],
+  select {
+    @apply w-full px-2 py-2 border border-gray-300 rounded text-sm;
+    font-family: inherit;
+  }
+
+  input:focus {
+    @apply outline-none border-blue-500;
+  }
+
+  .button-group {
+    @apply flex gap-2.5 flex-wrap;
+  }
+
+  .button-group button {
+    @apply flex-1 min-w-[100px];
+  }
+}
+
+/* Custom scrollbar styling - using traditional CSS as it's not easily done with Tailwind */
+@layer utilities {
+  ::-webkit-scrollbar {
+    @apply w-2 h-2;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-gray-100;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-gray-400 rounded;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-600;
+  }
+}
+
