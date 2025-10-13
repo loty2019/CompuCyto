@@ -1,20 +1,26 @@
 <template>
   <div class="status-bar">
     <div class="status-item">
-      <div :class="['status-indicator', store.systemStatus.camera]"></div>
+      <div :class="['status-indicator', getStatusClass(store.systemStatus.camera)]"></div>
       <span>Camera</span>
     </div>
     <div class="status-item">
-      <div :class="['status-indicator', store.systemStatus.stage]"></div>
+      <div :class="['status-indicator', getStatusClass(store.systemStatus.stage)]"></div>
       <span>Stage</span>
     </div>
     <div class="status-item">
-      <div :class="['status-indicator', store.systemStatus.database]"></div>
+      <div :class="['status-indicator', getStatusClass(store.systemStatus.database)]"></div>
       <span>Database</span>
     </div>
     <div class="status-item">
       <div :class="['status-indicator', wsStore.state.isConnected ? 'connected' : 'disconnected']"></div>
       <span>WebSocket</span>
+    </div>
+    <div v-if="store.isSystemHealthy" class="health-indicator healthy">
+      ✓ System Healthy
+    </div>
+    <div v-else class="health-indicator unhealthy">
+      ⚠ System Degraded
     </div>
   </div>
 </template>
@@ -25,6 +31,19 @@ import { useWebSocketStore } from '@/stores/websocket'
 
 const store = useMicroscopeStore()
 const wsStore = useWebSocketStore()
+
+function getStatusClass(status: string): string {
+  switch (status) {
+    case 'connected':
+    case 'running':
+      return 'connected'
+    case 'disconnected':
+    case 'stopped':
+      return 'disconnected'
+    default:
+      return 'unknown'
+  }
+}
 </script>
 
 <style scoped>
@@ -51,5 +70,21 @@ const wsStore = useWebSocketStore()
 
 .status-indicator.stopped {
   @apply bg-orange-500;
+}
+
+.status-indicator.unknown {
+  @apply bg-gray-400;
+}
+
+.health-indicator {
+  @apply ml-4 px-3 py-1 rounded-full text-sm font-semibold;
+}
+
+.health-indicator.healthy {
+  @apply bg-green-100 text-green-700;
+}
+
+.health-indicator.unhealthy {
+  @apply bg-orange-100 text-orange-700;
 }
 </style>

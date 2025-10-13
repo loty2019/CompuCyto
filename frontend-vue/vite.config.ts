@@ -14,11 +14,12 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost:8000',
+        // Proxy API requests to the NestJS backend running on port 3000
+        target: 'http://localhost:3000',
         changeOrigin: true
       },
       '/ws': {
-        target: 'ws://localhost:8000',
+        target: 'ws://localhost:3000',
         ws: true
       }
     }

@@ -18,7 +18,38 @@ import type {
   PositionListResponse
 } from '@/types'
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api'
+// Auth types
+export interface LoginRequest {
+  email: string
+  password: string
+}
+
+export interface RegisterRequest {
+  email: string
+  username: string
+  password: string
+}
+
+export interface AuthResponse {
+  access_token: string
+  user: {
+    id: number
+    email: string
+    username: string
+    role: string
+    profile?: {
+      id: number
+      userId: number
+      fullName?: string
+      bio?: string
+      avatarUrl?: string
+      preferences?: Record<string, any>
+    }
+  }
+}
+
+// Use root so that calls to '/api/v1/...' are proxied by Vite to the backend
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/'
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -27,50 +58,99 @@ const apiClient = axios.create({
   }
 })
 
+// Add request interceptor to include JWT token
+apiClient.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('access_token')
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`
+    }
+    return config
+  },
+  (error) => {
+    return Promise.reject(error)
+  }
+)
+
+// Add response interceptor to handle 401 errors
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      // Clear auth data on unauthorized
+      localStorage.removeItem('access_token')
+      localStorage.removeItem('user')
+      // Redirect to login if not already there
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login'
+      }
+    }
+    return Promise.reject(error)
+  }
+)
+
+// Auth endpoints
+export const authAPI = {
+  async login(credentials: LoginRequest): Promise<AuthResponse> {
+    const { data } = await apiClient.post<AuthResponse>('/api/v1/auth/login', credentials)
+    return data
+  },
+
+  async register(userData: RegisterRequest): Promise<AuthResponse> {
+    const { data } = await apiClient.post<AuthResponse>('/api/v1/auth/register', userData)
+    return data
+  },
+
+  async getProfile(): Promise<AuthResponse['user']> {
+    const { data } = await apiClient.get<AuthResponse['user']>('/api/v1/auth/profile')
+    return data
+  }
+}
+
 // Control endpoints
 export const controlAPI = {
   async getStatus(): Promise<SystemStatus> {
-    const { data } = await apiClient.get<SystemStatus>('/control/status')
+    const { data } = await apiClient.get<SystemStatus>('/api/v1/control/status')
     return data
   },
 
   async getHealth(): Promise<HealthCheck> {
-    const { data } = await apiClient.get<HealthCheck>('/control/health')
+    const { data } = await apiClient.get<HealthCheck>('/api/v1/health')
     return data
   },
 
   async captureImage(request: CaptureRequest): Promise<CaptureResponse> {
-    const { data } = await apiClient.post<CaptureResponse>('/control/capture', request)
+    const { data } = await apiClient.post<CaptureResponse>('/api/v1/control/capture', request)
     return data
   },
 
   async moveStage(request: MoveRequest): Promise<MoveResponse> {
-    const { data } = await apiClient.post<MoveResponse>('/control/move', request)
+    const { data } = await apiClient.post<MoveResponse>('/api/v1/control/move', request)
     return data
   },
 
   async getPosition(): Promise<Position> {
-    const { data } = await apiClient.get<Position>('/control/position')
+    const { data } = await apiClient.get<Position>('/api/v1/control/position')
     return data
   },
 
   async homeStage(): Promise<{ status: string; message: string }> {
-    const { data } = await apiClient.post('/control/home')
+    const { data } = await apiClient.post('/api/v1/control/home')
     return data
   },
 
   async emergencyStop(): Promise<{ status: string; message: string }> {
-    const { data } = await apiClient.post('/control/stop')
+    const { data } = await apiClient.post('/api/v1/control/stop')
     return data
   },
 
   async getCameraSettings(): Promise<CameraSettings> {
-    const { data } = await apiClient.get<CameraSettings>('/control/camera/settings')
+    const { data } = await apiClient.get<CameraSettings>('/api/v1/control/camera/settings')
     return data
   },
 
   async updateCameraSettings(settings: Partial<CameraSettings>): Promise<void> {
-    await apiClient.put('/control/camera/settings', settings)
+    await apiClient.put('/api/v1/control/camera/settings', settings)
   }
 }
 
@@ -82,6 +162,8 @@ export const imageAPI = {
     job_id?: number
     start_date?: string
     end_date?: string
+    filter?: 'mine' | 'all'
+    page?: number
   }): Promise<ImageListResponse> {
     const { data } = await apiClient.get<ImageListResponse>('/images', { params })
     return data

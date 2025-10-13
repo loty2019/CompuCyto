@@ -29,7 +29,7 @@ frontend-vue/
 │   ├── api/                    # API client
 │   │   └── client.ts           # Axios-based API client
 │   ├── assets/                 # Static assets
-│   │   └── main.css            # Global styles
+│   │   └── main.css            # Global styles with Tailwind
 │   ├── components/             # Reusable Vue components
 │   │   ├── CameraControl.vue   # Camera control panel
 │   │   ├── StageControl.vue    # Stage joystick control
@@ -55,6 +55,9 @@ frontend-vue/
 │   └── main.ts                 # Application entry point
 ├── index.html                  # HTML template
 ├── package.json                # Dependencies
+├── postcss.config.js           # PostCSS configuration
+├── tailwind.config.js          # Tailwind CSS configuration
+├── TAILWIND_SETUP.md           # Tailwind setup instructions
 ├── tsconfig.json               # TypeScript config
 ├── vite.config.ts              # Vite configuration
 └── README.md                   # This file

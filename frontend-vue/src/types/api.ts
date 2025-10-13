@@ -11,10 +11,10 @@ export interface HealthCheck {
   status: string
   checks: {
     database: boolean
-    raspberry_pi: boolean
-    camera: boolean
+    pythonCamera: boolean
+    raspberryPi: boolean
+    redis: boolean
   }
-  version: string
   timestamp: string
 }
 
@@ -63,6 +63,12 @@ export interface MoveResponse {
   target_position: Position
 }
 
+export interface User {
+  id: number
+  username: string
+  email?: string
+}
+
 export interface Image {
   id: number
   filename: string
@@ -77,6 +83,7 @@ export interface Image {
   width: number | null
   height: number | null
   job_id: number | null
+  user?: User
   metadata?: Record<string, any>
 }
 
