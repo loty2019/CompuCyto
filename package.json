@@ -1,0 +1,29 @@
+{
+  "name": "compucyto-monorepo",
+  "version": "0.0.0",
+  "private": true,
+  "workspaces": [
+    "frontend-vue",
+    "Nest"
+  ],
+  "scripts": {
+    "bootstrap": "npm install",
+    "setup:python": "cd backend-python && python -m venv venv && venv\\Scripts\\activate && pip install -r requirements.txt",
+    "dev:frontend": "npm --workspace frontend-vue run dev",
+    "dev:backend": "npm --workspace Nest run start:dev",
+    "dev:python": "cd backend-python && python main.py",
+    "dev:all": "concurrently -n \"FRONTEND,BACKEND,PYTHON\" -c \"cyan,magenta,yellow\" \"npm run dev:frontend\" \"npm run dev:backend\" \"npm run dev:python\"",
+    "dev": "npm run dev:all",
+    "build:frontend": "npm --workspace frontend-vue run build",
+    "build:backend": "npm --workspace Nest run build",
+    "build": "npm run build:backend && npm run build:frontend",
+    "start:frontend": "npm --workspace frontend-vue run preview",
+    "start:backend": "npm --workspace Nest run start:prod",
+    "start:python": "cd backend-python && python main.py",
+    "start:all": "concurrently -n \"FRONTEND,BACKEND,PYTHON\" -c \"cyan,magenta,yellow\" \"npm run start:frontend\" \"npm run start:backend\" \"npm run start:python\"",
+    "start": "npm run start:all"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.0"
+  }
+}
