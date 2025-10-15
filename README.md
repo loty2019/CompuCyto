@@ -344,11 +344,11 @@ docker-compose up
 
 ## 📄 License
 
-[Your License Here]
+MIT
 
 ## 👥 Authors
 
-- Lorenzo - Initial work
+- Lorenzo
 
 ## 🙏 Acknowledgments
 
