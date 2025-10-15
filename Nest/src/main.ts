@@ -31,15 +31,7 @@ async function bootstrap() {
     .setTitle('CompuCyto Microscope Control API')
     .setDescription(
       'REST API for controlling microscope hardware, managing images, and running automated jobs.\n\n' +
-      '**Key Features:**\n' +
-      '- JWT Authentication\n' +
-      '- Camera control (via Python service)\n' +
-      '- Stage control with safety limits (via Raspberry Pi)\n' +
-      '- Image management (Phase 2)\n' +
-      '- Automated jobs: timelapse, grid scan, z-stack (Phase 2)\n\n' +
-      '**External Services:**\n' +
-      '- Python Camera Service: http://localhost:8001\n' +
-      '- Raspberry Pi Motor Controller: http://raspberrypi.local:5000\n\n' +
+
       '**Getting Started:**\n' +
       '1. Register a user via POST /api/v1/auth/register\n' +
       '2. Login to get JWT token via POST /api/v1/auth/login\n' +

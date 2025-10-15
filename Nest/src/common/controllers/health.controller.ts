@@ -2,7 +2,7 @@ import { Controller, Get } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { ConfigService } from '../../config/config.service';
 import { CameraService } from '../../camera/camera.service';
-import { StageService } from '../../stage/stage.service';
+import { MicroscopeService } from '../../microscope/microscope.service';
 
 /**
  * Health Check Controller
@@ -13,7 +13,7 @@ import { StageService } from '../../stage/stage.service';
  * Checks:
  * - Database connectivity (if this endpoint responds, DB is working)
  * - Python camera service availability
- * - Raspberry Pi motor controller availability
+ * - Raspberry Pi controller availability (via microscope service)
  * - Redis availability (Phase 2 - currently always true)
  * 
  * @controller /api/v1/health
@@ -24,7 +24,7 @@ export class HealthController {
   constructor(
     private configService: ConfigService,
     private cameraService: CameraService,
-    private stageService: StageService,
+    private microscopeService: MicroscopeService,
   ) { }
 
   /**
@@ -73,7 +73,7 @@ export class HealthController {
     // Check external services in parallel for fast response
     const [pythonCamera, raspberryPi] = await Promise.all([
       this.cameraService.checkHealth().catch(() => false),
-      this.stageService.checkHealth().catch(() => false),
+      this.microscopeService.checkHealth().catch(() => false),
     ]);
 
     return {
@@ -81,7 +81,7 @@ export class HealthController {
       checks: {
         database: true,  // If database was down, app wouldn't start
         pythonCamera,    // Python camera service on port 8001
-        raspberryPi,     // Raspberry Pi motor controller on port 5000
+        raspberryPi,     // Raspberry Pi controller on port 5000/8000
         redis: true,     // TODO: Add Redis check when Bull is implemented (Phase 2)
       },
       timestamp: new Date().toISOString(),

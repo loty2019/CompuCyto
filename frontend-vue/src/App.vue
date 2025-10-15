@@ -5,20 +5,23 @@
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
         <div class="flex items-center gap-6">
           <div class="flex items-center">
-            <h1 class="text-3xl font-bold text-gray-900">CytoCore</h1>
-            <span class="ml-4 pt-2 text-sm text-gray-600">
-              Welcome, {{ authStore.currentUser?.username }}
-            </span>
+        <div class="flex flex-col">
+            <h1 class="text-5xl font-bold text-gray-900">🔬 CytoCore</h1>
+          <span class="text-sm pl-48 text-gray-500">LinkBiosystems</span>
+        </div>
+        <span class="ml-6 pt-2 text-m text-gray-600">
+          Welcome, <strong>{{ authStore.currentUser?.username }}</strong>
+        </span>
           </div>
           
           <!-- Quick Navigation Buttons -->
           <div class="flex items-center gap-2 border-gray-300 pl-6 ml-4">
-            <button @click="scrollToSection('camera')" class="nav-btn">📷 Camera</button>
-            <button @click="scrollToSection('stage')" class="nav-btn">🎯 Stage</button>
-            <button @click="scrollToSection('map')" class="nav-btn">🗺️ Map</button>
-            <button @click="scrollToSection('jobs')" class="nav-btn">💼 Jobs</button>
-            <button @click="scrollToSection('gallery')" class="nav-btn">🖼️ Gallery</button>
-            <button @click="scrollToSection('console')" class="nav-btn">📝 Console</button>
+        <button @click="scrollToSection('camera')" class="nav-btn">📷 Camera</button>
+        <button @click="scrollToSection('stage')" class="nav-btn">🎯 Stage</button>
+        <button @click="scrollToSection('map')" class="nav-btn">🗺️ Map</button>
+        <button @click="scrollToSection('jobs')" class="nav-btn">💼 Jobs</button>
+        <button @click="scrollToSection('gallery')" class="nav-btn">🖼️ Gallery</button>
+        <button @click="scrollToSection('console')" class="nav-btn">📝 Console</button>
           </div>
         </div>
         

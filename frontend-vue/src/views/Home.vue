@@ -1,8 +1,8 @@
 <template>
   <div class="home">
     <header>
-      <h1 class="text-3xl font-bold">🔬 Microscope Control System</h1>
-      <p>LinkBiosystems</p>
+      <!-- <h1 class="text-3xl font-bold">🔬 Microscope Control System</h1>
+      <p>LinkBiosystems</p> -->
       <StatusBar />
     </header>
 
@@ -56,8 +56,9 @@ onMounted(async () => {
     // Map health check to system status
     store.updateSystemStatus({
       camera: health.checks.pythonCamera ? 'connected' : 'disconnected',
-      stage: health.checks.raspberryPi ? 'connected' : 'disconnected',
+      stage: 'connected', // TODO: Add separate stage health check if needed
       database: health.checks.database ? 'connected' : 'disconnected',
+      raspberryPi: health.checks.raspberryPi ? 'connected' : 'disconnected',
       queue: 'stopped' // TODO: Add queue status when available
     })
     store.addLog(`System health check: ${health.status}`, 'success')
@@ -68,6 +69,7 @@ onMounted(async () => {
       camera: 'disconnected',
       stage: 'disconnected',
       database: 'disconnected',
+      raspberryPi: 'disconnected',
       queue: 'stopped'
     })
   }
@@ -78,8 +80,9 @@ onMounted(async () => {
       const health = await controlAPI.getHealth()
       store.updateSystemStatus({
         camera: health.checks.pythonCamera ? 'connected' : 'disconnected',
-        stage: health.checks.raspberryPi ? 'connected' : 'disconnected',
+        stage: 'connected', // TODO: Add separate stage health check if needed
         database: health.checks.database ? 'connected' : 'disconnected',
+        raspberryPi: health.checks.raspberryPi ? 'connected' : 'disconnected',
         queue: 'stopped'
       })
     } catch (error) {

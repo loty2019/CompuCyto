@@ -1,7 +1,7 @@
 import { Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '../config/config.service';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, catchError } from 'rxjs';
 
 /**
  * Microscope Service
@@ -36,10 +36,9 @@ export class MicroscopeService {
   async getLightStatus() {
     try {
       // Query Raspberry Pi for current light state
-      // Change to pythonCameraUrl if light is controlled by camera PC
       const response = await firstValueFrom(
         this.httpService.get(
-          `${this.configService.raspberryPiUrl}/light/status`,
+          `${this.configService.raspberryPiUrl}/led/state`,
           {
             timeout: this.configService.serviceTimeout,
           }
@@ -47,7 +46,7 @@ export class MicroscopeService {
       );
       
       return {
-        isOn: response.data.isOn,
+        isOn: response.data.is_on, // Pi returns 'is_on' (snake_case)
         brightness: response.data.brightness || 100,
         timestamp: new Date().toISOString(),
       };
@@ -130,6 +129,32 @@ export class MicroscopeService {
       throw new ServiceUnavailableException(
         'Microscope hardware controller is not available'
       );
+    }
+  }
+
+  /**
+   * Check Raspberry Pi controller health
+   * 
+   * Pings the Raspberry Pi health endpoint to verify availability.
+   * Used by the health check controller.
+   * 
+   * @returns true if Raspberry Pi is reachable and healthy, false otherwise
+   */
+  async checkHealth(): Promise<boolean> {
+    try {
+      // Short timeout for health checks (5 seconds)
+      const response = await firstValueFrom(
+        this.httpService.get(`${this.configService.raspberryPiUrl}/health`, { timeout: 5000 }).pipe(
+          catchError(() => {
+            throw new Error('Raspberry Pi controller unavailable');
+          }),
+        ),
+      );
+      
+      // Verify the response body indicates healthy status
+      return response.data?.healthy === true;
+    } catch {
+      return false;
     }
   }
 }

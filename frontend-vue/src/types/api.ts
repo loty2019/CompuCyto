@@ -4,6 +4,7 @@ export interface SystemStatus {
   camera: 'connected' | 'disconnected'
   stage: 'connected' | 'disconnected'
   database: 'connected' | 'disconnected'
+  raspberryPi: 'connected' | 'disconnected'
   queue: 'running' | 'stopped'
 }
 

@@ -92,7 +92,7 @@ export class ConfigService {
    * @default 'http://raspberrypi.local:5000'
    */
   get raspberryPiUrl(): string {
-    return this.configService.get<string>('RASPBERRY_PI_URL', 'http://raspberrypi.local:5000');
+    return this.configService.get<string>('RASPBERRY_PI_URL', 'http://raspberrypi.local:8000');
   }
 
   /**

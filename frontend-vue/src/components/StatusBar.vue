@@ -13,6 +13,10 @@
       <span>Database</span>
     </div>
     <div class="status-item">
+      <div :class="['status-indicator', getStatusClass(store.systemStatus.raspberryPi)]"></div>
+      <span>Raspberry Pi</span>
+    </div>
+    <div class="status-item">
       <div :class="['status-indicator', wsStore.state.isConnected ? 'connected' : 'disconnected']"></div>
       <span>WebSocket</span>
     </div>

@@ -16,6 +16,7 @@ export const useMicroscopeStore = defineStore('microscope', () => {
     camera: 'disconnected',
     stage: 'disconnected',
     database: 'disconnected',
+    raspberryPi: 'disconnected',
     queue: 'stopped'
   })
 
@@ -44,7 +45,8 @@ export const useMicroscopeStore = defineStore('microscope', () => {
   const isSystemHealthy = computed(() =>
     systemStatus.value.camera === 'connected' &&
     systemStatus.value.stage === 'connected' &&
-    systemStatus.value.database === 'connected'
+    systemStatus.value.database === 'connected' &&
+    systemStatus.value.raspberryPi === 'connected'
   )
 
   const activeJobs = computed(() =>
