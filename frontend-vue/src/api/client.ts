@@ -18,6 +18,13 @@ import type {
   PositionListResponse
 } from '@/types'
 
+// Declare global window type for logging
+declare global {
+  interface Window {
+    __logToConsole?: (message: string, type: 'info' | 'success' | 'error' | 'warning') => void
+  }
+}
+
 // Auth types
 export interface LoginRequest {
   email: string
@@ -58,24 +65,62 @@ const apiClient = axios.create({
   }
 })
 
-// Add request interceptor to include JWT token
+// Add request interceptor to include JWT token and log requests
 apiClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('access_token')
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
+    
+    // Log API request
+    const method = config.method?.toUpperCase() || 'REQUEST'
+    const url = config.url || ''
+    const logMessage = `🔵 ${method} ${url}`
+    
+    // Add to console log (will be picked up by microscope store)
+    if (window.__logToConsole) {
+      window.__logToConsole(logMessage, 'info')
+    }
+    
     return config
   },
   (error) => {
+    // Log request error
+    if (window.__logToConsole) {
+      window.__logToConsole(`❌ Request failed: ${error.message}`, 'error')
+    }
     return Promise.reject(error)
   }
 )
 
-// Add response interceptor to handle 401 errors
+// Add response interceptor to handle 401 errors and log responses
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // Log successful response
+    const method = response.config.method?.toUpperCase() || 'REQUEST'
+    const url = response.config.url || ''
+    const status = response.status
+    const logMessage = `✅ ${method} ${url} - ${status}`
+    
+    if (window.__logToConsole) {
+      window.__logToConsole(logMessage, 'success')
+    }
+    
+    return response
+  },
   (error) => {
+    // Log error response
+    const method = error.config?.method?.toUpperCase() || 'REQUEST'
+    const url = error.config?.url || 'unknown'
+    const status = error.response?.status || 'Network Error'
+    const message = error.response?.data?.message || error.message
+    const logMessage = `❌ ${method} ${url} - ${status}: ${message}`
+    
+    if (window.__logToConsole) {
+      window.__logToConsole(logMessage, 'error')
+    }
+    
     if (error.response?.status === 401) {
       // Clear auth data on unauthorized
       localStorage.removeItem('access_token')

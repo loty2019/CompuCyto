@@ -24,7 +24,7 @@ h = None
 led_isOn = False
 gpio_initialized = False
 
-# Pydantic models
+# Pydantic models aka schemas for request and response bodies
 class LEDState(BaseModel):
     is_on: bool
     pin: int

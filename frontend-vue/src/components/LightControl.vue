@@ -103,9 +103,12 @@ async function toggleLight() {
     
     const response = await apiClient.post('/api/v1/microscope/light/toggle');
     
-    isLightOn.value = response.data.isOn;
-    brightness.value = response.data.brightness || 100;
-    lastUpdateTime.value = new Date();
+    // If response is positive (successful), update state from response
+    if (response.status === 200 || response.status === 201) {
+      isLightOn.value = response.data.isOn;
+      brightness.value = response.data.brightness || 100;
+      lastUpdateTime.value = new Date();
+    }
   } catch (err: any) {
     console.error('Failed to toggle light:', err);
     error.value = err.response?.data?.message || 'Failed to toggle light';

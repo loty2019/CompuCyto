@@ -70,7 +70,7 @@ export class MicroscopeService {
     try {
       const response = await firstValueFrom(
         this.httpService.post(
-          `${this.configService.raspberryPiUrl}/light/toggle`,
+          `${this.configService.raspberryPiUrl}/led/toggle`,
           {},
           {
             timeout: this.configService.serviceTimeout,

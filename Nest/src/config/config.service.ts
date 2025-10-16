@@ -132,6 +132,14 @@ export class ConfigService {
   }
 
   /**
+   * Frontend application port
+   * @default 5173
+   */
+  get frontendPort(): number {
+    return this.configService.get<number>('FRONTEND_PORT', 5173);
+  }
+
+  /**
    * Node environment (development, production, test)
    * @default 'development'
    */

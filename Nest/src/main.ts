@@ -93,10 +93,12 @@ async function bootstrap() {
 
   // ==================== Start Server ====================
   const port = configService.port; // From PORT env var (default: 3000)
+  const frontendPort = configService.frontendPort; // From FRONTEND_PORT env var (default: 5173)
   await app.listen(port);
   
   // Log startup information
-  console.log(`🚀 Application is running on: http://localhost:${port}`);
+  // front end is running at port 5173
+  console.log(`🚀 Application is running on (frontend): http://localhost:${frontendPort}`);
   console.log(`📚 API Documentation (Swagger): http://localhost:${port}/api-docs`);
   console.log(`📋 Health check: http://localhost:${port}/api/v1/health`);
   console.log(`🔐 API Base: http://localhost:${port}/api/v1`);

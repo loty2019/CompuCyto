@@ -40,6 +40,10 @@ export const useAuthStore = defineStore('auth', () => {
   // Actions
   const login = async (email: string, password: string) => {
     try {
+      if (window.__logToConsole) {
+        window.__logToConsole(`🔐 Attempting login for ${email}`, 'info')
+      }
+      
       const response = await authAPI.login({ email, password })
       token.value = response.access_token
       user.value = response.user
@@ -48,9 +52,16 @@ export const useAuthStore = defineStore('auth', () => {
       localStorage.setItem('access_token', response.access_token)
       localStorage.setItem('user', JSON.stringify(response.user))
 
+      if (window.__logToConsole) {
+        window.__logToConsole(`✅ Login successful: ${user.value.username}`, 'success')
+      }
+
       return { success: true }
     } catch (error: any) {
       console.error('Login error:', error)
+      if (window.__logToConsole) {
+        window.__logToConsole(`❌ Login failed: ${error.response?.data?.message || 'Unknown error'}`, 'error')
+      }
       return {
         success: false,
         error: error.response?.data?.message || 'Login failed'
@@ -60,6 +71,10 @@ export const useAuthStore = defineStore('auth', () => {
 
   const register = async (email: string, username: string, password: string) => {
     try {
+      if (window.__logToConsole) {
+        window.__logToConsole(`📝 Attempting registration for ${email}`, 'info')
+      }
+      
       const response = await authAPI.register({ email, username, password })
       token.value = response.access_token
       user.value = response.user
@@ -68,9 +83,16 @@ export const useAuthStore = defineStore('auth', () => {
       localStorage.setItem('access_token', response.access_token)
       localStorage.setItem('user', JSON.stringify(response.user))
 
+      if (window.__logToConsole) {
+        window.__logToConsole(`✅ Registration successful: ${user.value.username}`, 'success')
+      }
+
       return { success: true }
     } catch (error: any) {
       console.error('Registration error:', error)
+      if (window.__logToConsole) {
+        window.__logToConsole(`❌ Registration failed: ${error.response?.data?.message || 'Unknown error'}`, 'error')
+      }
       return {
         success: false,
         error: error.response?.data?.message || 'Registration failed'
@@ -79,6 +101,9 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   const logout = () => {
+    if (window.__logToConsole) {
+      window.__logToConsole(`👋 User logged out: ${user.value?.username}`, 'info')
+    }
     token.value = null
     user.value = null
     localStorage.removeItem('access_token')
