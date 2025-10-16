@@ -1,31 +1,67 @@
 <template>
-  <div class="card">
-    <h2>🎯 Stage Control</h2>
+  <div class="bg-white p-5 rounded-lg shadow-md">
+    <h2 class="text-xl font-bold mb-4 text-gray-900">🎯 Stage Control</h2>
 
-    <div class="position-display">
-      <div>X: <span>{{ store.position.x.toFixed(1) }}</span></div>
-      <div>Y: <span>{{ store.position.y.toFixed(1) }}</span></div>
-      <div>Z: <span>{{ store.position.z.toFixed(1) }}</span></div>
+    <div class="bg-gray-100 p-4 rounded mb-4 font-mono text-sm">
+      <div class="mb-1">X: <span class="font-semibold">{{ store.position.x.toFixed(1) }}</span></div>
+      <div class="mb-1">Y: <span class="font-semibold">{{ store.position.y.toFixed(1) }}</span></div>
+      <div>Z: <span class="font-semibold">{{ store.position.z.toFixed(1) }}</span></div>
     </div>
 
-    <div class="stage-control">
+    <div class="grid grid-cols-3 gap-2.5 mb-4">
       <div></div>
-      <button @click="move(0, 100, 0)" :disabled="stage.isMoving.value" class="btn">↑ Y+</button>
+      <button 
+        @click="move(0, 100, 0)" 
+        :disabled="stage.isMoving.value" 
+        class="bg-blue-500 text-white p-4 rounded cursor-pointer text-sm font-medium transition-colors hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed"
+      >
+        ↑ Y+
+      </button>
       <div></div>
 
-      <button @click="move(-100, 0, 0)" :disabled="stage.isMoving.value" class="btn">← X-</button>
-      <button @click="stage.home()" class="center btn" :disabled="stage.isMoving.value">⌂ Home</button>
-      <button @click="move(100, 0, 0)" :disabled="stage.isMoving.value" class="btn">X+ →</button>
+      <button 
+        @click="move(-100, 0, 0)" 
+        :disabled="stage.isMoving.value" 
+        class="bg-blue-500 text-white p-4 rounded cursor-pointer text-sm font-medium transition-colors hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed"
+      >
+        ← X-
+      </button>
+      <button 
+        @click="stage.home()" 
+        :disabled="stage.isMoving.value" 
+        class="bg-orange-600 text-white p-4 rounded cursor-pointer text-sm font-medium transition-colors hover:bg-orange-700 disabled:opacity-60 disabled:cursor-not-allowed"
+      >
+        ⌂ Home
+      </button>
+      <button 
+        @click="move(100, 0, 0)" 
+        :disabled="stage.isMoving.value" 
+        class="bg-blue-500 text-white p-4 rounded cursor-pointer text-sm font-medium transition-colors hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed"
+      >
+        X+ →
+      </button>
 
       <div></div>
-      <button @click="move(0, -100, 0)" :disabled="stage.isMoving.value" class="btn">↓ Y-</button>
+      <button 
+        @click="move(0, -100, 0)" 
+        :disabled="stage.isMoving.value" 
+        class="bg-blue-500 text-white p-4 rounded cursor-pointer text-sm font-medium transition-colors hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed"
+      >
+        ↓ Y-
+      </button>
       
       <!-- Light Toggle Button -->
       <button 
         @click="toggleLight"
-        :class="['btn', 'light-btn', { 'light-on': isLightOn }]"
         :disabled="isToggling || lightLoading"
         :title="isLightOn ? 'Light ON - Click to turn OFF' : 'Light OFF - Click to turn ON'"
+        :class="[
+          'p-4 rounded cursor-pointer text-xs leading-tight font-medium transition-all',
+          isLightOn 
+            ? 'bg-yellow-500 text-white hover:bg-yellow-600 shadow-[0_0_10px_rgba(234,179,8,0.5)] hover:shadow-[0_0_15px_rgba(234,179,8,0.7)]' 
+            : 'bg-blue-300 text-white hover:bg-blue-700',
+          (isToggling || lightLoading) && 'opacity-60 cursor-not-allowed'
+        ]"
       >
         <span v-if="isLightOn">💡 ON</span>
         <span v-else>💡 OFF</span>
@@ -33,8 +69,10 @@
     </div>
 
     <!-- Brightness slider (shown when light is on) -->
-    <div v-if="isLightOn && !lightLoading" class="brightness-section">
-      <label for="brightness">💡 Brightness: {{ brightness }}%</label>
+    <div v-if="isLightOn && !lightLoading" class="mb-4 p-3 bg-gray-50 rounded">
+      <label for="brightness" class="block text-sm font-medium text-gray-700 mb-2">
+        💡 Brightness: {{ brightness }}%
+      </label>
       <input 
         id="brightness"
         type="range" 
@@ -42,19 +80,38 @@
         max="100" 
         v-model.number="brightness"
         @change="setBrightness"
-        class="brightness-slider"
+        class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-yellow-500"
       />
     </div>
 
-    <div v-if="lightError" class="error-banner">⚠️ {{ lightError }}</div>
+    <div v-if="lightError" class="text-xs text-red-600 bg-red-50 p-2 rounded mb-3">
+      ⚠️ {{ lightError }}
+    </div>
 
     <!-- Focus Section (Z-Axis) -->
-    <div class="focus-section">
-      <h3>🔍 Focus</h3>
-      <div class="button-group">
-        <button @click="move(0, 0, 10)" :disabled="stage.isMoving.value" class="btn">Z+ ↑</button>
-        <button @click="move(0, 0, -10)" :disabled="stage.isMoving.value" class="btn">Z- ↓</button>
-        <button @click="stage.stop()" class="btn btn-danger">⛔ STOP</button>
+    <div class="mt-6 pt-4 border-t-2 border-gray-200">
+      <h3 class="text-base font-semibold text-gray-700 mb-3">🔍 Focus</h3>
+      <div class="flex gap-2">
+        <button 
+          @click="move(0, 0, 10)" 
+          :disabled="stage.isMoving.value" 
+          class="flex-1 bg-blue-500 text-white px-5 py-2.5 rounded cursor-pointer text-sm font-medium transition-colors hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          Z+ ↑
+        </button>
+        <button 
+          @click="move(0, 0, -10)" 
+          :disabled="stage.isMoving.value" 
+          class="flex-1 bg-blue-500 text-white px-5 py-2.5 rounded cursor-pointer text-sm font-medium transition-colors hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          Z- ↓
+        </button>
+        <button 
+          @click="stage.stop()" 
+          class="flex-1 bg-red-500 text-white px-5 py-2.5 rounded cursor-pointer text-sm font-medium transition-colors hover:bg-red-700"
+        >
+          ⛔ STOP
+        </button>
       </div>
     </div>
   </div>
@@ -69,7 +126,6 @@ import apiClient from '@/api/client'
 const store = useMicroscopeStore()
 const stage = useStage()
 
-// Light control state
 const isLightOn = ref(false)
 const brightness = ref(100)
 const lightLoading = ref(true)
@@ -79,18 +135,13 @@ const lightError = ref('')
 let intervalId: number | null = null
 
 onMounted(() => {
-  // Poll position every 2 seconds
   intervalId = window.setInterval(stage.updatePosition, 2000)
   stage.updatePosition()
-  
-  // Load initial light status
   fetchLightStatus()
 })
 
 onUnmounted(() => {
-  if (intervalId) {
-    clearInterval(intervalId)
-  }
+  if (intervalId) clearInterval(intervalId)
 })
 
 async function move(x: number, y: number, z: number) {
@@ -98,14 +149,11 @@ async function move(x: number, y: number, z: number) {
   setTimeout(stage.updatePosition, 500)
 }
 
-// Light control functions
 async function fetchLightStatus() {
   try {
     lightLoading.value = true
     lightError.value = ''
-    
     const response = await apiClient.get('/api/v1/microscope/light/status')
-    
     isLightOn.value = response.data.isOn
     brightness.value = response.data.brightness || 100
   } catch (err: any) {
@@ -120,9 +168,7 @@ async function toggleLight() {
   try {
     isToggling.value = true
     lightError.value = ''
-    
     const response = await apiClient.post('/api/v1/microscope/light/toggle')
-    
     isLightOn.value = response.data.isOn
     brightness.value = response.data.brightness || 100
   } catch (err: any) {
@@ -137,12 +183,10 @@ async function toggleLight() {
 async function setBrightness() {
   try {
     lightError.value = ''
-    
     const response = await apiClient.post('/api/v1/microscope/light/set', {
       isOn: true,
       brightness: brightness.value,
     })
-    
     isLightOn.value = response.data.isOn
     brightness.value = response.data.brightness
   } catch (err: any) {
@@ -154,84 +198,15 @@ async function setBrightness() {
 </script>
 
 <style scoped>
-.position-display {
-  @apply bg-gray-100 p-4 rounded mb-4 font-mono;
+.btn-movement {
+  @apply bg-blue-500 text-white p-4 rounded text-sm font-medium transition-colors hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed;
 }
 
-.position-display div {
-  @apply mb-1;
+.btn-home {
+  @apply bg-orange-600 text-white p-4 rounded text-sm font-medium transition-colors hover:bg-orange-700 disabled:opacity-60 disabled:cursor-not-allowed;
 }
 
-/* Stage Control Styles */
-.stage-control {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  @apply gap-2.5 mb-4;
-}
-
-.stage-control button {
-  @apply p-4;
-}
-
-.stage-control .center {
-  @apply bg-orange-600;
-}
-
-.stage-control .center:hover:not(:disabled) {
-  @apply bg-orange-700;
-}
-
-/* Light Button in Stage Control Grid */
-.light-btn {
-  font-size: 0.875rem;
-  line-height: 1.2;
-  transition: all 0.2s ease;
-}
-
-.light-btn.light-on {
-  @apply bg-yellow-500;
-  box-shadow: 0 0 10px rgba(234, 179, 8, 0.5);
-}
-
-.light-btn.light-on:hover:not(:disabled) {
-  @apply bg-yellow-600;
-  box-shadow: 0 0 15px rgba(234, 179, 8, 0.7);
-}
-
-/* Brightness Section */
-.brightness-section {
-  @apply mb-4 p-3 bg-gray-50 rounded;
-}
-
-.brightness-section label {
-  @apply block text-sm font-medium text-gray-700 mb-2;
-}
-
-.brightness-slider {
-  @apply w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer;
-}
-
-.brightness-slider::-webkit-slider-thumb {
-  @apply appearance-none w-4 h-4 bg-yellow-500 rounded-full cursor-pointer;
-  box-shadow: 0 0 5px rgba(234, 179, 8, 0.5);
-}
-
-.brightness-slider::-moz-range-thumb {
-  @apply w-4 h-4 bg-yellow-500 rounded-full cursor-pointer border-0;
-  box-shadow: 0 0 5px rgba(234, 179, 8, 0.5);
-}
-
-/* Error Banner */
-.error-banner {
-  @apply text-xs text-red-600 bg-red-50 p-2 rounded mb-3;
-}
-
-/* Focus Section */
-.focus-section {
-  @apply mt-6 pt-4 border-t-2 border-gray-200;
-}
-
-.focus-section h3 {
-  @apply text-base font-semibold text-gray-700 mb-3;
+.btn-stop {
+  @apply bg-red-500 text-white px-5 py-2.5 rounded text-sm font-medium transition-colors hover:bg-red-700;
 }
 </style>

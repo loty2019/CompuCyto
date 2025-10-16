@@ -1,6 +1,6 @@
 <template>
-  <div class="card">
-    <h2>🗺️ Position Map</h2>
+  <div class="bg-white p-5 rounded-lg shadow-md">
+    <h2 class="text-lg font-bold text-gray-700 mb-4">🗺️ Position Map</h2>
     
     <div class="map-container">
       <svg 
@@ -149,15 +149,15 @@
       </svg>
     </div>
     
-    <div class="map-info">
-      <div class="info-grid">
-        <div class="info-card status-card">
-          <div class="info-icon">{{ isMoving ? '🔄' : '✓' }}</div>
-          <div class="info-content">
-            <div class="info-label">Status</div>
-            <div :class="['status-value', isMoving ? 'moving' : 'idle']">
-              {{ isMoving ? 'Moving' : 'Idle' }}
-            </div>
+    <div class="mt-4">
+      <div class="flex items-center gap-3 bg-gradient-to-br from-white to-gray-50 rounded-lg p-3 border border-gray-200 max-w-[200px] shadow-sm hover:border-blue-300 hover:shadow-md transition-all duration-200">
+        <div class="flex items-center justify-center w-10 h-10 text-2xl bg-gradient-to-br from-blue-100 to-blue-200 rounded-lg">
+          {{ isMoving ? '🔄' : '✓' }}
+        </div>
+        <div class="flex-1">
+          <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Status</div>
+          <div :class="['text-sm font-bold leading-tight', isMoving ? 'text-blue-600 animate-pulse' : 'text-green-600']">
+            {{ isMoving ? 'Moving' : 'Idle' }}
           </div>
         </div>
       </div>
@@ -203,94 +203,10 @@ const markerY = computed(() => {
 
 <style scoped>
 .map-container {
-  @apply mb-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-200 overflow-hidden;
-  box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.1), 0 2px 4px -1px rgba(59, 130, 246, 0.06);
+  @apply mb-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-200 overflow-hidden shadow-md;
 }
 
 .microscope-map {
-  @apply w-full h-auto;
-  display: block;
-}
-
-.map-info {
-  @apply mt-4;
-}
-
-.info-grid {
-  @apply gap-3;
-}
-
-.info-card {
-  @apply bg-gradient-to-br from-white to-gray-50 rounded-lg p-3 border border-gray-200;
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
-  transition: all 0.2s ease;
-}
-
-.status-card {
-  max-width: 200px;
-}
-
-.info-card:hover {
-  @apply border-blue-300;
-  box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.15);
-  transform: translateY(-2px);
-}
-
-.info-icon {
-  @apply text-2xl;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
-  border-radius: 10px;
-}
-
-.info-content {
-  flex: 1;
-  min-width: 0;
-}
-
-.info-label {
-  @apply text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1;
-}
-
-.info-value {
-  @apply text-sm font-mono text-gray-800;
-  line-height: 1.3;
-}
-
-.status-value {
-  @apply text-sm font-bold;
-  line-height: 1.3;
-}
-
-.status-value.idle {
-  @apply text-green-600;
-}
-
-.status-value.moving {
-  @apply text-blue-600;
-  animation: pulse 1.5s ease-in-out infinite;
-}
-
-@keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.6;
-  }
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-  .info-grid {
-    grid-template-columns: 1fr;
-  }
+  @apply w-full h-auto block;
 }
 </style>

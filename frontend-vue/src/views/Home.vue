@@ -1,33 +1,18 @@
 <template>
-  <div class="home">
-    <header>
-      <!-- <h1 class="text-3xl font-bold">🔬 Microscope Control System</h1>
-      <p>LinkBiosystems</p> -->
+  <div class="max-w-screen-xl mx-auto p-5">
+    <header class="bg-white p-5 rounded-lg mb-5 shadow-md">
       <StatusBar />
     </header>
 
-    <div class="grid">
-      <div id="camera">
-        <CameraControl />
-      </div>
-      <div id="stage">
-        <StageControl />
-      </div>
-      <div id="map">
-        <MicroscopeMap />
-      </div>
-    </div>
-    <div id="jobs" class="mt-5 mb-5">
-      <JobManager />
+    <div class="grid grid-cols-[repeat(auto-fit,minmax(350px,1fr))] gap-5 mb-5">
+      <div id="camera"><CameraControl /></div>
+      <div id="stage"><StageControl /></div>
+      <div id="map"><MicroscopeMap /></div>
     </div>
 
-    <div id="gallery" class="mt-5 mb-5">
-      <ImageGallery />
-    </div>
-
-    <div id="console" class="mt-5 mb-5">
-      <ConsoleLog />
-    </div>
+    <div id="jobs" class="mb-5"><JobManager /></div>
+    <div id="gallery" class="mb-5"><ImageGallery /></div>
+    <div id="console" class="mb-5"><ConsoleLog /></div>
   </div>
 </template>
 
@@ -93,35 +78,12 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.home {
-  @apply max-w-screen-xl mx-auto p-5;
-}
-
-header {
-  @apply bg-white p-5 rounded-lg mb-5 shadow-md;
-}
-
-header h1 {
-  @apply text-gray-800 mb-2.5 text-3xl;
-}
-
-header p {
-  @apply text-gray-600 mb-4;
-}
-
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-  @apply gap-5 mb-5;
-}
-
-/* Scroll margin for smooth navigation */
 #camera,
 #stage,
 #map,
 #jobs,
 #gallery,
 #console {
-  scroll-margin-top: 100px;
+  @apply scroll-mt-24;
 }
 </style>

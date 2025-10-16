@@ -123,9 +123,7 @@ const handleLogin = async () => {
 
   try {
     const result = await authStore.login(email.value, password.value)
-
     if (result.success) {
-      // Redirect to home or intended page
       const redirect = route.query.redirect as string || '/'
       router.push(redirect)
     } else {

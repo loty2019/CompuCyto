@@ -1,37 +1,37 @@
 <template>
-  <div class="card">
-    <h2>⚙️ Job Control</h2>
+  <div class="bg-white p-5 rounded-lg shadow-md">
+    <h2 class="text-lg font-bold text-gray-700 mb-4">⚙️ Job Control</h2>
 
-    <div class="button-group">
-      <button @click="createTimelapse" class="btn">⏱️ Timelapse</button>
-      <button @click="createGrid" class="btn">🔲 Grid Scan</button>
-      <button @click="createZStack" class="btn">📚 Z-Stack</button>
+    <div class="flex gap-2 mb-4">
+      <button @click="createTimelapse" class="btn-job">⏱️ Timelapse</button>
+      <button @click="createGrid" class="btn-job">🔲 Grid Scan</button>
+      <button @click="createZStack" class="btn-job">📚 Z-Stack</button>
     </div>
 
-    <div v-if="store.activeJobs.length > 0" class="job-list">
-      <h3>Active Jobs</h3>
-      <div v-for="job in store.activeJobs" :key="job.id" class="job-item">
-        <div class="job-info">
+    <div v-if="store.activeJobs.length > 0" class="mt-4">
+      <h3 class="text-sm text-gray-600 mb-2.5">Active Jobs</h3>
+      <div v-for="job in store.activeJobs" :key="job.id" class="bg-gray-100 p-3 rounded mb-2.5">
+        <div class="flex justify-between items-center mb-2">
           <strong>{{ job.name }}</strong>
-          <span class="job-type">{{ job.job_type }}</span>
+          <span class="bg-blue-500 text-white px-2 py-0.5 rounded-sm text-xs">{{ job.job_type }}</span>
         </div>
-        <div class="job-progress">
-          <div class="progress-bar">
+        <div class="flex items-center gap-2.5 mb-2">
+          <div class="flex-1 h-2 bg-gray-300 rounded overflow-hidden">
             <div
-              class="progress-fill"
+              class="h-full bg-green-500 transition-all duration-300"
               :style="{ width: `${(job.progress / (job.total_steps || 1)) * 100}%` }"
             ></div>
           </div>
-          <span class="progress-text">{{ job.progress }}/{{ job.total_steps }}</span>
+          <span class="text-xs text-gray-600 min-w-[60px]">{{ job.progress }}/{{ job.total_steps }}</span>
         </div>
-        <div class="job-actions">
-          <button @click="pauseJob(job.id)" v-if="job.status === 'running'" class="btn btn-small">Pause</button>
-          <button @click="resumeJob(job.id)" v-if="job.status === 'paused'" class="btn btn-small">Resume</button>
-          <button @click="cancelJob(job.id)" class="btn btn-small btn-danger">Cancel</button>
+        <div class="flex gap-1.5">
+          <button @click="pauseJob(job.id)" v-if="job.status === 'running'" class="btn-job-action">Pause</button>
+          <button @click="resumeJob(job.id)" v-if="job.status === 'paused'" class="btn-job-action">Resume</button>
+          <button @click="cancelJob(job.id)" class="btn-job-cancel">Cancel</button>
         </div>
       </div>
     </div>
-    <div v-else class="no-jobs">
+    <div v-else class="text-center p-5 text-gray-400">
       <p>No active jobs</p>
     </div>
   </div>
@@ -133,47 +133,16 @@ async function cancelJob(jobId: number) {
 </script>
 
 <style scoped>
-.job-list {
-  @apply mt-4;
+.btn-job {
+  @apply px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors font-medium;
 }
 
-.job-list h3 {
-  @apply text-sm text-gray-600 mb-2.5;
+.btn-job-action {
+  @apply px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors;
 }
 
-.job-item {
-  @apply bg-gray-100 p-3 rounded mb-2.5;
-}
-
-.job-info {
-  @apply flex justify-between items-center mb-2;
-}
-
-.job-type {
-  @apply bg-blue-500 text-white px-2 py-0.5 rounded-sm text-xs;
-}
-
-.job-progress {
-  @apply flex items-center gap-2.5 mb-2;
-}
-
-.progress-bar {
-  @apply flex-1 h-2 bg-gray-300 rounded overflow-hidden;
-}
-
-.progress-fill {
-  @apply h-full bg-green-500 transition-all duration-300;
-}
-
-.progress-text {
-  @apply text-xs text-gray-600 min-w-[60px];
-}
-
-.job-actions {
-  @apply flex gap-1.5;
-}
-
-.no-jobs {
-  @apply text-center p-5 text-gray-400;
+.btn-job-cancel {
+  @apply px-3 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600 transition-colors;
 }
 </style>
+

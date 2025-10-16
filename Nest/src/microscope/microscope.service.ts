@@ -80,7 +80,7 @@ export class MicroscopeService {
       
       return {
         success: true,
-        isOn: response.data.isOn,
+        isOn: response.data.is_on,
         brightness: response.data.brightness || 100,
         timestamp: new Date().toISOString(),
       };

@@ -1,29 +1,44 @@
 <template>
-  <div class="status-bar">
-    <div class="status-item">
-      <div :class="['status-indicator', getStatusClass(store.systemStatus.camera)]"></div>
+  <div class="flex gap-5 items-center">
+    <div class="flex items-center gap-2 text-sm">
+      <div class="relative flex items-center justify-center w-3 h-3">
+        <div :class="['absolute w-3 h-3 rounded-full transition-colors z-10', isConnected(store.systemStatus.camera) ? 'bg-green-500' : 'bg-red-500']"></div>
+        <div v-if="isConnected(store.systemStatus.camera)" class="absolute w-3 h-3 rounded-full bg-green-500 animate-ping opacity-75"></div>
+      </div>
       <span>Camera</span>
     </div>
-    <div class="status-item">
-      <div :class="['status-indicator', getStatusClass(store.systemStatus.stage)]"></div>
+    <div class="flex items-center gap-2 text-sm">
+      <div class="relative flex items-center justify-center w-3 h-3">
+        <div :class="['absolute w-3 h-3 rounded-full transition-colors z-10', isConnected(store.systemStatus.stage) ? 'bg-green-500' : 'bg-red-500']"></div>
+        <div v-if="isConnected(store.systemStatus.stage)" class="absolute w-3 h-3 rounded-full bg-green-500 animate-ping opacity-75"></div>
+      </div>
       <span>Stage</span>
     </div>
-    <div class="status-item">
-      <div :class="['status-indicator', getStatusClass(store.systemStatus.database)]"></div>
+    <div class="flex items-center gap-2 text-sm">
+      <div class="relative flex items-center justify-center w-3 h-3">
+        <div :class="['absolute w-3 h-3 rounded-full transition-colors z-10', isConnected(store.systemStatus.database) ? 'bg-green-500' : 'bg-red-500']"></div>
+        <div v-if="isConnected(store.systemStatus.database)" class="absolute w-3 h-3 rounded-full bg-green-500 animate-ping opacity-75"></div>
+      </div>
       <span>Database</span>
     </div>
-    <div class="status-item">
-      <div :class="['status-indicator', getStatusClass(store.systemStatus.raspberryPi)]"></div>
+    <div class="flex items-center gap-2 text-sm">
+      <div class="relative flex items-center justify-center w-3 h-3">
+        <div :class="['absolute w-3 h-3 rounded-full transition-colors z-10', isConnected(store.systemStatus.raspberryPi) ? 'bg-green-500' : 'bg-red-500']"></div>
+        <div v-if="isConnected(store.systemStatus.raspberryPi)" class="absolute w-3 h-3 rounded-full bg-green-500 animate-ping opacity-75"></div>
+      </div>
       <span>Raspberry Pi</span>
     </div>
-    <div class="status-item">
-      <div :class="['status-indicator', wsStore.state.isConnected ? 'connected' : 'disconnected']"></div>
+    <div class="flex items-center gap-2 text-sm">
+      <div class="relative flex items-center justify-center w-3 h-3">
+        <div :class="['absolute w-3 h-3 rounded-full transition-colors z-10', wsStore.state.isConnected ? 'bg-green-500' : 'bg-red-500']"></div>
+        <div v-if="wsStore.state.isConnected" class="absolute w-3 h-3 rounded-full bg-green-500 animate-ping opacity-75"></div>
+      </div>
       <span>WebSocket</span>
     </div>
-    <div v-if="store.isSystemHealthy" class="health-indicator healthy">
+    <div v-if="store.isSystemHealthy" class="ml-4 px-3 py-1 rounded-full text-sm font-semibold bg-green-100 text-green-700">
       ✓ System Healthy
     </div>
-    <div v-else class="health-indicator unhealthy">
+    <div v-else class="ml-4 px-3 py-1 rounded-full text-sm font-semibold bg-orange-100 text-orange-700">
       ⚠ System Degraded
     </div>
   </div>
@@ -36,59 +51,8 @@ import { useWebSocketStore } from '@/stores/websocket'
 const store = useMicroscopeStore()
 const wsStore = useWebSocketStore()
 
-function getStatusClass(status: string): string {
-  switch (status) {
-    case 'connected':
-    case 'running':
-      return 'connected'
-    case 'disconnected':
-    case 'stopped':
-      return 'disconnected'
-    default:
-      return 'unknown'
-  }
+function isConnected(status: string): boolean {
+  return status === 'connected' || status === 'running'
 }
 </script>
 
-<style scoped>
-.status-bar {
-  @apply flex gap-5 items-center;
-}
-
-.status-item {
-  @apply flex items-center gap-2 text-sm;
-}
-
-.status-indicator {
-  @apply w-3 h-3 rounded-full bg-gray-400 transition-colors;
-}
-
-.status-indicator.connected,
-.status-indicator.running {
-  @apply bg-green-500;
-}
-
-.status-indicator.disconnected {
-  @apply bg-red-500;
-}
-
-.status-indicator.stopped {
-  @apply bg-orange-500;
-}
-
-.status-indicator.unknown {
-  @apply bg-gray-400;
-}
-
-.health-indicator {
-  @apply ml-4 px-3 py-1 rounded-full text-sm font-semibold;
-}
-
-.health-indicator.healthy {
-  @apply bg-green-100 text-green-700;
-}
-
-.health-indicator.unhealthy {
-  @apply bg-orange-100 text-orange-700;
-}
-</style>

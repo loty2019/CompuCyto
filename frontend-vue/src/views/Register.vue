@@ -139,7 +139,6 @@ const isLoading = ref(false)
 const errorMessage = ref('')
 
 const handleRegister = async () => {
-  // Validation
   if (!email.value || !username.value || !password.value || !confirmPassword.value) {
     errorMessage.value = 'Please fill in all fields'
     return
@@ -165,9 +164,7 @@ const handleRegister = async () => {
 
   try {
     const result = await authStore.register(email.value, username.value, password.value)
-
     if (result.success) {
-      // Redirect to home page after successful registration
       router.push('/')
     } else {
       errorMessage.value = result.error || 'Registration failed. Please try again.'

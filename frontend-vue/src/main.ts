@@ -3,6 +3,7 @@ import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router'
 import './assets/main.css'
+import { useMicroscopeStore } from './stores/microscope'
 
 const pinia = createPinia()
 const app = createApp(App)
@@ -13,7 +14,6 @@ app.use(router)
 app.mount('#app')
 
 // Set up global logging function after pinia is initialized
-import { useMicroscopeStore } from './stores/microscope'
 
 // Wait for the app to mount, then set up logging
 setTimeout(() => {

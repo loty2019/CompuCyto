@@ -1,40 +1,48 @@
 <template>
-  <div class="card">
-    <div class="header-section">
-      <h2>🖼️ Recent Images</h2>
+  <div class="bg-white rounded-lg shadow-md p-6">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-xl font-bold text-gray-800">🖼️ Recent Images</h2>
       
       <!-- Filter Toggle -->
-      <div class="filter-toggle">
+      <div class="flex gap-2">
         <button 
-          :class="{ active: photoFilter === 'mine' }"
           @click="photoFilter = 'mine'"
-          class="filter-btn"
+          :class="[
+            'px-3 py-1.5 text-sm rounded transition-all',
+            photoFilter === 'mine' 
+              ? 'bg-blue-600 text-white font-medium' 
+              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+          ]"
         >
           My Photos
         </button>
         <button 
-          :class="{ active: photoFilter === 'all' }"
           @click="photoFilter = 'all'"
-          class="filter-btn"
+          :class="[
+            'px-3 py-1.5 text-sm rounded transition-all',
+            photoFilter === 'all' 
+              ? 'bg-blue-600 text-white font-medium' 
+              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+          ]"
         >
           All Photos
         </button>
       </div>
     </div>
 
-    <div class="image-gallery">
+    <div class="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-2.5 max-h-96 overflow-y-auto">
       <div
         v-for="image in store.recentImages"
         :key="image.id"
-        class="image-item"
+        class="aspect-square bg-gray-200 rounded flex flex-col items-center justify-center text-sm text-gray-600 cursor-pointer hover:bg-gray-300 transition-colors relative"
         :title="`${image.filename}${image.user ? ` - by ${image.user.username}` : ''}`"
       >
         <span>{{ image.id }}</span>
-        <div v-if="photoFilter === 'all' && image.user" class="user-badge">
+        <div v-if="photoFilter === 'all' && image.user" class="absolute bottom-1 left-1 right-1 bg-black bg-opacity-60 text-white text-xs px-1 py-0.5 rounded truncate">
           {{ image.user.username }}
         </div>
       </div>
-      <div v-if="store.images.length === 0" class="image-item empty">
+      <div v-if="store.images.length === 0" class="aspect-square bg-gray-200 rounded flex items-center justify-center text-sm text-gray-600">
         No images
       </div>
     </div>
@@ -70,48 +78,3 @@ watch(photoFilter, () => {
   loadImages()
 })
 </script>
-
-<style scoped>
-.header-section {
-  @apply flex items-center justify-between mb-4;
-}
-
-.filter-toggle {
-  @apply flex gap-2;
-}
-
-.filter-btn {
-  @apply px-3 py-1.5 text-sm rounded transition-all;
-  @apply bg-gray-200 text-gray-700;
-}
-
-.filter-btn:hover {
-  @apply bg-gray-300;
-}
-
-.filter-btn.active {
-  @apply bg-blue-600 text-white font-medium;
-}
-
-.image-gallery {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  @apply gap-2.5 max-h-96 overflow-y-auto;
-}
-
-.image-item {
-  @apply aspect-square bg-gray-200 rounded flex flex-col items-center justify-center text-sm text-gray-600 cursor-pointer transition-colors relative;
-}
-
-.image-item:hover:not(.empty) {
-  @apply bg-gray-300;
-}
-
-.image-item.empty {
-  @apply cursor-default;
-}
-
-.user-badge {
-  @apply absolute bottom-1 left-1 right-1 bg-black bg-opacity-60 text-white text-xs px-1 py-0.5 rounded truncate;
-}
-</style>

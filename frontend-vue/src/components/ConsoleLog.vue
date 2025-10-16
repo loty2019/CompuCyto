@@ -1,42 +1,74 @@
 <template>
-  <div class="card">
-    <div class="console-header">
-      <h2>📋 Console</h2>
-      <div class="console-controls">
+  <div class="bg-white p-5 rounded-lg shadow-md">
+    <div class="flex justify-between items-start mb-4 gap-4">
+      <h2 class="text-xl font-bold m-0 text-gray-900">📋 Console</h2>
+      <div class="flex gap-2 flex-wrap">
         <button 
           v-for="filter in logFilters" 
           :key="filter.type"
           @click="toggleFilter(filter.type)"
-          :class="['filter-btn', { active: activeFilters.includes(filter.type) }]"
           :title="`Toggle ${filter.label} logs`"
+          :class="[
+            'px-2 py-1 text-xs rounded border transition-all',
+            activeFilters.includes(filter.type) 
+              ? 'bg-blue-500 text-white border-blue-600' 
+              : 'border-gray-300 bg-gray-100 text-gray-600 hover:bg-gray-200'
+          ]"
         >
           {{ filter.emoji }} {{ filter.label }}
         </button>
       </div>
     </div>
 
-    <div class="websocket-status" :class="{ connected: wsStore.state.isConnected }">
-      WebSocket: {{ wsStore.state.isConnected ? 'Connected' : 'Disconnected' }}
-      <span class="log-count">{{ filteredLogs.length }} logs</span>
+    <div 
+      :class="[
+        'px-3 py-2 rounded text-xs mb-4 flex justify-between items-center',
+        wsStore.state.isConnected 
+          ? 'bg-green-50 text-green-800' 
+          : 'bg-red-50 text-red-800'
+      ]"
+    >
+      <span>WebSocket: {{ wsStore.state.isConnected ? 'Connected' : 'Disconnected' }}</span>
+      <span class="font-mono font-semibold">{{ filteredLogs.length }} logs</span>
     </div>
 
-    <div class="log-container" ref="logContainer">
+    <div class="bg-gray-900 text-gray-300 p-4 rounded font-mono text-xs max-h-[400px] overflow-y-auto mb-2.5" ref="logContainer">
       <div
         v-for="(log, index) in filteredLogs"
         :key="index"
-        :class="['log-entry', log.type]"
+        class="mb-1 flex gap-2"
       >
-        <span class="log-time">[{{ formatTime(log.timestamp) }}]</span>
-        <span class="log-message">{{ log.message }}</span>
+        <span class="text-gray-500 shrink-0">[{{ formatTime(log.timestamp) }}]</span>
+        <span 
+          :class="[
+            'flex-1',
+            log.type === 'error' && 'text-red-400 font-medium',
+            log.type === 'success' && 'text-green-400',
+            log.type === 'info' && 'text-blue-300',
+            log.type === 'warning' && 'text-orange-400'
+          ]"
+        >
+          {{ log.message }}
+        </span>
       </div>
-      <div v-if="filteredLogs.length === 0" class="no-logs">
+      <div v-if="filteredLogs.length === 0" class="text-gray-500 text-center py-8 italic">
         No logs to display
       </div>
     </div>
 
-    <div class="console-footer">
-      <button @click="store.clearLogs()" class="btn clear-btn">Clear Logs</button>
-      <button @click="downloadLogs()" class="btn download-btn">Download Logs</button>
+    <div class="flex gap-2">
+      <button 
+        @click="store.clearLogs()" 
+        class="flex-1 py-2 text-xs bg-gray-600 text-white rounded cursor-pointer font-medium transition-colors hover:bg-gray-700"
+      >
+        Clear Logs
+      </button>
+      <button 
+        @click="downloadLogs()" 
+        class="flex-1 py-2 text-xs bg-blue-600 text-white rounded cursor-pointer font-medium transition-colors hover:bg-blue-700"
+      >
+        Download Logs
+      </button>
     </div>
   </div>
 </template>
@@ -90,7 +122,6 @@ function downloadLogs() {
   URL.revokeObjectURL(url)
 }
 
-// Auto-scroll to bottom when new logs arrive
 watch(() => store.logs.length, async () => {
   await nextTick()
   if (logContainer.value) {
@@ -98,97 +129,3 @@ watch(() => store.logs.length, async () => {
   }
 })
 </script>
-
-<style scoped>
-.console-header {
-  @apply flex justify-between items-start mb-4 gap-4;
-}
-
-.console-header h2 {
-  @apply m-0;
-}
-
-.console-controls {
-  @apply flex gap-2 flex-wrap;
-}
-
-.filter-btn {
-  @apply px-2 py-1 text-xs rounded border border-gray-300 bg-gray-100 text-gray-600 transition-all;
-}
-
-.filter-btn:hover {
-  @apply bg-gray-200;
-}
-
-.filter-btn.active {
-  @apply bg-blue-500 text-white border-blue-600;
-}
-
-.websocket-status {
-  @apply px-3 py-2 rounded text-xs bg-red-50 text-red-800 mb-4 flex justify-between items-center;
-}
-
-.websocket-status.connected {
-  @apply bg-green-50 text-green-800;
-}
-
-.log-count {
-  @apply font-mono font-semibold;
-}
-
-.log-container {
-  @apply bg-gray-900 text-gray-300 p-4 rounded font-mono text-xs max-h-[400px] overflow-y-auto mb-2.5;
-}
-
-.log-entry {
-  @apply mb-1 flex gap-2;
-}
-
-.log-time {
-  @apply text-gray-500 shrink-0;
-}
-
-.log-message {
-  @apply flex-1;
-}
-
-.log-entry.error .log-message {
-  @apply text-red-400 font-medium;
-}
-
-.log-entry.success .log-message {
-  @apply text-green-400;
-}
-
-.log-entry.info .log-message {
-  @apply text-blue-300;
-}
-
-.log-entry.warning .log-message {
-  @apply text-orange-400;
-}
-
-.no-logs {
-  @apply text-gray-500 text-center py-8 italic;
-}
-
-.console-footer {
-  @apply flex gap-2;
-}
-
-.clear-btn {
-  @apply flex-1 py-2 text-xs bg-gray-600;
-}
-
-.clear-btn:hover {
-  @apply bg-gray-700;
-}
-
-.download-btn {
-  @apply flex-1 py-2 text-xs bg-blue-600;
-}
-
-.download-btn:hover {
-  @apply bg-blue-700;
-}
-</style>
