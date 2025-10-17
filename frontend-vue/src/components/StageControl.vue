@@ -11,57 +11,68 @@
     <div class="grid grid-cols-3 gap-2.5 mb-4">
       <div></div>
       <button 
-        @click="move(0, 100, 0)" 
+        @click="handleButtonClick('arrowup'); move(0, 100, 0)" 
         :disabled="stage.isMoving.value" 
-        class="bg-blue-500 text-white p-4 rounded cursor-pointer text-sm font-medium transition-colors hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed"
+        class="bg-blue-500 text-white p-4 rounded text-sm font-medium hover:bg-blue-700"
+        :class="stage.isMoving.value ? 'cursor-not-allowed' : 'cursor-pointer'"
+        :style="getButtonStyle('arrowup')"
       >
         ↑ Y+
       </button>
       <div></div>
 
       <button 
-        @click="move(-100, 0, 0)" 
+        @click="handleButtonClick('arrowleft'); move(-100, 0, 0)" 
         :disabled="stage.isMoving.value" 
-        class="bg-blue-500 text-white p-4 rounded cursor-pointer text-sm font-medium transition-colors hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed"
+        class="bg-blue-500 text-white p-4 rounded text-sm font-medium hover:bg-blue-700"
+        :class="stage.isMoving.value ? 'cursor-not-allowed' : 'cursor-pointer'"
+        :style="getButtonStyle('arrowleft')"
       >
         ← X-
       </button>
       <button 
-        @click="stage.home()" 
+        @click="handleButtonClick('home'); stage.home()" 
         :disabled="stage.isMoving.value" 
-        class="bg-orange-600 text-white p-4 rounded cursor-pointer text-sm font-medium transition-colors hover:bg-orange-700 disabled:opacity-60 disabled:cursor-not-allowed"
+        class="bg-orange-400 text-white p-4 rounded text-sm font-medium hover:bg-orange-600"
+        :class="stage.isMoving.value ? 'cursor-not-allowed' : 'cursor-pointer'"
+        :style="getButtonStyle('home')"
       >
         ⌂ Home
       </button>
       <button 
-        @click="move(100, 0, 0)" 
+        @click="handleButtonClick('arrowright'); move(100, 0, 0)" 
         :disabled="stage.isMoving.value" 
-        class="bg-blue-500 text-white p-4 rounded cursor-pointer text-sm font-medium transition-colors hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed"
+        class="bg-blue-500 text-white p-4 rounded text-sm font-medium hover:bg-blue-700"
+        :class="stage.isMoving.value ? 'cursor-not-allowed' : 'cursor-pointer'"
+        :style="getButtonStyle('arrowright')"
       >
         X+ →
       </button>
 
       <div></div>
       <button 
-        @click="move(0, -100, 0)" 
+        @click="handleButtonClick('arrowdown'); move(0, -100, 0)" 
         :disabled="stage.isMoving.value" 
-        class="bg-blue-500 text-white p-4 rounded cursor-pointer text-sm font-medium transition-colors hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed"
+        class="bg-blue-500 text-white p-4 rounded text-sm font-medium hover:bg-blue-700"
+        :class="stage.isMoving.value ? 'cursor-not-allowed' : 'cursor-pointer'"
+        :style="getButtonStyle('arrowdown')"
       >
         ↓ Y-
       </button>
       
       <!-- Light Toggle Button -->
       <button 
-        @click="toggleLight"
+        @click="handleButtonClick('l'); toggleLight()"
         :disabled="isToggling || lightLoading"
-        :title="isLightOn ? 'Light ON - Click to turn OFF' : 'Light OFF - Click to turn ON'"
+        :title="isLightOn ? 'Light ON - Click to turn OFF (Press L)' : 'Light OFF - Click to turn ON (Press L)'"
         :class="[
-          'p-4 rounded cursor-pointer text-xs leading-tight font-medium transition-all',
+          'p-4 rounded text-xs leading-tight font-medium',
           isLightOn 
             ? 'bg-yellow-500 text-white hover:bg-yellow-600 hover:shadow-lg shadow-lg shadow-yellow-500/60 '
             : 'bg-blue-300 text-white hover:bg-blue-700',
-          (isToggling || lightLoading) && 'opacity-60 cursor-not-allowed'
+          (isToggling || lightLoading) ? 'cursor-not-allowed' : 'cursor-pointer'
         ]"
+        :style="getButtonStyle('l')"
       >
         <span v-if="isLightOn">💡 ON</span>
         <span v-else>💡 OFF</span>
@@ -74,28 +85,43 @@
 
     <!-- Focus Section (Z-Axis) -->
     <div class="mt-6 pt-4 border-t-2 border-gray-200">
-      <h3 class="text-base font-semibold text-gray-700 mb-3">🔍 Focus</h3>
+      <h3 class="text-base font-semibold text-gray-700 mb-3">Focus</h3>
       <div class="flex gap-2">
         <button 
-          @click="move(0, 0, 10)" 
+          @click="handleZClick('up')" 
           :disabled="stage.isMoving.value" 
-          class="flex-1 bg-blue-500 text-white px-5 py-2.5 rounded cursor-pointer text-sm font-medium transition-colors hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed"
+          class="flex-1 bg-blue-500 text-white px-5 py-2.5 rounded text-sm font-medium hover:bg-blue-700"
+          :class="stage.isMoving.value ? 'cursor-not-allowed' : 'cursor-pointer'"
+          :style="getButtonStyle('zup')"
         >
           Z+ ↑
         </button>
         <button 
-          @click="move(0, 0, -10)" 
+          @click="handleZClick('down')" 
           :disabled="stage.isMoving.value" 
-          class="flex-1 bg-blue-500 text-white px-5 py-2.5 rounded cursor-pointer text-sm font-medium transition-colors hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed"
+          class="flex-1 bg-blue-500 text-white px-5 py-2.5 rounded text-sm font-medium hover:bg-blue-700"
+          :class="stage.isMoving.value ? 'cursor-not-allowed' : 'cursor-pointer'"
+          :style="getButtonStyle('zdown')"
         >
           Z- ↓
         </button>
         <button 
           @click="stage.stop()" 
-          class="flex-1 bg-red-500 text-white px-5 py-2.5 rounded cursor-pointer text-sm font-medium transition-colors hover:bg-red-700"
+          class="flex-1 bg-red-800 text-white px-5 py-2.5 rounded cursor-pointer text-sm font-medium hover:bg-red-700"
+          :style="getButtonStyle('stop')"
+          title="Emergency Stop"
         >
-          ⛔ STOP
+          STOP
         </button>
+      </div>
+    </div>
+
+    <!-- Keyboard Shortcuts Info -->
+    <div class="mt-4 p-3 bg-blue-50 rounded text-xs text-gray-600">
+      <!-- <div class="font-semibold mb-1">⌨ Keyboard Shortcuts:</div> -->
+      <div class="grid grid-cols-2 gap-1">
+        <span>Arrow Keys: Move Stage (XY)</span>
+        <span>L: Toggle Light</span>
       </div>
     </div>
   </div>
@@ -115,16 +141,30 @@ const lightLoading = ref(true)
 const isToggling = ref(false)
 const lightError = ref('')
 
+// Visual feedback for key presses
+const pressedKeys = ref<Set<string>>(new Set())
+
+// Visual feedback for button clicks
+const clickedButtons = ref<Set<string>>(new Set())
+
 let intervalId: number | null = null
 
 onMounted(() => {
   intervalId = window.setInterval(stage.updatePosition, 2000)
   stage.updatePosition()
   fetchLightStatus()
+  
+  // Add keyboard event listeners
+  window.addEventListener('keydown', handleKeyDown)
+  window.addEventListener('keyup', handleKeyUp)
 })
 
 onUnmounted(() => {
   if (intervalId) clearInterval(intervalId)
+  
+  // Remove keyboard event listeners
+  window.removeEventListener('keydown', handleKeyDown)
+  window.removeEventListener('keyup', handleKeyUp)
 })
 
 async function move(x: number, y: number, z: number) {
@@ -159,6 +199,93 @@ async function toggleLight() {
   } finally {
     isToggling.value = false
   }
+}
+
+function handleKeyDown(event: KeyboardEvent) {
+  // Prevent handling if user is typing in an input field
+  const target = event.target as HTMLElement
+  if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+    return
+  }
+
+  const key = event.key.toLowerCase()
+  
+  // Prevent default browser behavior for arrow keys
+  if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(key)) {
+    event.preventDefault()
+  }
+
+  // Ignore if key is already pressed (prevent key repeat)
+  if (pressedKeys.value.has(key)) {
+    return
+  }
+
+  pressedKeys.value.add(key)
+
+  // Handle light toggle (L key)
+  if (key === 'l') {
+    if (!isToggling.value && !lightLoading.value) {
+      toggleLight()
+    }
+    return
+  }
+
+  // Handle movement keys (Arrow keys)
+  if (stage.isMoving.value) {
+    return
+  }
+
+  switch (key) {
+    case 'arrowup':
+      move(0, 100, 0)
+      break
+    case 'arrowdown':
+      move(0, -100, 0)
+      break
+    case 'arrowleft':
+      move(-100, 0, 0)
+      break
+    case 'arrowright':
+      move(100, 0, 0)
+      break
+  }
+}
+
+function handleKeyUp(event: KeyboardEvent) {
+  const key = event.key.toLowerCase()
+  pressedKeys.value.delete(key)
+}
+
+function isKeyPressed(key: string): boolean {
+  return pressedKeys.value.has(key)
+}
+
+function handleButtonClick(buttonId: string) {
+  clickedButtons.value.add(buttonId)
+  setTimeout(() => {
+    clickedButtons.value.delete(buttonId)
+  }, 150) // Visual feedback for 150ms
+}
+
+function handleZClick(direction: 'up' | 'down') {
+  const buttonId = direction === 'up' ? 'zup' : 'zdown'
+  handleButtonClick(buttonId)
+  if (direction === 'up') {
+    move(0, 0, 10)
+  } else {
+    move(0, 0, -10)
+  }
+}
+
+function getButtonStyle(buttonId: string): string {
+  const isClicked = clickedButtons.value.has(buttonId)
+  const isPressed = isKeyPressed(buttonId)
+  
+  if (isClicked || isPressed) {
+    // Darker and scaled down
+    return 'filter: brightness(0.7); transform: scale(0.95); transition: all 0.05s ease;'
+  }
+  return 'transition: all 0.05s ease;'
 }
 </script>
 
