@@ -10,6 +10,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from config import settings
@@ -289,6 +290,14 @@ async def websocket_camera_stream(websocket: WebSocket):
         # Unregister client
         await streamer.remove_client(websocket)
         logger.info(f"✅ WebSocket client {client_info} removed. Active clients: {len(streamer.active_clients)}")
+
+
+# Mount static files for captured images
+# IMPORTANT: This must come AFTER all API endpoints to avoid conflicts
+# Now accessible via http://localhost:8001/captures/filename.jpg
+captures_path = Path(settings.image_save_path)
+app.mount("/captures", StaticFiles(directory=str(captures_path)), name="captures")
+logger.info(f"📁 Static files mounted: /captures -> {captures_path.absolute()}")
 
 
 # Main entry point

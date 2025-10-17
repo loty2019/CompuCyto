@@ -248,8 +248,20 @@ export const imageAPI = {
     return data;
   },
 
-  async deleteImage(imageId: number): Promise<void> {
-    await apiClient.delete(`/api/v1/images/${imageId}`);
+  async deleteImage(
+    imageId: number
+  ): Promise<{ success: boolean; message: string }> {
+    const { data } = await apiClient.delete(`/api/v1/images/${imageId}`);
+    return data;
+  },
+
+  async cleanupMissingImages(): Promise<{
+    success: boolean;
+    message: string;
+    removedCount: number;
+  }> {
+    const { data } = await apiClient.delete("/api/v1/images/cleanup/missing");
+    return data;
   },
 };
 

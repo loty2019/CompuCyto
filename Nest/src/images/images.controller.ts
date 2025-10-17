@@ -1,10 +1,22 @@
-import { Controller, Get, Query, Request, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Delete,
+  Query,
+  Request,
+  UseGuards,
+  Param,
+  HttpCode,
+  HttpStatus,
+  ParseIntPipe,
+} from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
   ApiResponse,
   ApiBearerAuth,
   ApiQuery,
+  ApiParam,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ImagesService } from './images.service';
@@ -102,13 +114,82 @@ export class ImagesController {
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 20,
   ) {
-    const userId = req.user.userId;
+    const userId = req.user.id; // Changed from req.user.userId to req.user.id
     const effectiveFilter = filter || 'mine';
 
-    return this.imagesService.findImages(
+    console.log('🔍 [CONTROLLER] Images request received:', {
+      requestedFilter: filter,
+      effectiveFilter: effectiveFilter,
+      userId: userId,
+      username: req.user.username,
+      page: page,
+      limit: limit,
+      willQueryByUserId: effectiveFilter === 'mine' ? userId : null,
+    });
+
+    const result = await this.imagesService.findImages(
       effectiveFilter === 'mine' ? userId : null,
       page,
       limit,
     );
+
+    console.log('📸 [CONTROLLER] Returning images:', {
+      filter: effectiveFilter,
+      count: result.data.length,
+      total: result.pagination.total,
+    });
+
+    return result;
+  }
+
+  /**
+   * Delete an image
+   *
+   * Removes image from database and deletes the file from disk.
+   * Users can only delete their own images unless they are admin.
+   *
+   * @route DELETE /api/v1/images/:id
+   * @protected Requires JWT authentication
+   */
+  @Delete(':id')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Delete an image',
+    description:
+      'Delete an image by ID. Removes both database entry and physical file. Users can only delete their own images.',
+  })
+  @ApiParam({
+    name: 'id',
+    type: Number,
+    description: 'Image ID',
+    example: 1,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Image deleted successfully',
+    schema: {
+      example: {
+        success: true,
+        message: 'Image deleted successfully',
+        imageId: 1,
+      },
+    },
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Image not found',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - Not your image',
+  })
+  async deleteImage(
+    @Request() req,
+    @Param('id', ParseIntPipe) imageId: number,
+  ) {
+    const userId = req.user.id;
+    const isAdmin = req.user.role === 'admin';
+
+    return this.imagesService.deleteImage(imageId, userId, isAdmin);
   }
 }

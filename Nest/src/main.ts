@@ -46,7 +46,7 @@ async function bootstrap() {
       'General microscope hardware control (light, focus, filters)',
     )
     .addTag('Health', 'System health monitoring')
-    .addTag('Images', 'Image management (Phase 2)')
+    .addTag('Images', 'Image management')
     .addTag('Jobs', 'Automated job management (Phase 2)')
     .addTag('Positions', 'Saved position management (Phase 2)')
     .addBearerAuth(
