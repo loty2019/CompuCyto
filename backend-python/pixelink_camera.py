@@ -222,8 +222,10 @@ class PixelinkCamera:
     
     def _capture_real_image(self) -> Optional[np.ndarray]:
         """
-        Capture image from real Pixelink camera using proper API flow.
-        Based on Sample_PixcelinkAPI_python/getNumPySnapshot.py
+        Capture image from real Pixelink camera.
+        
+        NOTE: Assumes camera_streamer has paused streaming before this is called.
+        We just grab frames directly without managing stream state.
         """
         try:
             # Determine image dimensions
@@ -243,24 +245,16 @@ class PixelinkCamera:
             MAX_RETRIES = 4
             ret = None
             
-            # Start streaming
-            stream_ret = PxLApi.setStreamState(self.camera_handle, PxLApi.StreamState.START)
-            if not PxLApi.apiSuccess(stream_ret[0]):
-                logger.error("Failed to start streaming")
-                return None
-            
-            # Get frame with retries
+            # Get frame with retries (stream should already be running)
             for attempt in range(MAX_RETRIES):
                 ret = PxLApi.getNextNumPyFrame(self.camera_handle, np_image)
                 if PxLApi.apiSuccess(ret[0]):
+                    logger.info(f"✅ Frame captured successfully on attempt {attempt + 1}")
                     break
-                logger.warning(f"Capture attempt {attempt + 1} failed, retrying...")
-            
-            # Stop streaming
-            PxLApi.setStreamState(self.camera_handle, PxLApi.StreamState.STOP)
+                logger.warning(f"⚠️ Capture attempt {attempt + 1}/{MAX_RETRIES} failed (error: {ret[0]})")
             
             if not ret or not PxLApi.apiSuccess(ret[0]):
-                logger.error("Failed to capture image after retries")
+                logger.error(f"❌ Failed to capture image after {MAX_RETRIES} retries")
                 return None
             
             frame_descriptor = ret[1]

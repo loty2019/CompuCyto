@@ -153,6 +153,11 @@ async def capture_image(request: CaptureRequest):
         raise HTTPException(status_code=503, detail="Camera not initialized")
     
     try:
+        # Pause streaming to prevent conflicts
+        streaming_was_active = streamer.is_streaming
+        if streaming_was_active:
+            await streamer.pause_streaming()
+        
         # Generate filename with timestamp
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
         filename = f"capture_{timestamp}.{settings.image_format}"
@@ -167,6 +172,10 @@ async def capture_image(request: CaptureRequest):
             exposure=request.exposure,
             gain=request.gain
         )
+        
+        # Resume streaming if it was active
+        if streaming_was_active:
+            await streamer.resume_streaming()
         
         # Verify file was actually saved
         if filepath.exists():
@@ -194,6 +203,9 @@ async def capture_image(request: CaptureRequest):
         }
         
     except Exception as e:
+        # Make sure to resume streaming even if capture fails
+        if streaming_was_active:
+            await streamer.resume_streaming()
         logger.error(f"Capture error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Capture failed: {str(e)}")
 

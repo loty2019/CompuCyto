@@ -37,6 +37,8 @@ class CameraStreamer:
         self.stream_task: Optional[asyncio.Task] = None
         self.current_frame: Optional[bytes] = None
         self.frame_lock = asyncio.Lock()
+        self.capture_lock = asyncio.Lock()  # Prevent capture conflicts
+        self.paused = False  # Pause streaming during captures
         
     def set_camera(self, camera_handle, width, height):
         """Update camera handle and dimensions."""
@@ -115,6 +117,11 @@ class CameraStreamer:
                     logger.warning("⚠️ No active clients detected in loop!")
                     logger.info("⏹️ No active clients, stopping stream loop")
                     break
+                
+                # Check if paused (during capture)
+                if self.paused:
+                    await asyncio.sleep(0.05)  # Wait while paused
+                    continue
                 
                 # Capture frame
                 if PIXELINK_AVAILABLE and self.camera_handle:
@@ -330,6 +337,18 @@ class CameraStreamer:
         """Get the most recent frame (JPEG bytes)."""
         async with self.frame_lock:
             return self.current_frame
+    
+    async def pause_streaming(self):
+        """Pause streaming temporarily (for captures)."""
+        logger.info("⏸️ Pausing stream for capture")
+        self.paused = True
+        # Wait a moment for current frame capture to complete
+        await asyncio.sleep(0.1)
+    
+    async def resume_streaming(self):
+        """Resume streaming after capture."""
+        logger.info("▶️ Resuming stream after capture")
+        self.paused = False
 
 
 # Global streamer instance
