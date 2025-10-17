@@ -41,6 +41,7 @@ coverage
 *.sw?
 *.sublime-workspace
 *.local
+.claude
 
 # Environment files
 .env

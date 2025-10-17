@@ -38,11 +38,15 @@ async def lifespan(app: FastAPI):
     camera = PixelinkCamera(
         serial_number=settings.camera_serial_number if settings.camera_serial_number else None
     )
+    
+    logger.info(f"Setting default exposure: {settings.default_exposure}µs ({settings.default_exposure/1000}ms)")
     camera.update_settings(
         exposure=settings.default_exposure,
         gain=settings.default_gain
     )
     
+    current_settings = camera.get_settings()
+    logger.info(f"Camera initialized with exposure: {current_settings['exposure']}µs, gain: {current_settings['gain']}")
     logger.info("Camera service ready")
     yield
     
@@ -72,13 +76,13 @@ app.add_middleware(
 # Request/Response models
 class CaptureRequest(BaseModel):
     """Image capture request."""
-    exposure: Optional[float] = Field(None, ge=0, description="Exposure in ms")
+    exposure: Optional[float] = Field(None, ge=0, description="Exposure in microseconds (µs)")
     gain: Optional[float] = Field(None, ge=0, description="Gain value")
 
 
 class SettingsUpdate(BaseModel):
     """Settings update request."""
-    exposure: Optional[float] = Field(None, ge=0, description="Exposure in ms")
+    exposure: Optional[float] = Field(None, ge=0, description="Exposure in microseconds (µs)")
     gain: Optional[float] = Field(None, ge=0, description="Gain value")
 
 
@@ -94,33 +98,86 @@ async def health_check():
     }
 
 
+@app.get("/captures/list")
+async def list_captures():
+    """List all captured images in the captures folder."""
+    try:
+        captures_path = Path(settings.image_save_path)
+        if not captures_path.exists():
+            return {"files": [], "count": 0, "path": str(captures_path)}
+        
+        files = []
+        for file in sorted(captures_path.glob("*.jpg")):
+            stat = file.stat()
+            files.append({
+                "filename": file.name,
+                "size": stat.st_size,
+                "modified": datetime.fromtimestamp(stat.st_mtime).isoformat()
+            })
+        
+        return {
+            "files": files,
+            "count": len(files),
+            "path": str(captures_path.absolute())
+        }
+    except Exception as e:
+        logger.error(f"Error listing captures: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/capture")
 async def capture_image(request: CaptureRequest):
     """
     Capture image from camera.
     Called by NestJS camera.service.ts
+    Returns metadata matching NestJS Image entity structure.
     """
-    if not camera or not camera.is_connected:
-        raise HTTPException(status_code=503, detail="Camera not connected")
+    if not camera:
+        raise HTTPException(status_code=503, detail="Camera not initialized")
     
     try:
-        # Generate filename
+        # Generate filename with timestamp
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
         filename = f"capture_{timestamp}.{settings.image_format}"
         filepath = Path(settings.image_save_path) / filename
         
-        # Capture image
+        # Ensure directory exists
+        filepath.parent.mkdir(parents=True, exist_ok=True)
+        
+        # Capture image - returns metadata matching NestJS Image entity
         result = camera.capture_image(
             save_path=filepath,
             exposure=request.exposure,
             gain=request.gain
         )
         
-        logger.info(f"Image captured: {filename}")
-        return result
+        # Verify file was actually saved
+        if filepath.exists():
+            actual_size = filepath.stat().st_size
+            logger.info(f"✅ Image saved to disk: {filepath}")
+            logger.info(f"   File size: {actual_size} bytes ({actual_size / 1024:.2f} KB)")
+            logger.info(f"   Dimensions: {result.get('width', 'unknown')}x{result.get('height', 'unknown')}")
+        else:
+            logger.error(f"❌ FILE NOT SAVED! Expected at: {filepath}")
+        
+        logger.info(f"Image captured: {filename} (size: {result.get('fileSize', 0)} bytes)")
+        
+        # Return response matching what NestJS camera.service.ts expects
+        return {
+            "success": result["success"],
+            "filename": result["filename"],
+            "filepath": result["filepath"],
+            "capturedAt": result["capturedAt"],
+            "exposureTime": result["exposureTime"],
+            "gain": result["gain"],
+            "fileSize": result["fileSize"],
+            "width": result["width"],
+            "height": result["height"],
+            "metadata": result["metadata"]
+        }
         
     except Exception as e:
-        logger.error(f"Capture error: {e}")
+        logger.error(f"Capture error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Capture failed: {str(e)}")
 
 

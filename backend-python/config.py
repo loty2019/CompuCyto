@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     
     # Camera Configuration
     camera_serial_number: str = ""  # Empty means use first available camera
-    default_exposure: float = 100.0  # milliseconds
+    default_exposure: float = 100000.0  # microseconds (100ms = 100,000µs)
     default_gain: float = 1.0
     image_save_path: str = "./captures"
     image_format: str = "jpg"

@@ -165,7 +165,7 @@ export const controlAPI = {
   },
 
   async captureImage(request: CaptureRequest): Promise<CaptureResponse> {
-    const { data } = await apiClient.post<CaptureResponse>('/api/v1/control/capture', request)
+    const { data } = await apiClient.post<CaptureResponse>('/api/v1/camera/capture', request)
     return data
   },
 
@@ -190,12 +190,12 @@ export const controlAPI = {
   },
 
   async getCameraSettings(): Promise<CameraSettings> {
-    const { data } = await apiClient.get<CameraSettings>('/api/v1/control/camera/settings')
+    const { data } = await apiClient.get<CameraSettings>('/api/v1/camera/settings')
     return data
   },
 
   async updateCameraSettings(settings: Partial<CameraSettings>): Promise<void> {
-    await apiClient.put('/api/v1/control/camera/settings', settings)
+    await apiClient.put('/api/v1/camera/settings', settings)
   }
 }
 

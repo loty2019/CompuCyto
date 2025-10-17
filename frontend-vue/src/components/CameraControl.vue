@@ -61,7 +61,7 @@
       :disabled="camera.isCapturing.value"
       class="w-full bg-blue-500 text-white px-5 py-2.5 rounded cursor-pointer text-sm font-medium transition-colors hover:bg-blue-600 disabled:opacity-60 disabled:cursor-not-allowed"
     >
-      {{ camera.isCapturing.value ? 'Capturing...' : '📸 Capture Image' }}
+      {{ camera.isCapturing.value ? 'Capturing...' : 'Capture Image' }}
     </button>
   </div>
 </template>

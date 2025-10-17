@@ -7,13 +7,13 @@
       </div>
       <span>Camera</span>
     </div>
-    <div class="flex items-center gap-2 text-sm">
+    <!-- <div class="flex items-center gap-2 text-sm">
       <div class="relative flex items-center justify-center w-3 h-3">
         <div :class="['absolute w-3 h-3 rounded-full transition-colors z-10', isConnected(store.systemStatus.stage) ? 'bg-green-500' : 'bg-red-500']"></div>
         <div v-if="isConnected(store.systemStatus.stage)" class="absolute w-3 h-3 rounded-full bg-green-500 animate-ping opacity-75"></div>
       </div>
       <span>Stage</span>
-    </div>
+    </div> -->
     <div class="flex items-center gap-2 text-sm">
       <div class="relative flex items-center justify-center w-3 h-3">
         <div :class="['absolute w-3 h-3 rounded-full transition-colors z-10', isConnected(store.systemStatus.database) ? 'bg-green-500' : 'bg-red-500']"></div>

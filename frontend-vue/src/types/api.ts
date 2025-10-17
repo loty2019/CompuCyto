@@ -45,11 +45,19 @@ export interface CaptureRequest {
 }
 
 export interface CaptureResponse {
-  status: string
-  image_id: number
+  success: boolean
+  imageId: number | null
+  databaseSaved: boolean
+  warning: string | null
   filename: string
-  thumbnail_path: string
-  timestamp: string
+  filepath: string
+  capturedAt: string
+  exposureTime: number
+  gain: number
+  fileSize: number
+  width: number
+  height: number
+  metadata: Record<string, any>
 }
 
 export interface MoveRequest {

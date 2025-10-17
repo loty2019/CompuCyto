@@ -12,7 +12,6 @@ import { ImagesModule } from './images/images.module';
 import { HealthController } from './common/controllers/health.controller';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { PropertyModule } from './property/property.module';
 
 @Module({
   imports: [
@@ -27,7 +26,6 @@ import { PropertyModule } from './property/property.module';
     StageModule,
     MicroscopeModule,
     ImagesModule,
-    PropertyModule,
   ],
   controllers: [AppController, HealthController],
   providers: [AppService],

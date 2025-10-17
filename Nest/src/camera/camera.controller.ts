@@ -2,6 +2,7 @@ import { Controller, Post, Get, Put, Body, UseGuards, Request } from '@nestjs/co
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
 import { CameraService } from './camera.service';
 import { CaptureDto } from './dto/capture.dto';
+import { CaptureResponseDto } from './dto/capture-response.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 /**
@@ -33,30 +34,13 @@ export class CameraController {
   @Post('capture')
   @ApiOperation({ 
     summary: 'Capture an image',
-    description: 'Trigger camera to capture a single image. Optionally specify exposure time (ms) and gain. Image is saved and metadata returned.'
+    description: 'Trigger camera to capture a single image. Optionally specify exposure time (ms) and gain. Image is saved to disk and metadata stored in database.'
   })
   @ApiBody({ type: CaptureDto })
   @ApiResponse({ 
     status: 200, 
     description: 'Image captured successfully',
-    schema: {
-      example: {
-        success: true,
-        imageId: 'img_20250109_103045_001',
-        filename: 'capture_20250109_103045.jpg',
-        timestamp: '2025-01-09T10:30:45.123Z',
-        settings: {
-          exposure: 100,
-          gain: 1.5,
-          resolution: '1920x1080'
-        },
-        metadata: {
-          fileSize: 245678,
-          format: 'JPEG',
-          quality: 95
-        }
-      }
-    }
+    type: CaptureResponseDto
   })
   @ApiResponse({ 
     status: 500, 
@@ -80,8 +64,8 @@ export class CameraController {
       }
     }
   })
-  async capture(@Request() req, @Body() captureDto: CaptureDto) {
-    const userId = req.user.userId; // Extract user ID from JWT token
+  async capture(@Request() req, @Body() captureDto: CaptureDto): Promise<CaptureResponseDto> {
+    const userId = req.user.id; // Extract user ID from JWT token
     return this.cameraService.capture(captureDto.exposure, captureDto.gain, userId);
   }
 

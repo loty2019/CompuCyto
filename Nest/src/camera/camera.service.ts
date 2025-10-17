@@ -64,20 +64,62 @@ export class CameraService {
           ),
       );
       
-      // Save image metadata to database with user ID
-      if (data && data.filename && userId) {
-        const image = this.imageRepository.create({
-          userId: userId,
-          filename: data.filename,
-          capturedAt: new Date(),
-          exposureTime: exposure,
-          gain: gain,
-          metadata: data,
-        });
-        await this.imageRepository.save(image);
+      // Attempt to save image metadata to database with user ID
+      if (data && data.success && data.filename) {
+        if (!userId) {
+          this.logger.warn(`Image captured but not saved to database: No userId provided. Filename: ${data.filename}`);
+          return {
+            ...data,
+            imageId: null,
+            databaseSaved: false,
+            warning: 'Image captured but not saved to database: User not authenticated'
+          };
+        }
+
+        try {
+          const image = this.imageRepository.create({
+            userId: userId,
+            filename: data.filename,
+            capturedAt: new Date(data.capturedAt),
+            exposureTime: data.exposureTime,
+            gain: data.gain,
+            fileSize: data.fileSize,
+            width: data.width,
+            height: data.height,
+            metadata: data.metadata,
+          });
+          
+          const savedImage = await this.imageRepository.save(image);
+          this.logger.log(`Image saved to database: ID ${savedImage.id}, filename: ${data.filename}`);
+          
+          // Return combined response with database ID
+          return {
+            ...data,
+            imageId: savedImage.id,
+            databaseSaved: true,
+            warning: null
+          };
+        } catch (dbError) {
+          // Database save failed - log error but still return success since image was captured
+          this.logger.error(`Database save failed for captured image ${data.filename}: ${dbError.message}`);
+          return {
+            ...data,
+            imageId: null,
+            databaseSaved: false,
+            warning: `Image captured successfully but database save failed: ${dbError.message}`
+          };
+        }
       }
       
-      return data;
+      // Python service returned unsuccessful response
+      this.logger.error(`Camera capture unsuccessful: ${JSON.stringify(data)}`);
+      return {
+        ...data,
+        imageId: null,
+        databaseSaved: false,
+        warning: 'Camera capture returned unsuccessful response'
+      };
+      
     } catch (error) {
       this.logger.error(`Camera capture error: ${error.message}`);
       throw new ServiceUnavailableException('Camera service unavailable');
