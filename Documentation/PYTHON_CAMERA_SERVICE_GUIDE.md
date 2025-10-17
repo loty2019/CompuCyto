@@ -56,14 +56,14 @@ except Exception as e:
     # Try alternative import with subprocess workaround
     import subprocess
     original_check_output = subprocess.check_output
-    
+
     def patched_check_output(*args, **kwargs):
         try:
             return original_check_output(*args, **kwargs)
         except FileNotFoundError:
             # Return dummy version if wmic fails
             return b"10.0.0"
-    
+
     subprocess.check_output = patched_check_output
     from pixelinkWrapper import PxLApi
     subprocess.check_output = original_check_output
@@ -80,23 +80,23 @@ except Exception as e:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global camera
-    
+
     # 1. Create captures directory
     Path(settings.image_save_path).mkdir(parents=True, exist_ok=True)
-    
+
     # 2. Initialize camera (connects to first available if no serial specified)
     camera = PixelinkCamera(
         serial_number=settings.camera_serial_number if settings.camera_serial_number else None
     )
-    
+
     # 3. Set default camera settings
     camera.update_settings(
         exposure=settings.default_exposure,  # 100,000 µs = 100ms
         gain=settings.default_gain           # 1.0
     )
-    
+
     yield  # Application runs
-    
+
     # Cleanup on shutdown
     if camera:
         camera.disconnect()
@@ -115,6 +115,7 @@ self.height = 1024       # Image height in pixels
 ```
 
 **Important:** Exposure is stored in microseconds as an integer to match:
+
 - PixeLink SDK native format
 - PostgreSQL integer column type in the database
 
@@ -131,6 +132,7 @@ curl http://localhost:8001/health
 ```
 
 **Response:**
+
 ```json
 {
   "status": "healthy",
@@ -148,6 +150,7 @@ curl http://localhost:8001/settings
 ```
 
 **Response:**
+
 ```json
 {
   "exposure": 3096,
@@ -175,6 +178,7 @@ curl -X PUT http://localhost:8001/settings \
 ```
 
 **Parameters:**
+
 - `exposure` - Exposure time in microseconds (µs)
 - `gain` - Gain multiplier
 
@@ -192,10 +196,12 @@ curl -X POST http://localhost:8001/capture \
 ```
 
 **Parameters (optional):**
+
 - `exposure` - Override exposure for this capture only
 - `gain` - Override gain for this capture only
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -225,6 +231,7 @@ curl http://localhost:8001/captures/list
 ```
 
 **Response:**
+
 ```json
 {
   "files": [
@@ -246,26 +253,26 @@ curl http://localhost:8001/captures/list
 ### Step-by-Step Process
 
 ```python
-def capture_image(self, save_path: Path, exposure: Optional[float] = None, 
+def capture_image(self, save_path: Path, exposure: Optional[float] = None,
                   gain: Optional[float] = None) -> Dict:
     """
     Complete image capture workflow
     """
-    
+
     # 1. Update settings if provided
     if exposure is not None or gain is not None:
         self.update_settings(exposure, gain)
-    
+
     # 2. Capture image (real or simulated)
     if PIXELINK_AVAILABLE and self.is_connected:
         image_data = self._capture_real_image()  # NumPy array
     else:
         image_data = self._capture_simulated_image()  # Fallback
-    
+
     # 3. Convert to PIL Image and save
     image = Image.fromarray(image_data)
     image.save(save_path, quality=95)
-    
+
     # 4. Return metadata matching NestJS Image entity
     return {
         "success": True,
@@ -296,35 +303,35 @@ def _capture_real_image(self) -> Optional[np.ndarray]:
     Capture from real PixeLink camera
     Based on PixeLink SDK sample: getNumPySnapshot.py
     """
-    
+
     # 1. Determine image dimensions from camera ROI
     width, height, bytes_per_pixel = self._determine_raw_image_size()
-    
+
     # 2. Create NumPy buffer for raw image
     np_image = np.zeros([height, width * bytes_per_pixel], dtype=np.uint8)
-    
+
     # 3. Start streaming
     PxLApi.setStreamState(self.camera_handle, PxLApi.StreamState.START)
-    
+
     # 4. Get frame (with retries for hardware triggering)
     for attempt in range(MAX_RETRIES):
         ret = PxLApi.getNextNumPyFrame(self.camera_handle, np_image)
         if PxLApi.apiSuccess(ret[0]):
             break
-    
+
     # 5. Stop streaming
     PxLApi.setStreamState(self.camera_handle, PxLApi.StreamState.STOP)
-    
+
     # 6. Format as RGB
     frame_descriptor = ret[1]
-    format_ret = PxLApi.formatNumPyImage(np_image, frame_descriptor, 
+    format_ret = PxLApi.formatNumPyImage(np_image, frame_descriptor,
                                          PxLApi.ImageFormat.RAW_RGB24)
-    
+
     # 7. Reshape to proper dimensions
     rgb_data = format_ret[1]
     image_array = np.frombuffer(rgb_data, dtype=np.uint8)
     image_array = image_array.reshape((height, width, 3))
-    
+
     return image_array
 ```
 
@@ -361,12 +368,12 @@ ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables"""
-    
+
     # Server Configuration
     host: str = "0.0.0.0"
     port: int = 8001
     debug: bool = True
-    
+
     # Camera Configuration
     camera_serial_number: str = ""
     default_exposure: float = 100000.0  # microseconds
@@ -374,7 +381,7 @@ class Settings(BaseSettings):
     image_save_path: str = "./captures"
     image_format: str = "jpg"
     image_quality: int = 95
-    
+
     class Config:
         env_file = ".env"
         case_sensitive = False
@@ -388,12 +395,12 @@ class Settings(BaseSettings):
 
 The camera uses **microseconds (µs)** for precise exposure control:
 
-| Microseconds | Milliseconds | Seconds | Description |
-|--------------|--------------|---------|-------------|
-| 1,000 µs | 1 ms | 0.001 s | Very fast exposure |
-| 10,000 µs | 10 ms | 0.01 s | Fast exposure |
-| 100,000 µs | 100 ms | 0.1 s | Moderate exposure (default) |
-| 1,000,000 µs | 1,000 ms | 1 s | Long exposure |
+| Microseconds | Milliseconds | Seconds | Description                 |
+| ------------ | ------------ | ------- | --------------------------- |
+| 1,000 µs     | 1 ms         | 0.001 s | Very fast exposure          |
+| 10,000 µs    | 10 ms        | 0.01 s  | Fast exposure               |
+| 100,000 µs   | 100 ms       | 0.1 s   | Moderate exposure (default) |
+| 1,000,000 µs | 1,000 ms     | 1 s     | Long exposure               |
 
 ### Conversion Examples
 
@@ -421,23 +428,27 @@ print(f"{exposure_us}µs = {exposure_us/1000}ms = {exposure_us/1000000}s")
 #### 1. PixeLink SDK Not Found
 
 **Error:**
+
 ```
 WARNING: PixeLink SDK not available: [WinError 2] The system cannot find the file specified
 ```
 
 **Solution:**
 The wmic workaround handles this automatically. Ensure:
+
 - PixeLink SDK is installed
 - DLLs are in system PATH or `C:\Program Files (x86)\PixeLINK\bin\x86\`
 
 #### 2. Camera Not Connected
 
 **Error:**
+
 ```
 ERROR: Could not initialize camera. Error code: [error_code]
 ```
 
 **Solution:**
+
 - Check camera USB connection
 - Verify camera power
 - Ensure no other application is using the camera
@@ -446,6 +457,7 @@ ERROR: Could not initialize camera. Error code: [error_code]
 #### 3. Exposure Out of Range
 
 **Warning:**
+
 ```
 WARNING: Camera rejected exposure 100000µs (error -2147483645), keeping current: 3096µs
 ```
@@ -456,12 +468,14 @@ The camera has valid exposure ranges. The code automatically keeps the camera's 
 #### 4. Database Integer Error
 
 **Error:**
+
 ```
 ERROR: invalid input syntax for type integer: "0.0000030968005303293465"
 ```
 
 **Solution:**
 This was fixed by storing exposure as integer microseconds instead of float milliseconds:
+
 ```python
 # Before (caused error)
 self.exposure = ret[2][0] / 1000.0  # Float in milliseconds
@@ -485,7 +499,7 @@ async captureImage(exposure?: number, gain?: number): Promise<Image> {
     exposure,  // Optional: microseconds
     gain       // Optional: gain value
   });
-  
+
   // 2. Create database record
   const image = this.imageRepository.create({
     userId: 1,  // Current user
@@ -499,7 +513,7 @@ async captureImage(exposure?: number, gain?: number): Promise<Image> {
     height: response.data.height,
     metadata: response.data.metadata
   });
-  
+
   // 3. Save to database
   return await this.imageRepository.save(image);
 }
@@ -531,6 +545,7 @@ python main.py
 ```
 
 **Output:**
+
 ```
 INFO:     Uvicorn running on http://0.0.0.0:8001 (Press CTRL+C to quit)
 INFO:     Started reloader process [12345] using WatchFiles
@@ -644,14 +659,14 @@ file backend-python/captures/capture_*.jpg
 
 ## Quick Reference
 
-| Feature | Value | Notes |
-|---------|-------|-------|
-| Service Port | 8001 | HTTP API |
-| Default Exposure | 100,000 µs | 100 milliseconds |
-| Default Gain | 1.0 | No amplification |
-| Image Format | JPEG | 95% quality |
-| Image Resolution | 1280×1024 | Camera dependent |
-| Captures Path | `./captures/` | Configurable |
+| Feature          | Value         | Notes            |
+| ---------------- | ------------- | ---------------- |
+| Service Port     | 8001          | HTTP API         |
+| Default Exposure | 100,000 µs    | 100 milliseconds |
+| Default Gain     | 1.0           | No amplification |
+| Image Format     | JPEG          | 95% quality      |
+| Image Resolution | 1280×1024     | Camera dependent |
+| Captures Path    | `./captures/` | Configurable     |
 
 ---
 

@@ -1,6 +1,6 @@
 <template>
   <div class="flex gap-5 items-center">
-    <div class="flex items-center gap-2 text-sm">
+    <div class="flex items-center gap-2 text-sm" title="Backend Python">
       <div class="relative flex items-center justify-center w-3 h-3">
         <div :class="['absolute w-3 h-3 rounded-full transition-colors z-10', isConnected(store.systemStatus.camera) ? 'bg-green-500' : 'bg-red-500']"></div>
         <div v-if="isConnected(store.systemStatus.camera)" class="absolute w-3 h-3 rounded-full bg-green-500 animate-ping opacity-75"></div>
@@ -14,19 +14,19 @@
       </div>
       <span>Stage</span>
     </div> -->
-    <div class="flex items-center gap-2 text-sm">
+    <div class="flex items-center gap-2 text-sm" title="Postgres">
       <div class="relative flex items-center justify-center w-3 h-3">
         <div :class="['absolute w-3 h-3 rounded-full transition-colors z-10', isConnected(store.systemStatus.database) ? 'bg-green-500' : 'bg-red-500']"></div>
         <div v-if="isConnected(store.systemStatus.database)" class="absolute w-3 h-3 rounded-full bg-green-500 animate-ping opacity-75"></div>
       </div>
       <span>Database</span>
     </div>
-    <div class="flex items-center gap-2 text-sm">
+    <div class="flex items-center gap-2 text-sm" title="Raspberry Pi 5">
       <div class="relative flex items-center justify-center w-3 h-3">
-        <div :class="['absolute w-3 h-3 rounded-full transition-colors z-10', isConnected(store.systemStatus.raspberryPi) ? 'bg-green-500' : 'bg-red-500']"></div>
+        <div :class="['absolute w-3 h-3 rounded-full transition-colors z-10', isConnected(store.systemStatus.raspberryPi) ? 'bg-green-500' : 'bg-red-500']" ></div>
         <div v-if="isConnected(store.systemStatus.raspberryPi)" class="absolute w-3 h-3 rounded-full bg-green-500 animate-ping opacity-75"></div>
       </div>
-      <span>Raspberry Pi</span>
+      <span>Stage</span>
     </div>
     <div class="flex items-center gap-2 text-sm">
       <div class="relative flex items-center justify-center w-3 h-3">
