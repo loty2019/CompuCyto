@@ -48,7 +48,8 @@ export class CaptureDto {
    * @example 1.0
    */
   @ApiProperty({
-    description: 'Camera gamma correction value for brightness/contrast adjustment',
+    description:
+      'Camera gamma correction value for brightness/contrast adjustment',
     example: 1.0,
     required: false,
     minimum: 0,

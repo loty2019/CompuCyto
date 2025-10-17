@@ -350,7 +350,7 @@ async function loadCameraSettings() {
     if (!autoExposureSupported.value) {
       store.addLog("⚠️ Auto-exposure not supported by this camera", "warning");
     }
-    
+
     // Warn if gamma not supported
     if (!gammaSupported.value) {
       store.addLog("⚠️ Gamma not supported by this camera", "warning");
