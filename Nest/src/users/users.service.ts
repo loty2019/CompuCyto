@@ -1,4 +1,8 @@
-import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './entities/user.entity';
@@ -28,7 +32,11 @@ export class UsersService {
     });
   }
 
-  async create(email: string, username: string, password: string): Promise<User> {
+  async create(
+    email: string,
+    username: string,
+    password: string,
+  ): Promise<User> {
     // Check if user already exists
     const existingEmail = await this.findByEmail(email);
     if (existingEmail) {
@@ -53,7 +61,11 @@ export class UsersService {
 
   async updateProfile(
     userId: number,
-    updates: { fullName?: string; labRole?: string; preferences?: Record<string, any> },
+    updates: {
+      fullName?: string;
+      labRole?: string;
+      preferences?: Record<string, any>;
+    },
   ): Promise<User> {
     const user = await this.findById(userId);
 
@@ -64,7 +76,8 @@ export class UsersService {
     // Update user fields
     if (updates.fullName !== undefined) user.fullName = updates.fullName;
     if (updates.labRole !== undefined) user.labRole = updates.labRole;
-    if (updates.preferences !== undefined) user.preferences = updates.preferences;
+    if (updates.preferences !== undefined)
+      user.preferences = updates.preferences;
 
     return this.usersRepository.save(user);
   }

@@ -10,9 +10,13 @@ export class ImagesService {
     private imageRepository: Repository<Image>,
   ) {}
 
-  async findImages(userId: number | null, page: number = 1, limit: number = 20) {
+  async findImages(
+    userId: number | null,
+    page: number = 1,
+    limit: number = 20,
+  ) {
     const skip = (page - 1) * limit;
-    
+
     const queryBuilder = this.imageRepository
       .createQueryBuilder('image')
       .leftJoinAndSelect('image.user', 'user')

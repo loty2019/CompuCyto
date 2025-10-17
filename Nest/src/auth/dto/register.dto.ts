@@ -3,15 +3,15 @@ import { ApiProperty } from '@nestjs/swagger';
 
 /**
  * Register DTO (Data Transfer Object)
- * 
+ *
  * Validates user registration data from the frontend.
  * All fields are required and automatically validated by class-validator.
- * 
+ *
  * Validation Rules:
  * - email: Must be valid email format
  * - username: 3-50 characters
  * - password: Minimum 6 characters (will be hashed before storage)
- * 
+ *
  * @class RegisterDto
  */
 export class RegisterDto {
@@ -22,7 +22,7 @@ export class RegisterDto {
   @ApiProperty({
     description: 'User email address (must be unique)',
     example: 'user@example.com',
-    format: 'email'
+    format: 'email',
   })
   @IsEmail()
   email: string;
@@ -35,7 +35,7 @@ export class RegisterDto {
     description: 'Username for login (must be unique)',
     example: 'johndoe',
     minLength: 3,
-    maxLength: 50
+    maxLength: 50,
   })
   @IsString()
   @MinLength(3)
@@ -52,7 +52,7 @@ export class RegisterDto {
     example: 'password123',
     minLength: 6,
     maxLength: 100,
-    format: 'password'
+    format: 'password',
   })
   @IsString()
   @MinLength(6)

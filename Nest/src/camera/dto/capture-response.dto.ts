@@ -2,10 +2,10 @@ import { ApiProperty } from '@nestjs/swagger';
 
 /**
  * Capture Response DTO
- * 
+ *
  * Response structure returned from camera capture endpoint.
  * Contains all metadata about the captured image.
- * 
+ *
  * @class CaptureResponseDto
  */
 export class CaptureResponseDto {
@@ -24,13 +24,15 @@ export class CaptureResponseDto {
   imageId?: number | null;
 
   @ApiProperty({
-    description: 'Whether the image metadata was successfully saved to database',
+    description:
+      'Whether the image metadata was successfully saved to database',
     example: true,
   })
   databaseSaved: boolean;
 
   @ApiProperty({
-    description: 'Warning message if database save failed or other issues occurred',
+    description:
+      'Warning message if database save failed or other issues occurred',
     example: null,
     required: false,
     nullable: true,

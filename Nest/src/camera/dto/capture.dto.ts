@@ -3,10 +3,10 @@ import { ApiProperty } from '@nestjs/swagger';
 
 /**
  * Capture DTO (Data Transfer Object)
- * 
+ *
  * Validates camera capture request parameters.
  * Both fields are optional - if omitted, camera service will use current settings.
- * 
+ *
  * @class CaptureDto
  */
 export class CaptureDto {
@@ -19,7 +19,7 @@ export class CaptureDto {
     description: 'Camera exposure time in milliseconds',
     example: 100,
     required: false,
-    minimum: 0
+    minimum: 0,
   })
   @IsOptional()
   @IsNumber()
@@ -35,7 +35,7 @@ export class CaptureDto {
     description: 'Camera gain/sensitivity multiplier',
     example: 1.5,
     required: false,
-    minimum: 0
+    minimum: 0,
   })
   @IsOptional()
   @IsNumber()

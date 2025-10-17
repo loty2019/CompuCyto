@@ -12,13 +12,15 @@ import { ImagesModule } from './images/images.module';
 import { HealthController } from './common/controllers/health.controller';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { EventsGateway } from './common/websocket/events.gateway';
 
 @Module({
   imports: [
     ConfigModule,
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
-      useFactory: (configService: ConfigService) => getDatabaseConfig(configService),
+      useFactory: (configService: ConfigService) =>
+        getDatabaseConfig(configService),
     }),
     AuthModule,
     UsersModule,
@@ -28,6 +30,6 @@ import { AppService } from './app.service';
     ImagesModule,
   ],
   controllers: [AppController, HealthController],
-  providers: [AppService],
+  providers: [AppService, EventsGateway],
 })
 export class AppModule {}

@@ -3,9 +3,9 @@ import { ApiProperty } from '@nestjs/swagger';
 
 /**
  * Set Light DTO (Data Transfer Object)
- * 
+ *
  * Validates request to set microscope light state.
- * 
+ *
  * @class SetLightDto
  */
 export class SetLightDto {

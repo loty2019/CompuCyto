@@ -3,13 +3,13 @@ import { ConfigService as NestConfigService } from '@nestjs/config';
 
 /**
  * Configuration Service
- * 
+ *
  * Centralized access to environment variables with type safety and default values.
  * All configuration is loaded from .env file and accessed through typed getters.
- * 
+ *
  * This service is marked as @Global in ConfigModule, so it's available everywhere
  * without importing the module.
- * 
+ *
  * @class ConfigService
  */
 @Injectable()
@@ -66,7 +66,10 @@ export class ConfigService {
    * @default 'default-secret-change-me'
    */
   get jwtSecret(): string {
-    return this.configService.get<string>('JWT_SECRET', 'default-secret-change-me');
+    return this.configService.get<string>(
+      'JWT_SECRET',
+      'default-secret-change-me',
+    );
   }
 
   /**
@@ -84,7 +87,10 @@ export class ConfigService {
    * @default 'http://localhost:8001'
    */
   get pythonCameraUrl(): string {
-    return this.configService.get<string>('PYTHON_CAMERA_URL', 'http://localhost:8001');
+    return this.configService.get<string>(
+      'PYTHON_CAMERA_URL',
+      'http://localhost:8001',
+    );
   }
 
   /**
@@ -92,7 +98,10 @@ export class ConfigService {
    * @default 'http://raspberrypi.local:5000'
    */
   get raspberryPiUrl(): string {
-    return this.configService.get<string>('RASPBERRY_PI_URL', 'http://raspberrypi.local:8000');
+    return this.configService.get<string>(
+      'RASPBERRY_PI_URL',
+      'http://raspberrypi.local:8000',
+    );
   }
 
   /**
@@ -170,8 +179,11 @@ export class ConfigService {
    * @default ['http://localhost:5173']
    */
   get allowedOrigins(): string[] {
-    const origins = this.configService.get<string>('ALLOWED_ORIGINS', 'http://localhost:5173');
-    return origins.split(',').map(origin => origin.trim());
+    const origins = this.configService.get<string>(
+      'ALLOWED_ORIGINS',
+      'http://localhost:5173',
+    );
+    return origins.split(',').map((origin) => origin.trim());
   }
 
   // ==================== File Storage ====================

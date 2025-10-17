@@ -8,18 +8,24 @@ from datetime import datetime
 from typing import Optional
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from config import settings
 from pixelink_camera import PixelinkCamera
+from camera_streamer import streamer
 
 # Configure logging
 logging.basicConfig(
     level=logging.DEBUG if settings.debug else logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
+
+# Silence noisy loggers
+logging.getLogger('websockets').setLevel(logging.WARNING)  # Suppress WebSocket frame spam
+logging.getLogger('uvicorn.access').setLevel(logging.WARNING)  # Suppress health check spam
+
 logger = logging.getLogger(__name__)
 
 # Global camera instance
@@ -47,6 +53,14 @@ async def lifespan(app: FastAPI):
     
     current_settings = camera.get_settings()
     logger.info(f"Camera initialized with exposure: {current_settings['exposure']}µs, gain: {current_settings['gain']}")
+    
+    # Initialize streamer with camera
+    streamer.set_camera(
+        camera.camera_handle,
+        camera.width,
+        camera.height
+    )
+    logger.info("Camera streamer initialized")
     logger.info("Camera service ready")
     yield
     
@@ -212,6 +226,49 @@ async def update_settings(settings_update: SettingsUpdate):
     except Exception as e:
         logger.error(f"Update error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.websocket("/ws/camera/stream")
+async def websocket_camera_stream(websocket: WebSocket):
+    """
+    WebSocket endpoint for live camera streaming.
+    Streams JPEG frames as base64-encoded JSON messages.
+    
+    Called by frontend to receive live camera feed.
+    Multiple clients can connect simultaneously.
+    """
+    await websocket.accept()
+    logger.info(f"WebSocket client connected from {websocket.client}")
+    
+    try:
+        # Register this client with the streamer
+        await streamer.add_client(websocket)
+        
+        # Send initial connection confirmation
+        await websocket.send_json({
+            "type": "connected",
+            "message": "Camera stream connected",
+            "resolution": {"width": camera.width, "height": camera.height}
+        })
+        
+        # Keep connection alive and handle incoming messages
+        while True:
+            # Wait for messages from client (like settings updates, close, etc.)
+            try:
+                data = await websocket.receive_text()
+                # Handle client messages if needed
+                logger.debug(f"Received from client: {data}")
+            except WebSocketDisconnect:
+                break
+                
+    except WebSocketDisconnect:
+        logger.info("WebSocket client disconnected normally")
+    except Exception as e:
+        logger.error(f"WebSocket error: {e}", exc_info=True)
+    finally:
+        # Unregister client
+        await streamer.remove_client(websocket)
+        logger.info(f"WebSocket client removed. Active clients: {len(streamer.active_clients)}")
 
 
 # Main entry point

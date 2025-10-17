@@ -1,126 +1,134 @@
-import { ref, onMounted, onUnmounted } from 'vue'
-import { useMicroscopeStore } from '@/stores/microscope'
-import { useWebSocketStore } from '@/stores/websocket'
-import type { WSMessage } from '@/types'
+import { ref, onMounted, onUnmounted } from "vue";
+import { useMicroscopeStore } from "@/stores/microscope";
+import { useWebSocketStore } from "@/stores/websocket";
+import type { WSMessage } from "@/types";
+import { io, Socket } from "socket.io-client";
 
 export function useWebSocket() {
-  const microscopeStore = useMicroscopeStore()
-  const wsStore = useWebSocketStore()
+  const microscopeStore = useMicroscopeStore();
+  const wsStore = useWebSocketStore();
 
-  const ws = ref<WebSocket | null>(null)
-  const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8000/ws'
+  const socket = ref<Socket | null>(null);
+  // Connect to NestJS backend on port 3000 with /ws namespace
+  const WS_URL = import.meta.env.VITE_WS_URL || "http://localhost:3000";
 
   function connect() {
-    if (ws.value?.readyState === WebSocket.OPEN) {
-      return
+    if (socket.value?.connected) {
+      return;
     }
 
     try {
-      ws.value = new WebSocket(WS_URL)
+      socket.value = io(WS_URL, {
+        path: "/socket.io",
+        transports: ["websocket", "polling"],
+        reconnection: true,
+        reconnectionDelay: 5000,
+        reconnectionAttempts: 5,
+      });
 
-      ws.value.onopen = () => {
-        wsStore.setConnected(true)
-        wsStore.resetReconnectAttempts()
-        microscopeStore.addLog('WebSocket connected', 'success')
-      }
+      socket.value.on("connect", () => {
+        wsStore.setConnected(true);
+        wsStore.resetReconnectAttempts();
+        microscopeStore.addLog("WebSocket connected", "success");
+      });
 
-      ws.value.onmessage = (event) => {
-        const message: WSMessage = JSON.parse(event.data)
-        handleMessage(message)
-      }
+      socket.value.on("message", (message: WSMessage) => {
+        handleMessage(message);
+      });
 
-      ws.value.onclose = () => {
-        wsStore.setConnected(false)
-        microscopeStore.addLog('WebSocket disconnected', 'error')
+      socket.value.on("status", (data: any) => {
+        handleMessage({ type: "status", data });
+      });
 
-        // Attempt to reconnect
-        if (wsStore.canReconnect()) {
-          wsStore.incrementReconnectAttempts()
-          setTimeout(connect, 5000)
+      socket.value.on("disconnect", () => {
+        wsStore.setConnected(false);
+        microscopeStore.addLog("WebSocket disconnected", "error");
+      });
+
+      socket.value.on("connect_error", (error) => {
+        console.error("WebSocket connection error:", error);
+        wsStore.incrementReconnectAttempts();
+        if (!wsStore.canReconnect()) {
+          microscopeStore.addLog("WebSocket connection failed", "error");
         }
-      }
-
-      ws.value.onerror = (error) => {
-        console.error('WebSocket error:', error)
-        microscopeStore.addLog('WebSocket error occurred', 'error')
-      }
+      });
     } catch (error) {
-      console.error('Failed to connect WebSocket:', error)
-      microscopeStore.addLog('Failed to connect WebSocket', 'error')
+      console.error("Failed to connect WebSocket:", error);
+      microscopeStore.addLog("Failed to connect WebSocket", "error");
     }
   }
 
   function disconnect() {
-    if (ws.value) {
-      ws.value.close()
-      ws.value = null
+    if (socket.value) {
+      socket.value.disconnect();
+      socket.value = null;
     }
   }
 
   function send(data: any) {
-    if (ws.value?.readyState === WebSocket.OPEN) {
-      ws.value.send(JSON.stringify(data))
+    if (socket.value?.connected) {
+      socket.value.emit("message", data);
     }
   }
 
   function handleMessage(message: WSMessage) {
     switch (message.type) {
-      case 'position':
-        microscopeStore.updatePosition(message.data)
-        break
+      case "position":
+        microscopeStore.updatePosition(message.data);
+        break;
 
-      case 'job_progress':
+      case "job_progress":
         microscopeStore.updateJob(message.data.job_id, {
           progress: message.data.progress,
           total_steps: message.data.total_steps,
-          status: message.data.status as any
-        })
+          status: message.data.status as any,
+        });
         microscopeStore.addLog(
           `Job ${message.data.job_id}: ${message.data.progress}/${message.data.total_steps}`,
-          'info'
-        )
-        break
+          "info"
+        );
+        break;
 
-      case 'image_captured':
+      case "image_captured":
         microscopeStore.addLog(
           `Image captured: ${message.data.filename}`,
-          'success'
-        )
+          "success"
+        );
         // Optionally refresh image list
-        break
+        break;
 
-      case 'status':
+      case "status":
         microscopeStore.updateSystemStatus({
           camera: message.data.camera,
-          stage: message.data.stage
-        })
-        break
+          stage: message.data.stage,
+        });
+        break;
 
-      case 'error':
+      case "error":
         microscopeStore.addLog(
           `${message.data.component}: ${message.data.message}`,
-          'error'
-        )
-        break
+          "error"
+        );
+        break;
 
-      case 'echo':
+      case "echo":
         // Echo response - can be used for testing
-        break
+        break;
     }
   }
 
   onMounted(() => {
-    connect()
-  })
+    connect();
+  });
 
   onUnmounted(() => {
-    disconnect()
-  })
+    disconnect();
+  });
 
   return {
     isConnected: () => wsStore.state.isConnected,
     connect,
     disconnect,
-    send
-  }
+    send,
+  };
 }

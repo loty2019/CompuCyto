@@ -1,5 +1,18 @@
-import { Controller, Post, Body, Get, UseGuards, Request } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
+import {
+  Controller,
+  Post,
+  Body,
+  Get,
+  UseGuards,
+  Request,
+} from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiBody,
+} from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -7,10 +20,10 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
 /**
  * Authentication Controller
- * 
+ *
  * Handles user registration, login, and profile retrieval.
  * Provides JWT tokens for authenticated access to protected endpoints.
- * 
+ *
  * @controller /api/v1/auth
  */
 @ApiTags('Auth')
@@ -20,21 +33,22 @@ export class AuthController {
 
   /**
    * Register a new user
-   * 
+   *
    * Creates a new user account with email, username, and password.
    * Returns JWT token and user profile.
-   * 
+   *
    * @route POST /api/v1/auth/register
    * @public No authentication required
    */
   @Post('register')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Register new user',
-    description: 'Create a new user account. Email and username must be unique. Password will be hashed before storage.'
+    description:
+      'Create a new user account. Email and username must be unique. Password will be hashed before storage.',
   })
   @ApiBody({ type: RegisterDto })
-  @ApiResponse({ 
-    status: 201, 
+  @ApiResponse({
+    status: 201,
     description: 'User successfully registered',
     schema: {
       example: {
@@ -49,33 +63,36 @@ export class AuthController {
             userId: 1,
             fullName: null,
             labRole: null,
-            preferences: {}
-          }
-        }
-      }
-    }
+            preferences: {},
+          },
+        },
+      },
+    },
   })
-  @ApiResponse({ 
-    status: 409, 
+  @ApiResponse({
+    status: 409,
     description: 'Email or username already exists',
     schema: {
       example: {
         statusCode: 409,
         message: 'Email already exists',
-        error: 'Conflict'
-      }
-    }
+        error: 'Conflict',
+      },
+    },
   })
-  @ApiResponse({ 
-    status: 400, 
+  @ApiResponse({
+    status: 400,
     description: 'Validation failed',
     schema: {
       example: {
         statusCode: 400,
-        message: ['email must be an email', 'password must be longer than or equal to 6 characters'],
-        error: 'Bad Request'
-      }
-    }
+        message: [
+          'email must be an email',
+          'password must be longer than or equal to 6 characters',
+        ],
+        error: 'Bad Request',
+      },
+    },
   })
   async register(@Body() registerDto: RegisterDto) {
     return this.authService.register(registerDto);
@@ -83,20 +100,21 @@ export class AuthController {
 
   /**
    * Login existing user
-   * 
+   *
    * Validates credentials and returns JWT token.
-   * 
+   *
    * @route POST /api/v1/auth/login
    * @public No authentication required
    */
   @Post('login')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Login user',
-    description: 'Authenticate with email and password. Returns JWT token valid for 7 days (configurable).'
+    description:
+      'Authenticate with email and password. Returns JWT token valid for 7 days (configurable).',
   })
   @ApiBody({ type: LoginDto })
-  @ApiResponse({ 
-    status: 200, 
+  @ApiResponse({
+    status: 200,
     description: 'Login successful',
     schema: {
       example: {
@@ -110,22 +128,22 @@ export class AuthController {
             id: 1,
             fullName: null,
             labRole: null,
-            preferences: {}
-          }
-        }
-      }
-    }
+            preferences: {},
+          },
+        },
+      },
+    },
   })
-  @ApiResponse({ 
-    status: 401, 
+  @ApiResponse({
+    status: 401,
     description: 'Invalid credentials',
     schema: {
       example: {
         statusCode: 401,
         message: 'Invalid credentials',
-        error: 'Unauthorized'
-      }
-    }
+        error: 'Unauthorized',
+      },
+    },
   })
   async login(@Body() loginDto: LoginDto) {
     return this.authService.login(loginDto);
@@ -133,21 +151,22 @@ export class AuthController {
 
   /**
    * Get current user profile
-   * 
+   *
    * Returns profile of authenticated user from JWT token.
-   * 
+   *
    * @route GET /api/v1/auth/profile
    * @protected Requires valid JWT token
    */
   @Get('profile')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('JWT-auth')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Get current user profile',
-    description: 'Returns authenticated user\'s profile. Requires valid JWT token in Authorization header.'
+    description:
+      "Returns authenticated user's profile. Requires valid JWT token in Authorization header.",
   })
-  @ApiResponse({ 
-    status: 200, 
+  @ApiResponse({
+    status: 200,
     description: 'Profile retrieved successfully',
     schema: {
       example: {
@@ -161,20 +180,20 @@ export class AuthController {
           id: 1,
           fullName: 'John Doe',
           labRole: 'Researcher',
-          preferences: {}
-        }
-      }
-    }
+          preferences: {},
+        },
+      },
+    },
   })
-  @ApiResponse({ 
-    status: 401, 
+  @ApiResponse({
+    status: 401,
     description: 'Unauthorized - Invalid or missing token',
     schema: {
       example: {
         statusCode: 401,
-        message: 'Unauthorized'
-      }
-    }
+        message: 'Unauthorized',
+      },
+    },
   })
   async getProfile(@Request() req) {
     return req.user;

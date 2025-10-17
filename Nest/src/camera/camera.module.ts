@@ -6,10 +6,7 @@ import { CameraController } from './camera.controller';
 import { Image } from '../images/entities/image.entity';
 
 @Module({
-  imports: [
-    HttpModule,
-    TypeOrmModule.forFeature([Image]),
-  ],
+  imports: [HttpModule, TypeOrmModule.forFeature([Image])],
   providers: [CameraService],
   controllers: [CameraController],
   exports: [CameraService],

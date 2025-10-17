@@ -3,10 +3,10 @@ import { ApiProperty } from '@nestjs/swagger';
 
 /**
  * Login DTO (Data Transfer Object)
- * 
+ *
  * Validates user login credentials from the frontend.
  * Both fields are required and automatically validated by class-validator.
- * 
+ *
  * @class LoginDto
  */
 export class LoginDto {
@@ -17,7 +17,7 @@ export class LoginDto {
   @ApiProperty({
     description: 'User email address',
     example: 'user@example.com',
-    format: 'email'
+    format: 'email',
   })
   @IsEmail()
   email: string;
@@ -30,7 +30,7 @@ export class LoginDto {
     description: 'User password',
     example: 'password123',
     minLength: 6,
-    format: 'password'
+    format: 'password',
   })
   @IsString()
   @MinLength(6)

@@ -1,4 +1,8 @@
-import { Injectable, ServiceUnavailableException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  ServiceUnavailableException,
+  Logger,
+} from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '../config/config.service';
 import { PositionValidator, Position } from './validators/position-validator';
@@ -7,14 +11,14 @@ import { AxiosError } from 'axios';
 
 /**
  * Stage Service
- * 
+ *
  * HTTP client proxy to the Raspberry Pi motor controller running on port 5000.
  * Handles motor movement with critical safety validation before forwarding commands.
- * 
+ *
  * IMPORTANT: This service validates all position requests against safety limits
  * before sending commands to the hardware controller. This prevents damage to
  * the microscope stage and attached equipment.
- * 
+ *
  * @class StageService
  */
 @Injectable()
@@ -35,13 +39,13 @@ export class StageService {
 
   /**
    * Move stage to position
-   * 
+   *
    * Validates position against safety limits, then forwards command to Raspberry Pi.
    * Supports both absolute and relative movements.
-   * 
+   *
    * SAFETY: Position is validated BEFORE sending to hardware. Invalid positions
    * will throw BadRequestException and command will NOT be sent.
-   * 
+   *
    * @param x - Optional X position (omit to keep current)
    * @param y - Optional Y position (omit to keep current)
    * @param z - Optional Z position (omit to keep current)
@@ -50,7 +54,12 @@ export class StageService {
    * @throws BadRequestException if position is out of safety limits
    * @throws ServiceUnavailableException if Raspberry Pi is not reachable
    */
-  async move(x?: number, y?: number, z?: number, relative: boolean = false): Promise<any> {
+  async move(
+    x?: number,
+    y?: number,
+    z?: number,
+    relative: boolean = false,
+  ): Promise<any> {
     try {
       // STEP 1: Get current position from Raspberry Pi
       const currentPosition = await this.getPosition();
@@ -82,7 +91,9 @@ export class StageService {
           .pipe(
             catchError((error: AxiosError) => {
               this.logger.error(`Stage move failed: ${error.message}`);
-              throw new ServiceUnavailableException('Stage controller unavailable');
+              throw new ServiceUnavailableException(
+                'Stage controller unavailable',
+              );
             }),
           ),
       );
@@ -103,9 +114,9 @@ export class StageService {
 
   /**
    * Get current stage position
-   * 
+   *
    * Queries Raspberry Pi for current X, Y, Z position in steps.
-   * 
+   *
    * @returns Current position object with x, y, z coordinates
    * @throws ServiceUnavailableException if Raspberry Pi is not reachable
    */
@@ -113,12 +124,18 @@ export class StageService {
     try {
       // GET request to Raspberry Pi for current motor positions
       const { data } = await firstValueFrom(
-        this.httpService.get(`${this.baseUrl}/position`, { timeout: this.timeout }).pipe(
-          catchError((error: AxiosError) => {
-            this.logger.error(`Failed to get stage position: ${error.message}`);
-            throw new ServiceUnavailableException('Stage controller unavailable');
-          }),
-        ),
+        this.httpService
+          .get(`${this.baseUrl}/position`, { timeout: this.timeout })
+          .pipe(
+            catchError((error: AxiosError) => {
+              this.logger.error(
+                `Failed to get stage position: ${error.message}`,
+              );
+              throw new ServiceUnavailableException(
+                'Stage controller unavailable',
+              );
+            }),
+          ),
       );
       return data;
     } catch (error) {
@@ -129,10 +146,10 @@ export class StageService {
 
   /**
    * Home all axes
-   * 
+   *
    * Sends home command to Raspberry Pi to move all axes (X, Y, Z) to origin.
    * This is typically done at startup or after manual intervention.
-   * 
+   *
    * @returns Home operation status
    * @throws ServiceUnavailableException if Raspberry Pi is not reachable
    */
@@ -140,12 +157,16 @@ export class StageService {
     try {
       // POST request to initiate homing sequence
       const { data } = await firstValueFrom(
-        this.httpService.post(`${this.baseUrl}/home`, {}, { timeout: this.timeout }).pipe(
-          catchError((error: AxiosError) => {
-            this.logger.error(`Stage home failed: ${error.message}`);
-            throw new ServiceUnavailableException('Stage controller unavailable');
-          }),
-        ),
+        this.httpService
+          .post(`${this.baseUrl}/home`, {}, { timeout: this.timeout })
+          .pipe(
+            catchError((error: AxiosError) => {
+              this.logger.error(`Stage home failed: ${error.message}`);
+              throw new ServiceUnavailableException(
+                'Stage controller unavailable',
+              );
+            }),
+          ),
       );
       return data;
     } catch (error) {
@@ -156,10 +177,10 @@ export class StageService {
 
   /**
    * Emergency stop
-   * 
+   *
    * Immediately halts all motor movement. Critical safety function.
    * Should be called when manual intervention is needed or error is detected.
-   * 
+   *
    * @returns Stop operation status
    * @throws ServiceUnavailableException if Raspberry Pi is not reachable
    */
@@ -167,12 +188,16 @@ export class StageService {
     try {
       // POST request to emergency stop all motors
       const { data } = await firstValueFrom(
-        this.httpService.post(`${this.baseUrl}/stop`, {}, { timeout: this.timeout }).pipe(
-          catchError((error: AxiosError) => {
-            this.logger.error(`Stage stop failed: ${error.message}`);
-            throw new ServiceUnavailableException('Stage controller unavailable');
-          }),
-        ),
+        this.httpService
+          .post(`${this.baseUrl}/stop`, {}, { timeout: this.timeout })
+          .pipe(
+            catchError((error: AxiosError) => {
+              this.logger.error(`Stage stop failed: ${error.message}`);
+              throw new ServiceUnavailableException(
+                'Stage controller unavailable',
+              );
+            }),
+          ),
       );
       return data;
     } catch (error) {
@@ -183,10 +208,10 @@ export class StageService {
 
   /**
    * Check Raspberry Pi controller health
-   * 
+   *
    * Pings the Raspberry Pi health endpoint to verify availability.
    * Used by the health check controller.
-   * 
+   *
    * @returns true if service is reachable, false otherwise
    */
   async checkHealth(): Promise<boolean> {
