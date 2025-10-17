@@ -87,6 +87,7 @@ export class CameraController {
     return this.cameraService.capture(
       captureDto.exposure,
       captureDto.gain,
+      captureDto.gamma,
       userId,
     );
   }
@@ -186,7 +187,9 @@ export class CameraController {
     status: 503,
     description: 'Python camera service unavailable',
   })
-  async updateSettings(@Body() settings: { exposure?: number; gain?: number }) {
+  async updateSettings(
+    @Body() settings: { exposure?: number; gain?: number; gamma?: number },
+  ) {
     return this.cameraService.updateSettings(settings);
   }
 

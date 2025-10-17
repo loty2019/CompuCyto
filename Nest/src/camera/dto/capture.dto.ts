@@ -41,4 +41,20 @@ export class CaptureDto {
   @IsNumber()
   @Min(0)
   gain?: number;
+
+  /**
+   * Camera gamma correction value
+   * Optional - if omitted, uses current camera setting
+   * @example 1.0
+   */
+  @ApiProperty({
+    description: 'Camera gamma correction value for brightness/contrast adjustment',
+    example: 1.0,
+    required: false,
+    minimum: 0,
+  })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  gamma?: number;
 }

@@ -13,6 +13,7 @@ export function useCamera() {
       const result = await controlAPI.captureImage({
         exposure: params?.exposure ?? store.cameraSettings.exposure,
         gain: params?.gain ?? store.cameraSettings.gain,
+        gamma: params?.gamma ?? store.cameraSettings.gamma,
       });
 
       // Check for warnings in response
@@ -53,6 +54,8 @@ export function useCamera() {
   async function updateSettings(settings: {
     exposure?: number;
     gain?: number;
+    gamma?: number;
+    autoExposure?: boolean;
   }) {
     try {
       await controlAPI.updateCameraSettings(settings);

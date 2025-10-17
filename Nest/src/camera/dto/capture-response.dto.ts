@@ -70,6 +70,12 @@ export class CaptureResponseDto {
   gain: number;
 
   @ApiProperty({
+    description: 'Gamma correction value used',
+    example: 1.0,
+  })
+  gamma: number;
+
+  @ApiProperty({
     description: 'File size in bytes',
     example: 2456789,
   })

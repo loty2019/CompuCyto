@@ -46,6 +46,7 @@ export class CameraService {
    *
    * @param exposure - Optional exposure time in milliseconds
    * @param gain - Optional gain value
+   * @param gamma - Optional gamma correction value
    * @param userId - ID of the user capturing the image
    * @returns Image metadata from Python service (filename, path, dimensions, etc.)
    * @throws ServiceUnavailableException if Python service is not reachable
@@ -53,6 +54,7 @@ export class CameraService {
   async capture(
     exposure?: number,
     gain?: number,
+    gamma?: number,
     userId?: number,
   ): Promise<any> {
     try {
@@ -61,7 +63,7 @@ export class CameraService {
         this.httpService
           .post(
             `${this.baseUrl}/capture`,
-            { exposure, gain },
+            { exposure, gain, gamma },
             { timeout: this.timeout },
           )
           .pipe(
@@ -96,6 +98,7 @@ export class CameraService {
             capturedAt: new Date(data.capturedAt),
             exposureTime: data.exposureTime,
             gain: data.gain,
+            gamma: data.gamma ?? null,
             fileSize: data.fileSize,
             width: data.width,
             height: data.height,
@@ -178,7 +181,7 @@ export class CameraService {
   /**
    * Update camera settings
    *
-   * Sends new exposure/gain settings to Python camera service.
+   * Sends new exposure/gain/gamma settings to Python camera service.
    *
    * @param settings - Partial camera settings to update
    * @returns Updated camera settings
@@ -187,6 +190,7 @@ export class CameraService {
   async updateSettings(settings: {
     exposure?: number;
     gain?: number;
+    gamma?: number;
   }): Promise<any> {
     try {
       // PUT request to Python service to update settings

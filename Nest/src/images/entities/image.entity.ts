@@ -102,6 +102,14 @@ export class Image {
   gain: number;
 
   @ApiProperty({
+    description: 'Camera gamma correction value',
+    example: 1.0,
+    nullable: true,
+  })
+  @Column({ type: 'float', nullable: true })
+  gamma: number;
+
+  @ApiProperty({
     description: 'File size in bytes',
     example: 2456789,
     nullable: true,

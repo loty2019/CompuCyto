@@ -49,14 +49,16 @@ async def lifespan(app: FastAPI):
         serial_number=settings.camera_serial_number if settings.camera_serial_number else None
     )
     
-    logger.info(f"Setting default exposure: {settings.default_exposure}µs ({settings.default_exposure/1000}ms)")
+    logger.info(f"Setting default exposure: {settings.default_exposure}ms")
     camera.update_settings(
         exposure=settings.default_exposure,
         gain=settings.default_gain
     )
     
     current_settings = camera.get_settings()
-    logger.info(f"Camera initialized with exposure: {current_settings['exposure']}µs, gain: {current_settings['gain']}")
+    logger.info(f"Camera initialized - Exposure: {current_settings['exposure']}ms, Gain: {current_settings['gain']}")
+    logger.info(f"   Exposure range: {current_settings['exposureMin']:.3f}ms - {current_settings['exposureMax']:.3f}ms")
+    logger.info(f"   Gain range: {current_settings['gainMin']:.2f} - {current_settings['gainMax']:.2f}")
     
     # Initialize streamer with camera
     streamer.set_camera(
@@ -94,14 +96,17 @@ app.add_middleware(
 # Request/Response models
 class CaptureRequest(BaseModel):
     """Image capture request."""
-    exposure: Optional[float] = Field(None, ge=0, description="Exposure in microseconds (µs)")
+    exposure: Optional[float] = Field(None, ge=0, description="Exposure in milliseconds (ms)")
     gain: Optional[float] = Field(None, ge=0, description="Gain value")
+    gamma: Optional[float] = Field(None, ge=0, description="Gamma value")
 
 
 class SettingsUpdate(BaseModel):
     """Settings update request."""
-    exposure: Optional[float] = Field(None, ge=0, description="Exposure in microseconds (µs)")
+    exposure: Optional[float] = Field(None, ge=0, description="Exposure in milliseconds (ms)")
     gain: Optional[float] = Field(None, ge=0, description="Gain value")
+    gamma: Optional[float] = Field(None, ge=0, description="Gamma value")
+    autoExposure: Optional[bool] = Field(None, description="Enable/disable auto-exposure")
 
 
 # API Endpoints
@@ -171,7 +176,8 @@ async def capture_image(request: CaptureRequest):
         result = camera.capture_image(
             save_path=filepath,
             exposure=request.exposure,
-            gain=request.gain
+            gain=request.gain,
+            gamma=request.gamma
         )
         
         # Resume streaming if it was active
@@ -227,7 +233,7 @@ async def get_settings():
 async def update_settings(settings_update: SettingsUpdate):
     """
     Update camera settings.
-    Called by NestJS camera.service.ts
+    Called by NestJS camera.service.ts or frontend
     """
     if not camera or not camera.is_connected:
         raise HTTPException(status_code=503, detail="Camera not connected")
@@ -235,12 +241,40 @@ async def update_settings(settings_update: SettingsUpdate):
     try:
         updated = camera.update_settings(
             exposure=settings_update.exposure,
-            gain=settings_update.gain
+            gain=settings_update.gain,
+            gamma=settings_update.gamma,
+            auto_exposure=settings_update.autoExposure
         )
         logger.info(f"Settings updated: {settings_update}")
         return updated
     except Exception as e:
         logger.error(f"Update error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/settings/auto-exposure/once")
+async def perform_auto_exposure_once():
+    """
+    Perform a one-time auto-exposure adjustment.
+    Camera will automatically determine optimal exposure, then return to manual control.
+    """
+    if not camera or not camera.is_connected:
+        raise HTTPException(status_code=503, detail="Camera not connected")
+    
+    try:
+        success = camera.perform_one_time_auto_exposure()
+        if success:
+            settings = camera.get_settings()
+            return {
+                "success": True,
+                "message": "One-time auto-exposure completed",
+                "exposure": settings["exposure"],
+                "gain": settings["gain"]
+            }
+        else:
+            raise HTTPException(status_code=500, detail="One-time auto-exposure failed or timed out")
+    except Exception as e:
+        logger.error(f"Auto-exposure error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

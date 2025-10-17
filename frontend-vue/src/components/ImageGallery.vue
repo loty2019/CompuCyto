@@ -42,7 +42,7 @@
               : 'Enable cleanup mode to delete images'
           "
         >
-          {{ cleanupMode ? "🗑️ Cleanup Mode" : "🧹 Cleanup" }}
+          {{ cleanupMode ? "Exit Cleanup" : "🧹 Cleanup" }}
         </button>
       </div>
     </div>
