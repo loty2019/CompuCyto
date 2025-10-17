@@ -107,7 +107,7 @@
         </button>
         <button 
           @click="stage.stop()" 
-          class="flex-1 bg-red-800 text-white px-5 py-2.5 rounded cursor-pointer text-sm font-medium hover:bg-red-700"
+          class="flex-1 bg-red-700 text-white px-5 py-2.5 rounded cursor-pointer text-sm font-medium hover:bg-red-800"
           :style="getButtonStyle('stop')"
           title="Emergency Stop"
         >

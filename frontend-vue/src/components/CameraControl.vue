@@ -29,7 +29,7 @@
 
     <!-- Live Camera Feed Section -->
     <div class="my-4 pb-4 border-b border-gray-200">
-      <h3 class="text-base font-semibold text-gray-700 mb-3">📹 Live Feed</h3>
+      <h3 class="text-base font-semibold text-gray-700 mb-3 pb-2 border-b-2 ">Live Feed</h3>
       <div class="bg-gray-900 rounded-lg overflow-hidden relative flex items-center justify-center shadow-lg" style="aspect-ratio: 16/9;">
         <div v-if="isLoadingFeed" class="flex flex-col items-center justify-center gap-3 text-blue-400 w-full h-full">
           <div class="inline-block w-8 h-8 border-4 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
@@ -41,7 +41,7 @@
           <button @click="reconnectFeed" class="bg-blue-500 text-white px-3 py-1 text-sm rounded hover:bg-blue-700 transition-colors">Reconnect</button>
         </div>
         <div v-else-if="!feedUrl" class="flex flex-col items-center justify-center gap-3 text-gray-400 w-full h-full">
-          <span class="text-4xl mb-2">📷</span>
+          <!-- <span class="text-4xl mb-2">📷</span> -->
           <p class="text-sm font-medium">Camera feed not available</p>
           <button @click="startFeed" class="bg-blue-500 text-white px-3 py-1 text-sm rounded hover:bg-blue-700 transition-colors">Start Feed</button>
         </div>
@@ -59,7 +59,7 @@
     <button
       @click="capture"
       :disabled="camera.isCapturing.value"
-      class="w-full bg-green-500 text-white px-5 py-2.5 rounded cursor-pointer text-sm font-medium transition-colors hover:bg-green-600 disabled:opacity-60 disabled:cursor-not-allowed"
+      class="w-full bg-blue-500 text-white px-5 py-2.5 rounded cursor-pointer text-sm font-medium transition-colors hover:bg-blue-600 disabled:opacity-60 disabled:cursor-not-allowed"
     >
       {{ camera.isCapturing.value ? 'Capturing...' : '📸 Capture Image' }}
     </button>
