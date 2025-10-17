@@ -132,7 +132,7 @@
         </button>
       </div>
       <div
-        class="bg-gray-900 rounded-xl overflow-hidden relative flex items-center justify-center shadow-2xl border-4 border-gray-700"
+        class="bg-gray-900 rounded-xl overflow-hidden relative flex items-center justify-center shadow-2xl border-4 border-gray-300"
         style="aspect-ratio: 4/3; min-height: 400px"
       >
         <div
@@ -207,7 +207,7 @@
         Capturing...
       </span>
       <span v-else class="flex items-center justify-center gap-2">
-        📸 Capture Image
+        Capture Image
       </span>
     </button>
   </div>
