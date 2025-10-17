@@ -18,13 +18,16 @@ from camera_streamer import streamer
 
 # Configure logging
 logging.basicConfig(
-    level=logging.DEBUG if settings.debug else logging.INFO,
+    level=logging.INFO,  # Set to INFO instead of DEBUG
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 
-# Silence noisy loggers
-logging.getLogger('websockets').setLevel(logging.WARNING)  # Suppress WebSocket frame spam
-logging.getLogger('uvicorn.access').setLevel(logging.WARNING)  # Suppress health check spam
+# Silence noisy loggers BEFORE they start
+logging.getLogger('websockets.client').setLevel(logging.WARNING)
+logging.getLogger('websockets.server').setLevel(logging.WARNING)
+logging.getLogger('websockets.protocol').setLevel(logging.WARNING)
+logging.getLogger('uvicorn.access').setLevel(logging.WARNING)
+logging.getLogger('uvicorn.error').setLevel(logging.INFO)
 
 logger = logging.getLogger(__name__)
 
@@ -168,11 +171,11 @@ async def capture_image(request: CaptureRequest):
         # Verify file was actually saved
         if filepath.exists():
             actual_size = filepath.stat().st_size
-            logger.info(f"✅ Image saved to disk: {filepath}")
+            logger.info(f"Image saved to disk: {filepath}")
             logger.info(f"   File size: {actual_size} bytes ({actual_size / 1024:.2f} KB)")
             logger.info(f"   Dimensions: {result.get('width', 'unknown')}x{result.get('height', 'unknown')}")
         else:
-            logger.error(f"❌ FILE NOT SAVED! Expected at: {filepath}")
+            logger.error(f"FILE NOT SAVED! Expected at: {filepath}")
         
         logger.info(f"Image captured: {filename} (size: {result.get('fileSize', 0)} bytes)")
         
@@ -238,7 +241,8 @@ async def websocket_camera_stream(websocket: WebSocket):
     Multiple clients can connect simultaneously.
     """
     await websocket.accept()
-    logger.info(f"WebSocket client connected from {websocket.client}")
+    client_info = f"{websocket.client.host}:{websocket.client.port}" if websocket.client else "unknown"
+    logger.info(f"🔌 WebSocket client connected from {client_info}")
     
     try:
         # Register this client with the streamer
@@ -259,16 +263,20 @@ async def websocket_camera_stream(websocket: WebSocket):
                 # Handle client messages if needed
                 logger.debug(f"Received from client: {data}")
             except WebSocketDisconnect:
+                logger.info(f"🔌 WebSocket client {client_info} disconnected (receive)")
+                break
+            except Exception as e:
+                logger.warning(f"Error receiving from client {client_info}: {e}")
                 break
                 
     except WebSocketDisconnect:
-        logger.info("WebSocket client disconnected normally")
+        logger.info(f"🔌 WebSocket client {client_info} disconnected normally")
     except Exception as e:
-        logger.error(f"WebSocket error: {e}", exc_info=True)
+        logger.error(f"❌ WebSocket error for client {client_info}: {e}", exc_info=True)
     finally:
         # Unregister client
         await streamer.remove_client(websocket)
-        logger.info(f"WebSocket client removed. Active clients: {len(streamer.active_clients)}")
+        logger.info(f"✅ WebSocket client {client_info} removed. Active clients: {len(streamer.active_clients)}")
 
 
 # Main entry point
@@ -279,6 +287,7 @@ if __name__ == "__main__":
         "main:app",
         host=settings.host,
         port=settings.port,
-        reload=settings.debug,
-        log_level="debug" if settings.debug else "info"
+        reload=False,  # Disable reload to reduce noise
+        log_level="info",  # Force INFO level
+        access_log=False  # Disable access logs
     )

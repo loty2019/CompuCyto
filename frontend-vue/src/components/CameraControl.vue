@@ -31,9 +31,16 @@
 
     <!-- Live Camera Feed Section -->
     <div class="my-4 pb-4 border-b border-gray-200">
-      <h3 class="text-base font-semibold text-gray-700 mb-3 pb-2 border-b-2">
-        Live Feed
-      </h3>
+      <div class="flex items-center justify-between mb-3 pb-2 border-b-2">
+        <h3 class="text-base font-semibold text-gray-700">Live Feed</h3>
+        <button
+          v-if="feedUrl && !feedError"
+          @click="stopFeed"
+          class="bg-red-500 text-white px-3 py-1 text-xs rounded hover:bg-red-600 transition-colors font-medium"
+        >
+          Stop Feed
+        </button>
+      </div>
       <div
         class="bg-gray-900 rounded-lg overflow-hidden relative flex items-center justify-center shadow-lg"
         style="aspect-ratio: 16/9"
@@ -173,7 +180,7 @@ function startFeed() {
     websocket = new WebSocket(wsUrl);
 
     websocket.onopen = () => {
-      console.log("WebSocket connected");
+      console.log("✅ WebSocket connected");
       isLoadingFeed.value = false;
       isConnecting.value = false;
       feedError.value = "";
@@ -235,7 +242,7 @@ function startFeed() {
 }
 
 function stopFeed() {
-  console.log("Stopping feed...");
+  console.log("🛑 Stopping feed...");
 
   // Clear reconnection timeout
   if (reconnectTimeout) {
@@ -243,14 +250,27 @@ function stopFeed() {
     reconnectTimeout = null;
   }
 
-  // Close WebSocket
+  // Close WebSocket properly
   if (websocket) {
-    websocket.onclose = null; // Prevent auto-reconnect
-    websocket.close();
+    // Remove all event handlers first to prevent any reconnection logic
+    websocket.onclose = null;
+    websocket.onerror = null;
+    websocket.onmessage = null;
+    websocket.onopen = null;
+
+    // Close with a normal closure code
+    if (
+      websocket.readyState === WebSocket.OPEN ||
+      websocket.readyState === WebSocket.CONNECTING
+    ) {
+      websocket.close(1000, "User stopped feed");
+      console.log("✅ WebSocket closed");
+    }
     websocket = null;
   }
 
   feedUrl.value = "";
+  feedError.value = "";
   isLoadingFeed.value = false;
   isConnecting.value = false;
 }

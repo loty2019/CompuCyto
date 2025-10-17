@@ -74,19 +74,21 @@ class CameraStreamer:
     async def add_client(self, websocket):
         """Register a new WebSocket client."""
         self.active_clients.add(websocket)
-        logger.info(f"Client connected. Total clients: {len(self.active_clients)}")
+        logger.info(f"🔌 Client connected. Total clients: {len(self.active_clients)}")
         
         # Start streaming if this is the first client
         if len(self.active_clients) == 1 and not self.is_streaming:
+            logger.info("📹 Starting camera stream (first client)")
             await self.start_streaming()
             
     async def remove_client(self, websocket):
         """Unregister a WebSocket client."""
         self.active_clients.discard(websocket)
-        logger.info(f"Client disconnected. Total clients: {len(self.active_clients)}")
+        logger.info(f"🔌 Client disconnected. Total clients: {len(self.active_clients)}")
         
         # Stop streaming if no more clients
         if len(self.active_clients) == 0 and self.is_streaming:
+            logger.info("⏹️  Stopping camera stream (no more clients)")
             await self.stop_streaming()
             
     async def _stream_loop(self):
@@ -94,7 +96,8 @@ class CameraStreamer:
         Main streaming loop - continuously captures and broadcasts frames.
         Runs in background task while clients are connected.
         """
-        logger.info("Starting stream loop")
+        logger.info("🎬 Starting stream loop")
+        logger.info(f"   Initial state: is_streaming={self.is_streaming}, clients={len(self.active_clients)}")
         
         # Start camera streaming if available
         if PIXELINK_AVAILABLE and self.camera_handle:
@@ -104,8 +107,15 @@ class CameraStreamer:
                 return
         
         frame_count = 0
+        last_status_log = 0
         try:
             while self.is_streaming:
+                # Check if we still have clients - stop immediately if not
+                if len(self.active_clients) == 0:
+                    logger.warning("⚠️ No active clients detected in loop!")
+                    logger.info("⏹️ No active clients, stopping stream loop")
+                    break
+                
                 # Capture frame
                 if PIXELINK_AVAILABLE and self.camera_handle:
                     frame_data = await asyncio.to_thread(self._capture_real_frame)
@@ -127,8 +137,16 @@ class CameraStreamer:
                 # Broadcast to all connected clients
                 if self.active_clients:
                     await self._broadcast_frame(jpeg_data)
+                else:
+                    logger.warning("⚠️ No clients to broadcast to, stopping")
+                    break
                 
                 frame_count += 1
+                
+                # Log status every 300 frames (~10 seconds at 30fps)
+                if frame_count - last_status_log >= 300:
+                    logger.info(f"📊 Streaming status: {frame_count} frames sent, {len(self.active_clients)} active client(s)")
+                    last_status_log = frame_count
                 
                 # Small delay to control frame rate (~30 FPS)
                 await asyncio.sleep(0.033)
@@ -138,10 +156,12 @@ class CameraStreamer:
         except Exception as e:
             logger.error(f"Stream loop error: {e}", exc_info=True)
         finally:
+            # Mark as not streaming
+            self.is_streaming = False
             # Stop camera streaming
             if PIXELINK_AVAILABLE and self.camera_handle:
                 PxLApi.setStreamState(self.camera_handle, PxLApi.StreamState.STOP)
-            logger.info(f"Stream loop ended. Total frames: {frame_count}")
+            logger.info(f"🏁 Stream loop ended. Total frames: {frame_count}, Active clients: {len(self.active_clients)}")
     
     def _capture_real_frame(self) -> Optional[np.ndarray]:
         """
@@ -274,6 +294,10 @@ class CameraStreamer:
         Send frame to all connected WebSocket clients.
         Encodes as base64 for JSON transmission.
         """
+        if not self.active_clients:
+            logger.warning("⚠️ Broadcasting but no active clients!")
+            return
+            
         # Encode as base64 for WebSocket JSON transmission
         base64_data = base64.b64encode(jpeg_data).decode('utf-8')
         
@@ -285,16 +309,22 @@ class CameraStreamer:
         
         # Send to all clients, remove disconnected ones
         disconnected = set()
-        for client in self.active_clients:
+        for client in list(self.active_clients):  # Convert to list to avoid modification during iteration
             try:
                 await client.send_json(message)
             except Exception as e:
-                logger.warning(f"Failed to send to client: {e}")
+                logger.warning(f"⚠️ Failed to send to client, marking for removal: {e}")
                 disconnected.add(client)
         
         # Clean up disconnected clients
         for client in disconnected:
             self.active_clients.discard(client)
+            logger.info(f"🧹 Cleaned up stale client. Remaining: {len(self.active_clients)}")
+            
+        # Stop streaming if no clients left after cleanup
+        if len(self.active_clients) == 0 and self.is_streaming:
+            logger.info("⏹️ No clients remaining after cleanup, stopping stream")
+            await self.stop_streaming()
     
     async def get_current_frame(self) -> Optional[bytes]:
         """Get the most recent frame (JPEG bytes)."""
