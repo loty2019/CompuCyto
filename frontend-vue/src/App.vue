@@ -15,22 +15,22 @@
           
           <nav class="flex items-center gap-2 border-l border-gray-300 pl-6">
             <button @click="scrollToSection('camera')" class="px-3 py-1.5 text-sm font-medium rounded-lg transition-all bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 hover:border-blue-300 hover:shadow-sm hover:-translate-y-0.5 active:bg-blue-200 active:translate-y-0">
-              📷 Camera
+              Camera
             </button>
             <button @click="scrollToSection('stage')" class="px-3 py-1.5 text-sm font-medium rounded-lg transition-all bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 hover:border-blue-300 hover:shadow-sm hover:-translate-y-0.5 active:bg-blue-200 active:translate-y-0">
-              🎯 Stage
+              Stage
             </button>
             <button @click="scrollToSection('map')" class="px-3 py-1.5 text-sm font-medium rounded-lg transition-all bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 hover:border-blue-300 hover:shadow-sm hover:-translate-y-0.5 active:bg-blue-200 active:translate-y-0">
-              🗺️ Map
+              Map
             </button>
             <button @click="scrollToSection('jobs')" class="px-3 py-1.5 text-sm font-medium rounded-lg transition-all bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 hover:border-blue-300 hover:shadow-sm hover:-translate-y-0.5 active:bg-blue-200 active:translate-y-0">
-              💼 Jobs
+              Jobs
             </button>
             <button @click="scrollToSection('gallery')" class="px-3 py-1.5 text-sm font-medium rounded-lg transition-all bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 hover:border-blue-300 hover:shadow-sm hover:-translate-y-0.5 active:bg-blue-200 active:translate-y-0">
-              🖼️ Gallery
+              Gallery
             </button>
             <button @click="scrollToSection('console')" class="px-3 py-1.5 text-sm font-medium rounded-lg transition-all bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 hover:border-blue-300 hover:shadow-sm hover:-translate-y-0.5 active:bg-blue-200 active:translate-y-0">
-              📝 Console
+              Console
             </button>
           </nav>
         </div>

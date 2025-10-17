@@ -1,6 +1,6 @@
 <template>
   <div class="bg-white p-5 rounded-lg shadow-md">
-    <h2 class="text-xl font-bold mb-4 text-gray-900">📷 Camera Control</h2>
+    <h2 class="text-xl font-bold mb-4 text-gray-900">Camera Control</h2>
 
     <div class="mb-4">
       <label class="block text-sm font-medium text-gray-700 mb-1">Exposure (ms)</label>

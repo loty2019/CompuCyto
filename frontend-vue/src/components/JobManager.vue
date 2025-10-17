@@ -1,11 +1,11 @@
 <template>
   <div class="bg-white p-5 rounded-lg shadow-md">
-    <h2 class="text-lg font-bold text-gray-700 mb-4">⚙️ Job Control</h2>
+    <h2 class="text-lg font-bold text-gray-700 mb-4">Job Control</h2>
 
     <div class="flex gap-2 mb-4">
-      <button @click="createTimelapse" class="btn-job">⏱️ Timelapse</button>
-      <button @click="createGrid" class="btn-job">🔲 Grid Scan</button>
-      <button @click="createZStack" class="btn-job">📚 Z-Stack</button>
+      <button @click="createTimelapse" class="btn-job">⏱ Timelapse</button>
+      <button @click="createGrid" class="btn-job">Grid Scan</button>
+      <button @click="createZStack" class="btn-job">Z-Stack</button>
     </div>
 
     <div v-if="store.activeJobs.length > 0" class="mt-4">

@@ -1,7 +1,7 @@
 <template>
   <div class="bg-white rounded-lg shadow-md p-6">
     <div class="flex items-center justify-between mb-4">
-      <h2 class="text-xl font-bold text-gray-800">🖼️ Recent Images</h2>
+      <h2 class="text-xl font-bold text-gray-800">Images</h2>
       
       <!-- Filter Toggle -->
       <div class="flex gap-2">

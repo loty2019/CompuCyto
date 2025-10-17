@@ -1,6 +1,6 @@
 <template>
   <div class="bg-white p-5 rounded-lg shadow-md">
-    <h2 class="text-lg font-bold text-gray-700 mb-4">🗺️ Position Map</h2>
+    <h2 class="text-lg font-bold text-gray-700 mb-4">Position Map</h2>
     
     <div class="map-container">
       <svg 

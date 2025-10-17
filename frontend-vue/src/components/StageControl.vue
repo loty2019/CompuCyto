@@ -1,6 +1,6 @@
 <template>
   <div class="bg-white p-5 rounded-lg shadow-md">
-    <h2 class="text-xl font-bold mb-4 text-gray-900">🎯 Stage Control</h2>
+    <h2 class="text-xl font-bold mb-4 text-gray-900">Stage Control</h2>
 
     <div class="bg-gray-100 p-4 rounded mb-4 font-mono text-sm">
       <div class="mb-1">X: <span class="font-semibold">{{ store.position.x.toFixed(1) }}</span></div>
@@ -58,7 +58,7 @@
         :class="[
           'p-4 rounded cursor-pointer text-xs leading-tight font-medium transition-all',
           isLightOn 
-            ? 'bg-yellow-500 text-white hover:bg-yellow-600 shadow-[0_0_10px_rgba(234,179,8,0.5)] hover:shadow-[0_0_15px_rgba(234,179,8,0.7)]' 
+            ? 'bg-yellow-500 text-white hover:bg-yellow-600 hover:shadow-lg shadow-lg shadow-yellow-500/60 '
             : 'bg-blue-300 text-white hover:bg-blue-700',
           (isToggling || lightLoading) && 'opacity-60 cursor-not-allowed'
         ]"
@@ -66,22 +66,6 @@
         <span v-if="isLightOn">💡 ON</span>
         <span v-else>💡 OFF</span>
       </button>
-    </div>
-
-    <!-- Brightness slider (shown when light is on) -->
-    <div v-if="isLightOn && !lightLoading" class="mb-4 p-3 bg-gray-50 rounded">
-      <label for="brightness" class="block text-sm font-medium text-gray-700 mb-2">
-        💡 Brightness: {{ brightness }}%
-      </label>
-      <input 
-        id="brightness"
-        type="range" 
-        min="0" 
-        max="100" 
-        v-model.number="brightness"
-        @change="setBrightness"
-        class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-yellow-500"
-      />
     </div>
 
     <div v-if="lightError" class="text-xs text-red-600 bg-red-50 p-2 rounded mb-3">
@@ -127,7 +111,6 @@ const store = useMicroscopeStore()
 const stage = useStage()
 
 const isLightOn = ref(false)
-const brightness = ref(100)
 const lightLoading = ref(true)
 const isToggling = ref(false)
 const lightError = ref('')
@@ -155,7 +138,6 @@ async function fetchLightStatus() {
     lightError.value = ''
     const response = await apiClient.get('/api/v1/microscope/light/status')
     isLightOn.value = response.data.isOn
-    brightness.value = response.data.brightness || 100
   } catch (err: any) {
     console.error('Failed to fetch light status:', err)
     lightError.value = 'Failed to connect'
@@ -170,29 +152,12 @@ async function toggleLight() {
     lightError.value = ''
     const response = await apiClient.post('/api/v1/microscope/light/toggle')
     isLightOn.value = response.data.isOn
-    brightness.value = response.data.brightness || 100
   } catch (err: any) {
     console.error('Failed to toggle light:', err)
     lightError.value = 'Failed to toggle'
     await fetchLightStatus()
   } finally {
     isToggling.value = false
-  }
-}
-
-async function setBrightness() {
-  try {
-    lightError.value = ''
-    const response = await apiClient.post('/api/v1/microscope/light/set', {
-      isOn: true,
-      brightness: brightness.value,
-    })
-    isLightOn.value = response.data.isOn
-    brightness.value = response.data.brightness
-  } catch (err: any) {
-    console.error('Failed to set brightness:', err)
-    lightError.value = 'Failed to adjust brightness'
-    await fetchLightStatus()
   }
 }
 </script>

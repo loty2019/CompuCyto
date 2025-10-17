@@ -113,7 +113,7 @@ async def toggle_led():
         led_isOn = not led_isOn
         
         # Write to GPIO
-        lgpio.gpio_write(h, LED_PIN, 1 if led_isOn else 0)
+        lgpio.gpio_write(h, LED_PIN, 0 if led_isOn else 1)
         
         return ToggleResponse(
             success=True,

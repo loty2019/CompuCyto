@@ -1,7 +1,7 @@
 <template>
   <div class="bg-white p-5 rounded-lg shadow-md">
     <div class="flex justify-between items-start mb-4 gap-4">
-      <h2 class="text-xl font-bold m-0 text-gray-900">📋 Console</h2>
+      <h2 class="text-xl font-bold m-0 text-gray-900">Console</h2>
       <div class="flex gap-2 flex-wrap">
         <button 
           v-for="filter in logFilters" 
