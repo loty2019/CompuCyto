@@ -541,20 +541,39 @@ async def websocket_camera_stream(websocket: WebSocket):
     Called by frontend to receive live camera feed.
     Multiple clients can connect simultaneously.
     """
+    import time
+    start_time = time.time()
+    print("[WEBSOCKET] Connection request received")
+    logger.info(f"⏱️ WebSocket endpoint called at {start_time}")
+    
+    # Accept connection and send confirmation IMMEDIATELY
     await websocket.accept()
+    accept_time = time.time()
+    print(f"[WEBSOCKET] Connection accepted in {(accept_time - start_time)*1000:.1f}ms")
+    logger.info(f"⏱️ WebSocket accepted in {(accept_time - start_time)*1000:.1f}ms")
+    
     client_info = f"{websocket.client.host}:{websocket.client.port}" if websocket.client else "unknown"
+    print(f"[WEBSOCKET] Client: {client_info}")
     logger.info(f"🔌 WebSocket client connected from {client_info}")
     
+    # Send immediate connection confirmation (no delays)
+    await websocket.send_json({
+        "type": "connected",
+        "message": "Connected",
+        "resolution": {"width": camera.width, "height": camera.height}
+    })
+    send_time = time.time()
+    print(f"[WEBSOCKET] Sent 'connected' message in {(send_time - accept_time)*1000:.1f}ms")
+    logger.info(f"⏱️ Sent connected message in {(send_time - accept_time)*1000:.1f}ms")
+    
     try:
-        # Register this client with the streamer
+        # Register this client with the streamer (now truly non-blocking)
         await streamer.add_client(websocket)
-        
-        # Send initial connection confirmation
-        await websocket.send_json({
-            "type": "connected",
-            "message": "Camera stream connected",
-            "resolution": {"width": camera.width, "height": camera.height}
-        })
+        register_time = time.time()
+        print(f"[WEBSOCKET] Client registered in {(register_time - send_time)*1000:.1f}ms")
+        print(f"[WEBSOCKET] TOTAL connection time: {(register_time - start_time)*1000:.1f}ms")
+        logger.info(f"⏱️ Client registered in {(register_time - send_time)*1000:.1f}ms")
+        logger.info(f"⏱️ TOTAL connection time: {(register_time - start_time)*1000:.1f}ms")
         
         # Keep connection alive and handle incoming messages
         while True:

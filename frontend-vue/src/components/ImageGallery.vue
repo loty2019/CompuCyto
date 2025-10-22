@@ -2,12 +2,10 @@
   <div class="bg-white rounded-lg shadow-md p-6">
     <div class="flex items-center justify-between mb-4">
       <div class="flex items-center gap-3">
-      <h2 class="text-xl font-bold text-gray-800">
-        Images
-      </h2>
-      <span class="text-sm text-gray-600 px-1 border border-gray-300">
-         {{ store.recentImages.length }}
-      </span>
+        <h2 class="text-xl font-bold text-gray-800">Images</h2>
+        <span class="text-sm text-gray-600 px-1 border border-gray-300">
+          {{ store.recentImages.length }}
+        </span>
       </div>
       <!-- Filter Toggle -->
       <div class="flex gap-2">
@@ -75,6 +73,7 @@
         :key="image.id"
         class="aspect-square bg-gray-200 rounded flex flex-col items-center justify-center text-sm text-gray-600 cursor-pointer hover:bg-gray-300 transition-colors relative"
         :title="`${image.filename}${image.user ? ` - by ${image.user.username}` : ''}`"
+        @click="!cleanupMode && viewImage(image)"
       >
         <!-- Actual Image -->
         <img
@@ -83,6 +82,14 @@
           class="w-full h-full object-cover cursor-pointer rounded-md"
           @error="handleImageError($event)"
         />
+
+        <!-- Resolution Badge (top left) -->
+        <div
+          v-if="image.file_size"
+          class="absolute top-2 left-2 bg-black bg-opacity-75 text-white text-xs px-2 py-0.5 rounded pointer-events-none"
+        >
+          {{ formatFileSize(image.file_size) }}
+        </div>
 
         <!-- delete button (only in cleanup mode) -->
         <div
@@ -134,6 +141,89 @@
         No images found
       </div>
     </div>
+
+    <!-- Image Preview Modal -->
+    <div
+      v-if="selectedImage"
+      class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4"
+      @click="closeImage"
+    >
+      <div
+        class="bg-gray-900 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-auto"
+        @click.stop
+      >
+        <div
+          class="p-4 border-b border-gray-700 flex justify-between items-center"
+        >
+          <h3 class="text-white font-medium">{{ selectedImage.filename }}</h3>
+          <div class="flex gap-2 items-center">
+            <a
+              :href="`http://localhost:8001/captures/${selectedImage.filename}`"
+              :download="selectedImage.filename"
+              class="text-blue-400 hover:text-blue-300 text-sm px-3 py-1 bg-gray-800 rounded hover:bg-gray-700 transition-colors flex items-center gap-1"
+              @click.stop
+            >
+              <svg
+                class="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                />
+              </svg>
+              Download
+            </a>
+            <button
+              @click="closeImage"
+              class="text-gray-400 hover:text-white text-2xl leading-none px-2"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+        <div class="p-4">
+          <img
+            :src="`http://localhost:8001/captures/${selectedImage.filename}`"
+            :alt="selectedImage.filename"
+            class="w-full rounded"
+          />
+          <div class="mt-4 text-sm text-gray-400 space-y-1">
+            <div v-if="selectedImage.width && selectedImage.height">
+              Resolution: {{ selectedImage.width }}×{{ selectedImage.height }}
+            </div>
+            <div v-if="selectedImage.file_size">
+              Size: {{ formatFileSize(selectedImage.file_size) }}
+            </div>
+            <div v-if="selectedImage.captured_at">
+              Captured: {{ formatDate(selectedImage.captured_at) }}
+            </div>
+            <div
+              v-if="
+                selectedImage.x_position !== null ||
+                selectedImage.y_position !== null ||
+                selectedImage.z_position !== null
+              "
+            >
+              Position: X={{ selectedImage.x_position ?? "N/A" }}, Y={{
+                selectedImage.y_position ?? "N/A"
+              }}, Z={{ selectedImage.z_position ?? "N/A" }}
+            </div>
+            <div v-if="selectedImage.exposure_time">
+              Exposure: {{ selectedImage.exposure_time }}ms
+            </div>
+            <div v-if="selectedImage.gain">Gain: {{ selectedImage.gain }}</div>
+            <div v-if="selectedImage.user">
+              By: {{ selectedImage.user.username }}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -141,11 +231,34 @@
 import { onMounted, onUnmounted, ref, watch } from "vue";
 import { useMicroscopeStore } from "@/stores/microscope";
 import { imageAPI } from "@/api/client";
+import type { Image } from "@/types";
 
 const store = useMicroscopeStore();
 const photoFilter = ref<"mine" | "all">("mine");
 const loading = ref(false);
 const cleanupMode = ref(false);
+const selectedImage = ref<Image | null>(null);
+
+const formatFileSize = (bytes: number | null): string => {
+  if (!bytes) return "Unknown";
+  const mb = bytes / (1024 * 1024);
+  if (mb >= 1) {
+    return `${mb.toFixed(1)} MB`;
+  }
+  return `${(bytes / 1024).toFixed(1)} KB`;
+};
+
+const formatDate = (dateString: string): string => {
+  return new Date(dateString).toLocaleString();
+};
+
+const viewImage = (image: Image) => {
+  selectedImage.value = image;
+};
+
+const closeImage = () => {
+  selectedImage.value = null;
+};
 
 const handleImageError = (event: Event) => {
   const img = event.target as HTMLImageElement;

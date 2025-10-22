@@ -12,12 +12,13 @@ from typing import Optional, Set
 import numpy as np
 from PIL import Image
 
-try:
-    from pixelinkWrapper import PxLApi
-    PIXELINK_AVAILABLE = True
-except:
-    PIXELINK_AVAILABLE = False
-    PxLApi = None
+# Import shared camera utilities to avoid code duplication
+from camera_utils import (
+    PIXELINK_AVAILABLE, 
+    PxLApi,
+    capture_frame,
+    generate_simulated_frame
+)
 
 logger = logging.getLogger(__name__)
 
@@ -48,16 +49,26 @@ class CameraStreamer:
         
     async def start_streaming(self):
         """Start the streaming loop."""
+        print(f"[STREAMER] start_streaming() called")
         if self.is_streaming:
+            print(f"[STREAMER] Already streaming, ignoring")
             logger.warning("Streaming already active")
             return
             
         if not PIXELINK_AVAILABLE or not self.camera_handle:
+            print(f"[STREAMER] No camera, using simulated stream")
             logger.warning("Camera not available, using simulated stream")
         
+        # Mark as streaming BEFORE starting the loop
+        # This prevents multiple streams from being started
         self.is_streaming = True
+        print(f"[STREAMER] Marked as streaming, creating background task...")
+        logger.info("🚀 Starting camera streaming task...")
+        
+        # Create and start the stream task in background (fire and forget)
         self.stream_task = asyncio.create_task(self._stream_loop())
-        logger.info("Camera streaming started")
+        print(f"[STREAMER] Stream task created and running in background")
+        logger.info("✅ Camera streaming task created (running in background)")
         
     async def stop_streaming(self):
         """Stop the streaming loop."""
@@ -74,14 +85,26 @@ class CameraStreamer:
         logger.info("Camera streaming stopped")
         
     async def add_client(self, websocket):
-        """Register a new WebSocket client."""
+        """Register a new WebSocket client - returns IMMEDIATELY."""
+        print(f"[STREAMER] Adding client... (current count: {len(self.active_clients)})")
         self.active_clients.add(websocket)
-        logger.info(f"🔌 Client connected. Total clients: {len(self.active_clients)}")
+        print(f"[STREAMER] Client registered. Total clients: {len(self.active_clients)}")
+        logger.info(f"🔌 Client registered. Total clients: {len(self.active_clients)}")
         
         # Start streaming if this is the first client
-        if len(self.active_clients) == 1 and not self.is_streaming:
-            logger.info("📹 Starting camera stream (first client)")
-            await self.start_streaming()
+        # Fire and forget - completely non-blocking, no waits
+        if len(self.active_clients) == 1:
+            if not self.is_streaming:
+                print(f"[STREAMER] First client - starting stream in background...")
+                logger.info("📹 Initiating camera stream in background (first client)...")
+                # Fire and forget - don't await, don't wait
+                asyncio.create_task(self.start_streaming())
+                print(f"[STREAMER] Stream task created, returning immediately")
+            else:
+                print(f"[STREAMER] Stream already active")
+                logger.info("📹 Stream already active")
+        # Return immediately - no delays whatsoever
+        print(f"[STREAMER] add_client() returning (no blocking)")
             
     async def remove_client(self, websocket):
         """Unregister a WebSocket client."""
@@ -98,15 +121,52 @@ class CameraStreamer:
         Main streaming loop - continuously captures and broadcasts frames.
         Runs in background task while clients are connected.
         """
+        print(f"[STREAM_LOOP] Starting stream loop")
         logger.info("🎬 Starting stream loop")
         logger.info(f"   Initial state: is_streaming={self.is_streaming}, clients={len(self.active_clients)}")
         
-        # Start camera streaming if available
+        # Start camera streaming in the background (non-blocking, fire and forget)
+        # We'll start capturing frames immediately and let the stream start happen async
         if PIXELINK_AVAILABLE and self.camera_handle:
-            ret = PxLApi.setStreamState(self.camera_handle, PxLApi.StreamState.START)
-            if not PxLApi.apiSuccess(ret[0]):
-                logger.error(f"Failed to start camera stream: {ret[0]}")
-                return
+            print(f"[STREAM_LOOP] Initiating camera hardware stream...")
+            async def start_stream_async():
+                """Start stream in background without blocking"""
+                try:
+                    print(f"[CAMERA] Calling PxLApi.setStreamState(START)...")
+                    def do_start_stream():
+                        try:
+                            ret = PxLApi.setStreamState(self.camera_handle, PxLApi.StreamState.START)
+                            if PxLApi.apiSuccess(ret[0]):
+                                print(f"[CAMERA] Stream started successfully")
+                                logger.info("✅ Camera stream started")
+                                return True
+                            elif ret[0] == -2147483644:  # ApiAlreadyStreamingError
+                                print(f"[CAMERA] Already streaming")
+                                logger.info("✅ Camera already streaming")
+                                return True
+                            else:
+                                print(f"[CAMERA] Stream start returned: {ret[0]}")
+                                logger.warning(f"Stream start returned: {ret[0]}")
+                                return False
+                        except Exception as e:
+                            print(f"[CAMERA] Exception in stream start: {e}")
+                            logger.error(f"Exception in stream start: {e}")
+                            return False
+                    
+                    await asyncio.to_thread(do_start_stream)
+                    print(f"[CAMERA] Stream start complete")
+                except Exception as e:
+                    print(f"[CAMERA] Error in async stream start: {e}")
+                    logger.error(f"Error in async stream start: {e}")
+            
+            # Start stream in background, don't wait for it
+            asyncio.create_task(start_stream_async())
+            logger.info("📹 Camera stream start initiated in background")
+            print(f"[STREAM_LOOP] Camera start task created, continuing...")
+            # Give it just a tiny moment to potentially start
+            await asyncio.sleep(0.05)
+        
+        print(f"[STREAM_LOOP] Entering main capture loop")
         
         frame_count = 0
         last_status_log = 0
@@ -130,7 +190,9 @@ class CameraStreamer:
                     frame_data = await asyncio.to_thread(self._capture_simulated_frame)
                 
                 if frame_data is None:
-                    logger.warning("Frame capture failed, retrying...")
+                    # Don't log every failure - only after multiple failures
+                    if frame_count % 10 == 0:  # Log every 10th failure
+                        logger.debug("Frame capture failed, retrying...")
                     await asyncio.sleep(0.1)
                     continue
                 
@@ -173,112 +235,16 @@ class CameraStreamer:
     def _capture_real_frame(self) -> Optional[np.ndarray]:
         """
         Capture a single frame from the PixeLink camera.
-        Uses getNextFrame approach from sample code.
+        Uses shared utility function to avoid code duplication.
         """
-        try:
-            # Determine image size
-            width, height, bytes_per_pixel = self._determine_raw_image_size()
-            if width == 0 or height == 0:
-                return None
-            
-            # Create NumPy buffer
-            np_image = np.zeros([height, width * bytes_per_pixel], dtype=np.uint8)
-            
-            # Get next frame with retry
-            MAX_RETRIES = 3
-            for attempt in range(MAX_RETRIES):
-                ret = PxLApi.getNextNumPyFrame(self.camera_handle, np_image)
-                if PxLApi.apiSuccess(ret[0]):
-                    break
-                    
-                # Check for fatal errors
-                if ret[0] in [PxLApi.ReturnCode.ApiStreamStopped, 
-                             PxLApi.ReturnCode.ApiNoCameraAvailableError]:
-                    logger.error(f"Fatal camera error: {ret[0]}")
-                    return None
-                    
-                if attempt < MAX_RETRIES - 1:
-                    logger.debug(f"Frame grab attempt {attempt + 1} failed, retrying...")
-            
-            if not PxLApi.apiSuccess(ret[0]):
-                return None
-            
-            frame_descriptor = ret[1]
-            
-            # Format as RGB24
-            format_ret = PxLApi.formatNumPyImage(np_image, frame_descriptor, PxLApi.ImageFormat.RAW_RGB24)
-            if not PxLApi.apiSuccess(format_ret[0]):
-                return None
-            
-            # Convert to RGB array
-            rgb_data = format_ret[1]
-            image_array = np.frombuffer(rgb_data, dtype=np.uint8)
-            image_array = image_array.reshape((height, width, 3))
-            
-            return image_array
-            
-        except Exception as e:
-            logger.error(f"Real frame capture error: {e}")
-            return None
-    
-    def _determine_raw_image_size(self):
-        """Get image dimensions from camera ROI."""
-        try:
-            # Get ROI
-            ret = PxLApi.getFeature(self.camera_handle, PxLApi.FeatureId.ROI)
-            if not PxLApi.apiSuccess(ret[0]):
-                return (0, 0, 0)
-            
-            params = ret[2]
-            roi_width = params[PxLApi.RoiParams.WIDTH]
-            roi_height = params[PxLApi.RoiParams.HEIGHT]
-            
-            # Get pixel addressing
-            pixel_addressing_x = 1
-            pixel_addressing_y = 1
-            
-            ret = PxLApi.getFeature(self.camera_handle, PxLApi.FeatureId.PIXEL_ADDRESSING)
-            if PxLApi.apiSuccess(ret[0]):
-                params = ret[2]
-                if params[PxLApi.PixelAddressingParams.MODE] != PxLApi.PixelAddressingModes.DECIMATE:
-                    pixel_addressing_x = max(1, int(params[PxLApi.PixelAddressingParams.X_VALUE]))
-                    pixel_addressing_y = max(1, int(params[PxLApi.PixelAddressingParams.Y_VALUE]))
-            
-            width = int(roi_width / pixel_addressing_x)
-            height = int(roi_height / pixel_addressing_y)
-            
-            # Get bytes per pixel
-            ret = PxLApi.getFeature(self.camera_handle, PxLApi.FeatureId.PIXEL_FORMAT)
-            if not PxLApi.apiSuccess(ret[0]):
-                return (0, 0, 0)
-            
-            pixel_format = int(ret[2][0])
-            bytes_per_pixel = PxLApi.getBytesPerPixel(pixel_format)
-            
-            return (width, height, bytes_per_pixel)
-            
-        except Exception as e:
-            logger.error(f"Error determining image size: {e}")
-            return (0, 0, 0)
+        return capture_frame(self.camera_handle, max_retries=3)
     
     def _capture_simulated_frame(self) -> np.ndarray:
-        """Generate a simulated test pattern frame."""
-        # Create a gradient pattern for testing
-        image = np.zeros((self.height, self.width, 3), dtype=np.uint8)
-        
-        # Create animated gradient
-        import time
-        phase = int(time.time() * 50) % 256
-        
-        for i in range(self.height):
-            for j in range(self.width):
-                image[i, j] = [
-                    (i + phase) % 256,
-                    (j + phase) % 256,
-                    ((i + j + phase) // 2) % 256
-                ]
-        
-        return image
+        """
+        Generate a simulated test pattern frame.
+        Uses shared utility function to avoid code duplication.
+        """
+        return generate_simulated_frame(self.width, self.height)
     
     def _encode_jpeg(self, frame_data: np.ndarray, quality: int = 85) -> bytes:
         """

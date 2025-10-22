@@ -15,34 +15,14 @@ from PIL import Image
 import threading
 import time
 
-# Fix for wmic error in pixelinkWrapper on newer Windows versions
-try:
-    from pixelinkWrapper import PxLApi
-    PIXELINK_AVAILABLE = True
-except Exception as e:
-    logging.warning(f"Error importing pixelinkWrapper: {e}")
-    logging.warning("Trying alternative import method...")
-    try:
-        # Try to import with subprocess workaround
-        import subprocess
-        original_check_output = subprocess.check_output
-        
-        def patched_check_output(*args, **kwargs):
-            try:
-                return original_check_output(*args, **kwargs)
-            except FileNotFoundError:
-                # Return a dummy version string if wmic fails
-                return b"10.0.0"
-        
-        subprocess.check_output = patched_check_output
-        from pixelinkWrapper import PxLApi
-        subprocess.check_output = original_check_output
-        PIXELINK_AVAILABLE = True
-        logging.info("Successfully imported pixelinkWrapper with workaround")
-    except Exception as e2:
-        PIXELINK_AVAILABLE = False
-        logging.warning(f"Alternative import also failed: {e2}. Running in mock mode.")
-        PxLApi = None
+# Import shared camera utilities to avoid code duplication
+from camera_utils import (
+    PIXELINK_AVAILABLE,
+    PxLApi,
+    determine_raw_image_size,
+    capture_frame,
+    generate_simulated_frame
+)
 
 logger = logging.getLogger(__name__)
 
@@ -574,6 +554,7 @@ class PixelinkCamera:
     def _capture_real_image(self) -> Optional[np.ndarray]:
         """
         Capture image from real Pixelink camera.
+        Uses shared utility function to avoid code duplication.
         
         NOTE: Ensures camera stream is active before capturing.
         """
@@ -586,53 +567,27 @@ class PixelinkCamera:
                     self.is_streaming = True
                     logger.info("✅ Stream started successfully")
                     # Wait a bit for stream to stabilize
-                    import time
                     time.sleep(0.2)
                 else:
                     logger.error(f"❌ Failed to start stream. Error: {ret[0]}")
                     return None
             
-            # Determine image dimensions
-            width, height, bytes_per_pixel = self._determine_raw_image_size()
+            # Determine and update cached dimensions
+            width, height, _ = determine_raw_image_size(self.camera_handle)
             if width == 0 or height == 0:
                 logger.error("Failed to determine image size")
                 return None
             
-            # Update cached dimensions
             self.width = width
             self.height = height
             
-            # Create NumPy buffer for raw image
-            np_image = np.zeros([height, width * bytes_per_pixel], dtype=np.uint8)
+            # Capture frame using shared utility (with 4 retries for image capture)
+            image_array = capture_frame(self.camera_handle, max_retries=4)
             
-            # Capture image with retries (blocking call)
-            MAX_RETRIES = 4
-            ret = None
-            
-            # Get frame with retries (stream should already be running)
-            for attempt in range(MAX_RETRIES):
-                ret = PxLApi.getNextNumPyFrame(self.camera_handle, np_image)
-                if PxLApi.apiSuccess(ret[0]):
-                    logger.info(f"✅ Frame captured successfully on attempt {attempt + 1}")
-                    break
-                logger.warning(f"⚠️ Capture attempt {attempt + 1}/{MAX_RETRIES} failed (error: {ret[0]})")
-            
-            if not ret or not PxLApi.apiSuccess(ret[0]):
-                logger.error(f"❌ Failed to capture image after {MAX_RETRIES} retries")
-                return None
-            
-            frame_descriptor = ret[1]
-            
-            # Format image as JPEG/RGB
-            format_ret = PxLApi.formatNumPyImage(np_image, frame_descriptor, PxLApi.ImageFormat.RAW_RGB24)
-            if not PxLApi.apiSuccess(format_ret[0]):
-                logger.error("Failed to format image")
-                return None
-            
-            # Convert to proper RGB array
-            rgb_data = format_ret[1]
-            image_array = np.frombuffer(rgb_data, dtype=np.uint8)
-            image_array = image_array.reshape((height, width, 3))
+            if image_array is not None:
+                logger.info(f"✅ Image captured successfully")
+            else:
+                logger.error(f"❌ Failed to capture image after retries")
             
             return image_array
             
@@ -640,66 +595,12 @@ class PixelinkCamera:
             logger.error(f"Error capturing real image: {e}")
             return None
     
-    def _determine_raw_image_size(self):
-        """
-        Determine raw image dimensions from camera ROI and pixel format.
-        Returns: (width, height, bytes_per_pixel)
-        """
-        try:
-            # Get ROI (Region of Interest)
-            ret = PxLApi.getFeature(self.camera_handle, PxLApi.FeatureId.ROI)
-            if not PxLApi.apiSuccess(ret[0]):
-                return (0, 0, 0)
-            
-            params = ret[2]
-            roi_width = params[PxLApi.RoiParams.WIDTH]
-            roi_height = params[PxLApi.RoiParams.HEIGHT]
-            
-            # Get pixel addressing (decimation/binning)
-            pixel_addressing_x = 1
-            pixel_addressing_y = 1
-            
-            ret = PxLApi.getFeature(self.camera_handle, PxLApi.FeatureId.PIXEL_ADDRESSING)
-            if PxLApi.apiSuccess(ret[0]):
-                params = ret[2]
-                if len(params) == PxLApi.PixelAddressingParams.NUM_PARAMS:
-                    # Asymmetric pixel addressing
-                    pixel_addressing_x = params[PxLApi.PixelAddressingParams.X_VALUE]
-                    pixel_addressing_y = params[PxLApi.PixelAddressingParams.Y_VALUE]
-                else:
-                    # Symmetric pixel addressing
-                    pixel_addressing_x = params[PxLApi.PixelAddressingParams.VALUE]
-                    pixel_addressing_y = params[PxLApi.PixelAddressingParams.VALUE]
-            
-            # Calculate actual image dimensions
-            width = int(roi_width / pixel_addressing_x)
-            height = int(roi_height / pixel_addressing_y)
-            
-            # Get pixel format to determine bytes per pixel
-            ret = PxLApi.getFeature(self.camera_handle, PxLApi.FeatureId.PIXEL_FORMAT)
-            if not PxLApi.apiSuccess(ret[0]):
-                return (0, 0, 0)
-            
-            params = ret[2]
-            pixel_format = int(params[0])
-            bytes_per_pixel = PxLApi.getBytesPerPixel(pixel_format)
-            
-            return (width, height, bytes_per_pixel)
-            
-        except Exception as e:
-            logger.error(f"Error determining image size: {e}")
-            return (0, 0, 0)
-    
     def _capture_simulated_image(self) -> np.ndarray:
-        image = np.zeros((self.height, self.width, 3), dtype=np.uint8)
-        for i in range(self.height):
-            for j in range(self.width):
-                image[i, j] = [
-                    int(255 * i / self.height),
-                    int(255 * j / self.width),
-                    128
-                ]
-        return image
+        """
+        Generate a simulated test pattern image.
+        Uses shared utility function to avoid code duplication.
+        """
+        return generate_simulated_frame(self.width, self.height)
     
     # ==================== Video Recording Methods ====================
     

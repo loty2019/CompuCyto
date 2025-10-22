@@ -153,7 +153,7 @@
           <div
             class="inline-block w-16 h-16 border-4 border-blue-400 border-t-transparent rounded-full animate-spin"
           ></div>
-          <p class="text-lg font-semibold">Loading camera feed...</p>
+          <p class="text-lg font-semibold">Loading camera feed... (might take some time)</p>
         </div>
         <div
           v-else-if="feedError"
@@ -201,8 +201,8 @@
         {{ gain.toFixed(2) }}x
         <span v-if="gammaSupported"> • Gamma: {{ gamma.toFixed(2) }}</span>
       </div>
-    </div> 
-    
+    </div>
+
     <div class="flex gap-6">
       <!-- Capture Image Button -->
       <button
@@ -621,6 +621,7 @@ async function startFeed() {
 
     websocket.onopen = () => {
       console.log("✅ WebSocket connected");
+      // Stop loading immediately when connection opens
       isLoadingFeed.value = false;
       isConnecting.value = false;
       feedError.value = "";
@@ -640,7 +641,7 @@ async function startFeed() {
           // Update the feed with base64 encoded JPEG
           feedUrl.value = `data:image/jpeg;base64,${message.data}`;
         } else if (message.type === "connected") {
-          console.log("Camera stream ready:", message);
+          console.log("🔌 Camera stream connected:", message);
         }
       } catch (error) {
         console.error("Error parsing WebSocket message:", error);
@@ -810,9 +811,11 @@ async function stopRecording() {
       recordingTime.value = 0;
       recordingStartTime = null;
 
-      const fileSizeMB = result.file_size ? (result.file_size / 1024 / 1024).toFixed(2) : "?";
+      const fileSizeMB = result.file_size
+        ? (result.file_size / 1024 / 1024).toFixed(2)
+        : "?";
       const durationSec = result.duration?.toFixed(1) || "?";
-      
+
       store.addLog(
         `✅ Video saved: ${result.filename} (${durationSec}s, ${fileSizeMB}MB)`,
         "success"
