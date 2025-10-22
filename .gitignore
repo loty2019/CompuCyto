@@ -43,6 +43,10 @@ coverage
 *.local
 .claude
 
+# Generated files
+captures/
+videos/
+
 # Environment files
 .env
 .env.local
