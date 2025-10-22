@@ -10,6 +10,7 @@ import {
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 import { Image } from '../../images/entities/image.entity';
+import { Video } from '../../videos/entities/video.entity';
 
 export enum JobType {
   TIMELAPSE = 'timelapse',
@@ -83,4 +84,7 @@ export class Job {
 
   @OneToMany(() => Image, (image) => image.job)
   images: Image[];
+
+  @OneToMany(() => Video, (video) => video.job)
+  videos: Video[];
 }

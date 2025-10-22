@@ -35,6 +35,15 @@ logger = logging.getLogger(__name__)
 # Global camera instance
 camera: Optional[PixelinkCamera] = None
 
+# Video recording state
+video_recording_state = {
+    "is_recording": False,
+    "h264_path": None,
+    "avi_path": None,
+    "start_time": None,
+    "metadata": {}
+}
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -278,6 +287,244 @@ async def perform_auto_exposure_once():
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ==================== Video Recording Endpoints ====================
+
+@app.post("/video/record/start")
+async def start_video_recording(
+    duration: float = 10.0,
+    playback_frame_rate: float = 25.0,
+    decimation: int = 1
+):
+    """
+    Start recording video from camera.
+    
+    Args:
+        duration: Recording duration in seconds (default: 10)
+        playback_frame_rate: Playback frame rate in fps (default: 25)
+        decimation: Frame decimation factor - use every N'th frame (default: 1)
+    """
+    global video_recording_state
+    
+    if not camera or not camera.is_connected:
+        raise HTTPException(status_code=503, detail="Camera not connected")
+    
+    if video_recording_state["is_recording"]:
+        raise HTTPException(status_code=409, detail="Already recording video")
+    
+    try:
+        # Pause streaming to prevent conflicts
+        streaming_was_active = streamer.is_streaming
+        if streaming_was_active:
+            await streamer.pause_streaming()
+        
+        # Generate filename with timestamp
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
+        filename = f"recording_{timestamp}.avi"
+        
+        videos_path = Path("videos")
+        videos_path.mkdir(parents=True, exist_ok=True)
+        
+        avi_path = videos_path / filename
+        h264_path = videos_path / f"recording_{timestamp}.h264"
+        
+        # Start recording
+        result = camera.start_video_recording(
+            save_path=avi_path,
+            duration=duration,
+            playback_frame_rate=playback_frame_rate,
+            decimation=decimation
+        )
+        
+        # Update state
+        video_recording_state = {
+            "is_recording": True,
+            "h264_path": h264_path,
+            "avi_path": avi_path,
+            "start_time": datetime.now(),
+            "metadata": result,
+            "streaming_was_active": streaming_was_active
+        }
+        
+        logger.info(f"Video recording started: {filename}")
+        
+        return {
+            "success": True,
+            "message": "Video recording started",
+            "filename": filename,
+            **result
+        }
+        
+    except Exception as e:
+        # Resume streaming if it was active
+        if streaming_was_active:
+            await streamer.resume_streaming()
+        logger.error(f"Failed to start video recording: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/video/record/stop")
+async def stop_video_recording():
+    """
+    Stop recording video and finalize the file.
+    """
+    global video_recording_state
+    
+    if not camera or not camera.is_connected:
+        raise HTTPException(status_code=503, detail="Camera not connected")
+    
+    if not video_recording_state["is_recording"]:
+        raise HTTPException(status_code=409, detail="Not currently recording")
+    
+    try:
+        h264_path = video_recording_state["h264_path"]
+        avi_path = video_recording_state["avi_path"]
+        streaming_was_active = video_recording_state.get("streaming_was_active", False)
+        
+        # Stop and finalize recording
+        result = camera.stop_video_recording(h264_path, avi_path)
+        
+        # Calculate duration
+        start_time = video_recording_state["start_time"]
+        end_time = datetime.now()
+        actual_duration = (end_time - start_time).total_seconds()
+        
+        # Reset state
+        video_recording_state = {
+            "is_recording": False,
+            "h264_path": None,
+            "avi_path": None,
+            "start_time": None,
+            "metadata": {}
+        }
+        
+        # Resume streaming if it was active before recording
+        if streaming_was_active:
+            await streamer.resume_streaming()
+        
+        logger.info(f"Video recording stopped: {result['filename']} ({actual_duration:.1f}s)")
+        
+        return {
+            "success": True,
+            "message": "Video recording completed",
+            "capturedAt": start_time.isoformat(),
+            "duration": actual_duration,
+            **result
+        }
+        
+    except Exception as e:
+        # Make sure to reset state and resume streaming
+        video_recording_state = {
+            "is_recording": False,
+            "h264_path": None,
+            "avi_path": None,
+            "start_time": None,
+            "metadata": {}
+        }
+        if video_recording_state.get("streaming_was_active", False):
+            await streamer.resume_streaming()
+        
+        logger.error(f"Failed to stop video recording: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/video/record/cancel")
+async def cancel_video_recording():
+    """
+    Cancel ongoing video recording.
+    """
+    global video_recording_state
+    
+    if not camera or not camera.is_connected:
+        raise HTTPException(status_code=503, detail="Camera not connected")
+    
+    if not video_recording_state["is_recording"]:
+        return {"success": True, "message": "No recording in progress"}
+    
+    try:
+        streaming_was_active = video_recording_state.get("streaming_was_active", False)
+        
+        # Cancel recording
+        camera.cancel_video_recording()
+        
+        # Clean up temporary files
+        h264_path = video_recording_state.get("h264_path")
+        if h264_path and h264_path.exists():
+            try:
+                h264_path.unlink()
+                logger.info(f"Deleted temporary H.264 file")
+            except Exception as e:
+                logger.warning(f"Could not delete H.264 file: {e}")
+        
+        # Reset state
+        video_recording_state = {
+            "is_recording": False,
+            "h264_path": None,
+            "avi_path": None,
+            "start_time": None,
+            "metadata": {}
+        }
+        
+        # Resume streaming if it was active
+        if streaming_was_active:
+            await streamer.resume_streaming()
+        
+        return {
+            "success": True,
+            "message": "Video recording canceled"
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to cancel video recording: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/video/record/status")
+async def get_recording_status():
+    """
+    Get current video recording status.
+    """
+    global video_recording_state
+    
+    if video_recording_state["is_recording"]:
+        elapsed = (datetime.now() - video_recording_state["start_time"]).total_seconds()
+        return {
+            "is_recording": True,
+            "elapsed": elapsed,
+            "metadata": video_recording_state["metadata"]
+        }
+    else:
+        return {
+            "is_recording": False
+        }
+
+
+@app.get("/videos/list")
+async def list_videos():
+    """List all recorded videos in the videos folder."""
+    try:
+        videos_path = Path("videos")
+        if not videos_path.exists():
+            return {"files": [], "count": 0, "path": str(videos_path)}
+        
+        files = []
+        for file in sorted(videos_path.glob("*.avi"), reverse=True):
+            stat = file.stat()
+            files.append({
+                "filename": file.name,
+                "size": stat.st_size,
+                "modified": datetime.fromtimestamp(stat.st_mtime).isoformat()
+            })
+        
+        return {
+            "files": files,
+            "count": len(files),
+            "path": str(videos_path.absolute())
+        }
+    except Exception as e:
+        logger.error(f"Error listing videos: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.websocket("/ws/camera/stream")
 async def websocket_camera_stream(websocket: WebSocket):
     """
@@ -332,6 +579,12 @@ async def websocket_camera_stream(websocket: WebSocket):
 captures_path = Path(settings.image_save_path)
 app.mount("/captures", StaticFiles(directory=str(captures_path)), name="captures")
 logger.info(f"📁 Static files mounted: /captures -> {captures_path.absolute()}")
+
+# Mount static files for recorded videos
+videos_path = Path("videos")
+videos_path.mkdir(parents=True, exist_ok=True)
+app.mount("/videos", StaticFiles(directory=str(videos_path)), name="videos")
+logger.info(f"📁 Static files mounted: /videos -> {videos_path.absolute()}")
 
 
 # Main entry point

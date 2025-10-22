@@ -12,6 +12,8 @@ from datetime import datetime
 from pathlib import Path
 import numpy as np
 from PIL import Image
+import threading
+import time
 
 # Fix for wmic error in pixelinkWrapper on newer Windows versions
 try:
@@ -698,6 +700,348 @@ class PixelinkCamera:
                     128
                 ]
         return image
+    
+    # ==================== Video Recording Methods ====================
+    
+    def __init_video_recording_vars(self):
+        """Initialize video recording variables"""
+        self.is_recording = False
+        self.recording_thread = None
+        self.num_images_streamed = 0
+        self.capture_rc = None
+        self.capture_finished = False
+        self.video_callback = None
+        
+    def start_video_recording(self, 
+                            save_path: Path, 
+                            duration: float = 10.0,
+                            playback_frame_rate: float = 25.0,
+                            decimation: int = 1) -> Dict:
+        """
+        Start recording video from camera.
+        
+        Args:
+            save_path: Path where to save the video (should end with .avi)
+            duration: Recording duration in seconds
+            playback_frame_rate: Frame rate for video playback (fps)
+            decimation: Use every N'th frame (1 = all frames, 5 = every 5th frame)
+            
+        Returns: Metadata dict with recording parameters
+        """
+        if not PIXELINK_AVAILABLE or not self.is_connected:
+            logger.warning("🎭 [SIMULATED] Cannot record video - no real camera")
+            raise RuntimeError("Video recording requires real camera hardware")
+        
+        if self.is_recording:
+            raise RuntimeError("Already recording video")
+        
+        try:
+            # Ensure stream is running
+            if not self.is_streaming:
+                logger.info("Starting stream for video recording")
+                ret = PxLApi.setStreamState(self.camera_handle, PxLApi.StreamState.START)
+                if PxLApi.apiSuccess(ret[0]):
+                    self.is_streaming = True
+                else:
+                    raise RuntimeError(f"Failed to start stream: {ret[0]}")
+            
+            # Get effective frame rate
+            camera_fps = self._get_effective_frame_rate()
+            num_images = int(duration * camera_fps / decimation)
+            
+            logger.info(f"🎬 Starting video recording:")
+            logger.info(f"   Duration: {duration}s")
+            logger.info(f"   Camera FPS: {camera_fps:.2f}")
+            logger.info(f"   Playback FPS: {playback_frame_rate}")
+            logger.info(f"   Decimation: {decimation}")
+            logger.info(f"   Total images to capture: {num_images}")
+            
+            # Create H.264 file path (intermediate file)
+            h264_path = save_path.with_suffix('.h264')
+            
+            # Configure clip encoding
+            clip_info = PxLApi.ClipEncodingInfo()
+            clip_info.uStreamEncoding = PxLApi.ClipEncodingFormat.H264
+            clip_info.uDecimationFactor = decimation
+            clip_info.playbackFrameRate = playback_frame_rate
+            clip_info.playbackBitRate = PxLApi.ClipPlaybackDefaults.BITRATE_DEFAULT
+            
+            # Reset recording state
+            self.is_recording = True
+            self.capture_finished = False
+            self.num_images_streamed = 0
+            self.capture_rc = PxLApi.ReturnCode.ApiSuccess
+            
+            # Create termination callback
+            @PxLApi._terminationFunction
+            def term_fn(hCamera, numberOfFrameBlocksStreamed, retCode):
+                self.num_images_streamed = numberOfFrameBlocksStreamed
+                self.capture_rc = retCode
+                self.capture_finished = True
+                logger.info(f"📹 Video capture callback: streamed={numberOfFrameBlocksStreamed}, rc={retCode}")
+                return PxLApi.ReturnCode.ApiSuccess
+            
+            self.video_callback = term_fn
+            
+            # Start asynchronous video capture
+            ret = PxLApi.getEncodedClip(
+                self.camera_handle,
+                num_images,
+                str(h264_path),
+                clip_info,
+                term_fn
+            )
+            
+            if not PxLApi.apiSuccess(ret[0]):
+                self.is_recording = False
+                raise RuntimeError(f"Failed to start video recording: {ret[0]}")
+            
+            logger.info("✅ Video recording started")
+            
+            return {
+                "success": True,
+                "recording": True,
+                "duration": duration,
+                "frameRate": playback_frame_rate,
+                "cameraFrameRate": camera_fps,
+                "decimation": decimation,
+                "expectedImages": num_images,
+                "h264Path": str(h264_path),
+                "aviPath": str(save_path)
+            }
+            
+        except Exception as e:
+            self.is_recording = False
+            logger.error(f"Error starting video recording: {e}", exc_info=True)
+            raise
+    
+    def stop_video_recording(self, h264_path: Path, avi_path: Path) -> Dict:
+        """
+        Stop recording and finalize video file.
+        
+        Args:
+            h264_path: Path to intermediate H.264 file
+            avi_path: Path to final AVI file
+            
+        Returns: Metadata dict with video information
+        """
+        if not self.is_recording:
+            raise RuntimeError("Not currently recording")
+        
+        try:
+            logger.info("🛑 Stopping video recording IMMEDIATELY...")
+            
+            # IMMEDIATELY stop the stream to abort the capture
+            # This will trigger the callback with whatever frames have been captured so far
+            logger.info("⏹️ Stopping camera stream to abort clip capture...")
+            ret = PxLApi.setStreamState(self.camera_handle, PxLApi.StreamState.STOP)
+            if PxLApi.apiSuccess(ret[0]):
+                self.is_streaming = False
+                logger.info("✅ Stream stopped successfully")
+            else:
+                logger.warning(f"⚠️ Failed to stop stream: {ret[0]}")
+            
+            # Wait briefly for the callback to complete (max 2 seconds)
+            timeout = 2.0
+            start_time = time.time()
+            
+            while not self.capture_finished:
+                if time.time() - start_time > timeout:
+                    logger.warning("⏱️ Callback did not complete, proceeding anyway")
+                    break
+                time.sleep(0.05)
+            
+            self.is_recording = False
+            
+            # Check capture result
+            # Error -2147483630 (stream stopped) is expected when we abort early, so don't warn about it
+            if self.capture_rc and not PxLApi.apiSuccess(self.capture_rc):
+                if self.capture_rc == -2147483630:
+                    # This is the expected "stream stopped" error when we abort recording early
+                    logger.info(f"📹 Video capture stopped early (as expected)")
+                else:
+                    # Unexpected error - log as warning
+                    logger.warning(f"⚠️ Video capture returned error: {self.capture_rc}")
+            
+            num_images_captured = self.num_images_streamed
+            logger.info(f"📹 Video capture completed: {num_images_captured} images captured")
+            
+            # Check if H.264 file was created
+            if not h264_path.exists():
+                logger.error(f"❌ H.264 file not found: {h264_path}")
+                # Try to look for any .h264 files in the directory
+                import os
+                parent_dir = h264_path.parent
+                h264_files = list(parent_dir.glob("*.h264"))
+                if h264_files:
+                    logger.info(f"Found {len(h264_files)} H.264 files in {parent_dir}")
+                    # Use the most recent one
+                    h264_path = max(h264_files, key=lambda p: p.stat().st_mtime)
+                    logger.info(f"Using most recent H.264 file: {h264_path}")
+                else:
+                    raise RuntimeError(f"H.264 file not found: {h264_path}")
+            
+            logger.info(f"🔄 Converting H.264 to AVI...")
+            ret = PxLApi.formatClip(
+                str(h264_path),
+                str(avi_path),
+                PxLApi.ClipEncodingFormat.H264,
+                PxLApi.ClipFileContainerFormat.AVI
+            )
+            
+            if not PxLApi.apiSuccess(ret[0]):
+                logger.error(f"Failed to convert video to AVI: {ret[0]}")
+                # Still try to clean up
+                try:
+                    h264_path.unlink()
+                except:
+                    pass
+                raise RuntimeError(f"Failed to convert video to AVI: {ret[0]}")
+            
+            # Get file info
+            file_size = avi_path.stat().st_size if avi_path.exists() else 0
+            
+            logger.info(f"✅ Video saved: {avi_path} ({file_size / 1024 / 1024:.2f} MB)")
+            
+            # Clean up H.264 file
+            try:
+                h264_path.unlink()
+                logger.info(f"🗑️ Cleaned up temporary H.264 file")
+            except Exception as e:
+                logger.warning(f"Could not delete H.264 file: {e}")
+            
+            # IMPORTANT: Restart the stream so the camera is ready for live feed and image capture
+            # The streamer or next capture will use this stream
+            logger.info("📹 Restarting camera stream after video recording...")
+            ret = PxLApi.setStreamState(self.camera_handle, PxLApi.StreamState.START)
+            if PxLApi.apiSuccess(ret[0]):
+                self.is_streaming = True
+                logger.info("✅ Stream restarted successfully")
+            else:
+                logger.warning(f"⚠️ Failed to restart stream: {ret[0]}")
+            
+            return {
+                "success": True,
+                "filename": avi_path.name,
+                "filepath": str(avi_path.absolute()),
+                "fileSize": file_size,
+                "numImages": num_images_captured,
+                "exposureTime": self.exposure,
+                "gain": self.gain,
+                "gamma": self.gamma,
+                "width": self.width,
+                "height": self.height,
+                "metadata": {
+                    "format": "AVI",
+                    "encoding": "H264",
+                    "cameraConnected": self.is_connected
+                }
+            }
+            
+        except Exception as e:
+            self.is_recording = False
+            logger.error(f"Error stopping video recording: {e}", exc_info=True)
+            raise
+    
+    def cancel_video_recording(self) -> bool:
+        """Cancel ongoing video recording"""
+        if not self.is_recording:
+            return False
+        
+        try:
+            logger.info("❌ Canceling video recording...")
+            # Stop the stream to cancel the capture
+            if self.is_streaming:
+                PxLApi.setStreamState(self.camera_handle, PxLApi.StreamState.STOP)
+                self.is_streaming = False
+            
+            self.is_recording = False
+            self.capture_finished = True
+            logger.info("✅ Video recording canceled")
+            
+            # Restart the stream for live feed and image capture
+            logger.info("📹 Restarting camera stream after cancellation...")
+            ret = PxLApi.setStreamState(self.camera_handle, PxLApi.StreamState.START)
+            if PxLApi.apiSuccess(ret[0]):
+                self.is_streaming = True
+                logger.info("✅ Stream restarted successfully")
+            else:
+                logger.warning(f"⚠️ Failed to restart stream: {ret[0]}")
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error canceling video recording: {e}")
+            return False
+    
+    def _get_effective_frame_rate(self) -> float:
+        """
+        Get the effective frame rate being used by the camera.
+        Tries ACTUAL_FRAME_RATE first, falls back to FRAME_RATE.
+        """
+        frame_rate_feature = PxLApi.FeatureId.FRAME_RATE
+        
+        # Try to use ACTUAL_FRAME_RATE if available
+        ret = PxLApi.getCameraFeatures(self.camera_handle, PxLApi.FeatureId.ACTUAL_FRAME_RATE)
+        if PxLApi.apiSuccess(ret[0]):
+            camera_features = ret[1]
+            if camera_features.Features[0].uFlags & PxLApi.FeatureFlags.PRESENCE:
+                frame_rate_feature = PxLApi.FeatureId.ACTUAL_FRAME_RATE
+        
+        # Get the frame rate
+        ret = PxLApi.getFeature(self.camera_handle, frame_rate_feature)
+        if not PxLApi.apiSuccess(ret[0]):
+            logger.warning("Could not get frame rate, using default 30 fps")
+            return 30.0
+        
+        params = ret[2]
+        return params[0]
+    
+    def is_video_recording(self) -> bool:
+        """Check if currently recording video"""
+        return self.is_recording
+    
+    def __init__(self, serial_number: Optional[str] = None):
+        # Initialize video recording variables first
+        self.__init_video_recording_vars()
+        
+        # Original initialization code
+        self.serial_number = serial_number
+        self.camera_handle = None
+        self.is_connected = False
+        self.is_streaming = False
+        # Note: PixeLink API uses SECONDS for exposure internally
+        # We'll store as milliseconds for UI/database, convert when needed
+        self.exposure = 100.0  # Default 100ms
+        self.gain = 1.0
+        self.gamma = 1.0  # Default gamma value
+        self.width = 1280
+        self.height = 1024
+        
+        # Exposure limits (in milliseconds)
+        self.exposure_min = 0.001  # 1 microsecond
+        self.exposure_max = 10000.0  # 10 seconds
+        
+        # Gain limits
+        self.gain_min = 1.0
+        self.gain_max = 16.0
+        
+        # Gamma limits
+        self.gamma_min = 0.5
+        self.gamma_max = 4.0
+        self.gamma_supported = False  # Will be set during initialization
+        
+        # Auto-exposure state
+        self.auto_exposure_enabled = False
+        self.auto_exposure_supported = False  # Will be set during initialization
+        
+        logger.info(f"PixelinkCamera initializing... PIXELINK_AVAILABLE={PIXELINK_AVAILABLE}")
+        
+        if PIXELINK_AVAILABLE:
+            self._initialize_camera()
+        else:
+            logger.warning("⚠️ PixeLink SDK not available - running in SIMULATED mode")
+            logger.warning("   Install pixelinkWrapper to use real camera")
     
     def disconnect(self):
         if PIXELINK_AVAILABLE and self.is_connected:

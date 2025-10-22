@@ -1,18 +1,18 @@
 <template>
-  <div class="max-w-screen-xl mx-auto p-5">
-    <header class="bg-white p-5 rounded-lg mb-5 shadow-md">
+  <div class="max-w-screen-xl mx-auto px-5 pb-5 pt-2">
+    <header class="bg-white p-5 rounded-lg mb-2 shadow-md">
       <StatusBar />
     </header>
 
     <!-- Main Control Panel: Camera (left) + Stage & Map (right column) -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-5">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-2 mb-5">
       <!-- Camera Control - Takes up 2/3 on large screens -->
       <div id="camera" class="lg:col-span-2">
         <CameraControl />
       </div>
 
       <!-- Right Column - Stage + Map stacked vertically -->
-      <div class="flex flex-col gap-5">
+      <div class="flex flex-col gap-2">
         <div id="stage"><StageControl /></div>
         <div id="map"><MicroscopeMap /></div>
       </div>

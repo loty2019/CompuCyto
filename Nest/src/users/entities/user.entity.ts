@@ -13,6 +13,7 @@ import * as bcrypt from 'bcrypt';
 import { Job } from '../../jobs/entities/job.entity';
 import { Position } from '../../positions/entities/position.entity';
 import { Image } from '../../images/entities/image.entity';
+import { Video } from '../../videos/entities/video.entity';
 import { Exclude } from 'class-transformer';
 
 /**
@@ -162,6 +163,13 @@ export class User {
    */
   @OneToMany(() => Image, (image) => image.user)
   images: Image[];
+
+  /**
+   * One-to-Many relationship with Video
+   * All videos recorded by this user
+   */
+  @OneToMany(() => Video, (video) => video.user)
+  videos: Video[];
 
   // ==================== Methods ====================
 

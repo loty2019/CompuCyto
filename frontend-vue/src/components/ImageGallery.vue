@@ -53,7 +53,7 @@
       class="mb-3 p-2 bg-red-50 border border-red-200 rounded text-sm text-red-700 flex items-center gap-2"
     >
       <span class="text-lg">⚠️</span>
-      <span>Cleanup mode active - Hover over images to delete them</span>
+      <span>Cleanup mode active (Deleting images is permanent)</span>
     </div>
 
     <div v-if="loading" class="flex items-center justify-center p-8">
@@ -78,7 +78,7 @@
           @error="handleImageError($event)"
         />
 
-        <!-- Hover overlay with delete button (only in cleanup mode) -->
+        <!-- delete button (only in cleanup mode) -->
         <div
           v-if="cleanupMode"
           class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-70 transition-all flex flex-col items-center justify-center gap-2"

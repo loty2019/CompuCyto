@@ -1,6 +1,6 @@
 <template>
   <div class="bg-white p-4 rounded-xl shadow-lg">
-    <h2 class="text-xl font-bold mb-4 text-gray-900">Camera Control</h2>
+    <h2 class="text-xl font-bold mb-4 text-gray-900">Camera Controls</h2>
 
     <!-- Two Column Layout for Controls -->
     <div class="grid grid-cols-2 gap-4 mb-4">
@@ -120,10 +120,12 @@
     </div>
 
     <!-- Live Camera Feed Section -->
-    <div class="my-4 pb-4">
+    <div class="mt-4 pb-4 pt-2 border-t-2">
       <div class="flex items-center justify-between mb-3">
         <div class="flex items-center gap-2">
-          <h3 class="text-base font-bold text-gray-800">Live Preview</h3>
+          <h3 class="text-base font-bold text-gray-800 text-xl">
+            Live Preview
+          </h3>
           <span
             v-if="feedUrl && !feedError && lightWarning"
             class="text-xs font-semibold text-yellow-600 bg-yellow-50 px-2 py-1 rounded border border-yellow-300 flex items-center gap-1"
@@ -135,7 +137,7 @@
         <button
           v-if="feedUrl && !feedError"
           @click="stopFeed"
-          class="bg-red-500 text-white px-3 py-1.5 text-xs rounded hover:bg-red-600 transition-colors font-medium shadow-sm"
+          class="bg-red-500 text-white px-3 py-1.5 text-s rounded hover:bg-red-600 transition-colors font-medium shadow-sm"
         >
           Stop Feed
         </button>
@@ -199,26 +201,51 @@
         {{ gain.toFixed(2) }}x
         <span v-if="gammaSupported"> • Gamma: {{ gamma.toFixed(2) }}</span>
       </div>
-    </div>
-
-    <button
-      @click="capture"
-      :disabled="camera.isCapturing.value"
-      class="w-full bg-blue-600 text-white px-4 py-3 rounded-lg cursor-pointer text-base font-bold transition-all hover:bg-blue-700 hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed shadow-md transform hover:scale-[1.01] active:scale-[0.99]"
-    >
-      <span
-        v-if="camera.isCapturing.value"
-        class="flex items-center justify-center gap-2"
+    </div> 
+    
+    <div class="flex gap-6">
+      <!-- Capture Image Button -->
+      <button
+        @click="capture"
+        :disabled="camera.isCapturing.value"
+        class="w-full bg-blue-600 text-white px-4 py-3 rounded-lg cursor-pointer text-base font-bold transition-all hover:bg-blue-700 hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed shadow-md transform hover:scale-[1.01] active:scale-[0.99]"
       >
-        <div
-          class="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"
-        ></div>
-        Capturing...
-      </span>
-      <span v-else class="flex items-center justify-center gap-2">
-        Capture Image
-      </span>
-    </button>
+        <span
+          v-if="camera.isCapturing.value"
+          class="flex items-center justify-center gap-2"
+        >
+          <div
+            class="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"
+          ></div>
+          Capturing...
+        </span>
+        <span v-else class="flex items-center justify-center gap-2">
+          Capture Image
+        </span>
+      </button>
+
+      <!-- Record Video Button -->
+      <button
+        @click="toggleRecording"
+        :disabled="camera.isCapturing.value"
+        :class="[
+          'w-full px-4 py-3 rounded-lg cursor-pointer text-base font-bold transition-all hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed shadow-md transform hover:scale-[1.01] active:scale-[0.99]',
+          isRecording
+            ? 'bg-red-600 text-white hover:bg-red-700'
+            : 'bg-green-600 text-white hover:bg-green-700',
+        ]"
+      >
+        <span v-if="isRecording" class="flex items-center justify-center gap-2">
+          <div
+            class="inline-block w-3 h-3 bg-white rounded-sm animate-pulse"
+          ></div>
+          Stop Recording ({{ recordingTime.toFixed(0) }}s)
+        </span>
+        <span v-else class="flex items-center justify-center gap-2">
+          Record Video
+        </span>
+      </button>
+    </div>
   </div>
 </template>
 
@@ -299,6 +326,12 @@ const feedError = ref("");
 let websocket: WebSocket | null = null;
 let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
 const isConnecting = ref(false);
+
+// Video recording state
+const isRecording = ref(false);
+const recordingTime = ref(0);
+let recordingInterval: ReturnType<typeof setInterval> | null = null;
+let recordingStartTime: Date | null = null;
 
 // Computed warning based on store's light status and feed status
 const lightWarning = computed(() => {
@@ -696,5 +729,106 @@ function handleFeedError() {
 function handleFeedLoad() {
   feedError.value = "";
   isLoadingFeed.value = false;
+}
+
+async function toggleRecording() {
+  if (isRecording.value) {
+    await stopRecording();
+  } else {
+    await startRecording();
+  }
+}
+
+async function startRecording() {
+  try {
+    store.addLog("Starting video recording...", "info");
+
+    const API_BASE_URL =
+      import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
+    const response = await fetch(
+      `${API_BASE_URL}/video/record/start?duration=30&playback_frame_rate=25&decimation=1`.replace(
+        ":3000",
+        ":8001"
+      ),
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    const result = await response.json();
+
+    if (result.success) {
+      isRecording.value = true;
+      recordingStartTime = new Date();
+      recordingTime.value = 0;
+
+      // Update timer every 100ms
+      recordingInterval = setInterval(() => {
+        if (recordingStartTime) {
+          recordingTime.value =
+            (new Date().getTime() - recordingStartTime.getTime()) / 1000;
+        }
+      }, 100);
+
+      store.addLog(
+        `Recording started: ${result.filename} (${result.duration}s max)`,
+        "success"
+      );
+    } else {
+      store.addLog("Failed to start recording", "error");
+    }
+  } catch (error: any) {
+    store.addLog(`Recording error: ${error.message}`, "error");
+  }
+}
+
+async function stopRecording() {
+  try {
+    // Clear the timer
+    if (recordingInterval) {
+      clearInterval(recordingInterval);
+      recordingInterval = null;
+    }
+
+    store.addLog("Stopping video recording...", "info");
+
+    const API_BASE_URL =
+      import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
+    const response = await fetch(
+      `${API_BASE_URL}/video/record/stop`.replace(":3000", ":8001"),
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    const result = await response.json();
+
+    if (result.success) {
+      isRecording.value = false;
+      recordingTime.value = 0;
+      recordingStartTime = null;
+
+      store.addLog(
+        `Video saved: ${result.filename} (${result.duration.toFixed(1)}s, ${(result.fileSize / 1024 / 1024).toFixed(2)}MB)`,
+        "success"
+      );
+    } else {
+      store.addLog("Failed to stop recording", "error");
+    }
+  } catch (error: any) {
+    isRecording.value = false;
+    recordingTime.value = 0;
+    if (recordingInterval) {
+      clearInterval(recordingInterval);
+      recordingInterval = null;
+    }
+    store.addLog(`Recording stop error: ${error.message}`, "error");
+  }
 }
 </script>

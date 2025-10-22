@@ -9,6 +9,7 @@ import { CameraModule } from './camera/camera.module';
 import { StageModule } from './stage/stage.module';
 import { MicroscopeModule } from './microscope/microscope.module';
 import { ImagesModule } from './images/images.module';
+import { VideosModule } from './videos/videos.module';
 import { HealthController } from './common/controllers/health.controller';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -28,6 +29,7 @@ import { EventsGateway } from './common/websocket/events.gateway';
     StageModule,
     MicroscopeModule,
     ImagesModule,
+    VideosModule,
   ],
   controllers: [AppController, HealthController],
   providers: [AppService, EventsGateway],

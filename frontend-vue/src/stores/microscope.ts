@@ -34,6 +34,18 @@ export const useMicroscopeStore = defineStore("microscope", () => {
       width: 1920,
       height: 1080,
     },
+    exposureMin: 0,
+    exposureMax: 0,
+    gainMin: 0,
+    gainMax: 0,
+    gamma: 0,
+    gammaMin: 0,
+    gammaMax: 0,
+    gammaSupported: false,
+    autoExposure: false,
+    autoExposureSupported: false,
+    connected: false,
+    streaming: false
   });
 
   const images = ref<Image[]>([]);
