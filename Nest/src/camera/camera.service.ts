@@ -8,6 +8,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ConfigService } from '../config/config.service';
 import { Image } from '../images/entities/image.entity';
+import { Video } from '../videos/entities/video.entity';
 import { catchError, firstValueFrom } from 'rxjs';
 import { AxiosError } from 'axios';
 
@@ -31,6 +32,8 @@ export class CameraService {
     private configService: ConfigService,
     @InjectRepository(Image)
     private imageRepository: Repository<Image>,
+    @InjectRepository(Video)
+    private videoRepository: Repository<Video>,
   ) {
     // Load configuration from environment variables
     this.baseUrl = this.configService.pythonCameraUrl;
@@ -250,6 +253,231 @@ export class CameraService {
       return true;
     } catch {
       return false;
+    }
+  }
+
+  /**
+   * Start video recording
+   *
+   * Forwards recording request to Python camera service.
+   *
+   * @param duration - Recording duration in seconds
+   * @param playbackFrameRate - Playback frame rate in fps
+   * @param decimation - Frame decimation factor
+   * @returns Recording metadata
+   */
+  async startVideoRecording(
+    duration?: number,
+    playbackFrameRate?: number,
+    decimation?: number,
+  ): Promise<any> {
+    try {
+      const params: any = {};
+      if (duration !== undefined) params.duration = duration;
+      if (playbackFrameRate !== undefined)
+        params.playback_frame_rate = playbackFrameRate;
+      if (decimation !== undefined) params.decimation = decimation;
+
+      const { data } = await firstValueFrom(
+        this.httpService
+          .post(`${this.baseUrl}/video/record/start`, null, {
+            params,
+            timeout: this.timeout,
+          })
+          .pipe(
+            catchError((error: AxiosError) => {
+              this.logger.error(
+                `Failed to start video recording: ${error.message}`,
+              );
+              throw new ServiceUnavailableException(
+                'Camera service unavailable',
+              );
+            }),
+          ),
+      );
+
+      this.logger.log(
+        `Video recording started: ${data.filename || 'unknown'}`,
+      );
+      return data;
+    } catch (error) {
+      this.logger.error(`Start video recording error: ${error.message}`);
+      throw new ServiceUnavailableException('Camera service unavailable');
+    }
+  }
+
+  /**
+   * Stop video recording and save to database
+   *
+   * Stops recording, retrieves metadata from Python service,
+   * and saves video metadata to database with user ID.
+   *
+   * @param userId - ID of the user who recorded the video
+   * @returns Video metadata with database ID
+   */
+  async stopVideoRecording(userId?: number): Promise<any> {
+    try {
+      const { data } = await firstValueFrom(
+        this.httpService
+          .post(`${this.baseUrl}/video/record/stop`, null, {
+            timeout: 30000, // 30 second timeout for video processing
+          })
+          .pipe(
+            catchError((error: AxiosError) => {
+              this.logger.error(
+                `Failed to stop video recording: ${error.message}`,
+              );
+              throw new ServiceUnavailableException(
+                'Camera service unavailable',
+              );
+            }),
+          ),
+      );
+
+      this.logger.log(
+        `Video recording stopped: ${data.filename || 'unknown'}`,
+      );
+
+      // Attempt to save video metadata to database with user ID
+      if (data && data.success && data.filename) {
+        if (!userId) {
+          this.logger.warn(
+            `Video recorded but not saved to database: No userId provided. Filename: ${data.filename}`,
+          );
+          return {
+            ...data,
+            videoId: null,
+            databaseSaved: false,
+            warning:
+              'Video recorded but not saved to database: User not authenticated',
+          };
+        }
+
+        try {
+          const video = this.videoRepository.create({
+            userId: userId,
+            filename: data.filename,
+            capturedAt: new Date(data.capturedAt),
+            duration: data.duration ?? null,
+            frameRate: data.playback_frame_rate ?? null,
+            captureFrameRate: data.capture_frame_rate ?? null,
+            exposureTime: data.exposure_time ?? null,
+            gain: data.gain ?? null,
+            gamma: data.gamma ?? null,
+            fileSize: data.file_size ?? null,
+            width: data.width ?? null,
+            height: data.height ?? null,
+            encodingFormat: data.encoding_format ?? null,
+            containerFormat: data.container_format ?? null,
+            metadata: data.metadata ?? {},
+          });
+
+          const savedVideo = await this.videoRepository.save(video);
+          this.logger.log(
+            `Video saved to database: ID ${savedVideo.id}, filename: ${data.filename}`,
+          );
+
+          // Return combined response with database ID
+          return {
+            ...data,
+            videoId: savedVideo.id,
+            databaseSaved: true,
+            warning: null,
+          };
+        } catch (dbError) {
+          // Database save failed - log error but still return success since video was recorded
+          this.logger.error(
+            `Database save failed for recorded video ${data.filename}: ${dbError.message}`,
+          );
+          return {
+            ...data,
+            videoId: null,
+            databaseSaved: false,
+            warning: `Video recorded successfully but database save failed: ${dbError.message}`,
+          };
+        }
+      }
+
+      // Python service returned unsuccessful response
+      this.logger.error(
+        `Video recording unsuccessful: ${JSON.stringify(data)}`,
+      );
+      return {
+        ...data,
+        videoId: null,
+        databaseSaved: false,
+        warning: 'Video recording returned unsuccessful response',
+      };
+    } catch (error) {
+      this.logger.error(`Stop video recording error: ${error.message}`);
+      throw new ServiceUnavailableException('Camera service unavailable');
+    }
+  }
+
+  /**
+   * Cancel video recording
+   *
+   * Cancels ongoing video recording.
+   *
+   * @returns Cancellation result
+   */
+  async cancelVideoRecording(): Promise<any> {
+    try {
+      const { data } = await firstValueFrom(
+        this.httpService
+          .post(`${this.baseUrl}/video/record/cancel`, null, {
+            timeout: this.timeout,
+          })
+          .pipe(
+            catchError((error: AxiosError) => {
+              this.logger.error(
+                `Failed to cancel video recording: ${error.message}`,
+              );
+              throw new ServiceUnavailableException(
+                'Camera service unavailable',
+              );
+            }),
+          ),
+      );
+
+      this.logger.log('Video recording canceled');
+      return data;
+    } catch (error) {
+      this.logger.error(`Cancel video recording error: ${error.message}`);
+      throw new ServiceUnavailableException('Camera service unavailable');
+    }
+  }
+
+  /**
+   * Get video recording status
+   *
+   * Checks if video is currently being recorded.
+   *
+   * @returns Recording status
+   */
+  async getVideoRecordingStatus(): Promise<any> {
+    try {
+      const { data } = await firstValueFrom(
+        this.httpService
+          .get(`${this.baseUrl}/video/record/status`, {
+            timeout: this.timeout,
+          })
+          .pipe(
+            catchError((error: AxiosError) => {
+              this.logger.error(
+                `Failed to get recording status: ${error.message}`,
+              );
+              throw new ServiceUnavailableException(
+                'Camera service unavailable',
+              );
+            }),
+          ),
+      );
+
+      return data;
+    } catch (error) {
+      this.logger.error(`Get recording status error: ${error.message}`);
+      throw new ServiceUnavailableException('Camera service unavailable');
     }
   }
 }

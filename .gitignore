@@ -70,3 +70,36 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
 # Setup scripts folder
 SetUp/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv
+
+# FastAPI
+.env
+*.log
+
+# Images
+captures/
+*.jpg
+*.png
+*.bmp
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini

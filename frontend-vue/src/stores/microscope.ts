@@ -8,6 +8,7 @@ import type {
   Job,
   SavedPosition,
   LogEntry,
+  Video,
 } from "@/types";
 
 export const useMicroscopeStore = defineStore("microscope", () => {
@@ -49,6 +50,7 @@ export const useMicroscopeStore = defineStore("microscope", () => {
   });
 
   const images = ref<Image[]>([]);
+  const videos = ref<Video[]>([]);
   const jobs = ref<Job[]>([]);
   const savedPositions = ref<SavedPosition[]>([]);
   const logs = ref<LogEntry[]>([]);
@@ -73,6 +75,7 @@ export const useMicroscopeStore = defineStore("microscope", () => {
   );
 
   const recentImages = computed(() => images.value.slice(0, 20));
+  const recentVideos = computed(() => videos.value.slice(0, 20));
 
   // Actions
   function updateSystemStatus(status: Partial<SystemStatus>) {
@@ -93,6 +96,14 @@ export const useMicroscopeStore = defineStore("microscope", () => {
 
   function setImages(imageList: Image[]) {
     images.value = imageList;
+  }
+
+  function addVideo(video: Video) {
+    videos.value.unshift(video);
+  }
+
+  function setVideos(videoList: Video[]) {
+    videos.value = videoList;
   }
 
   function addJob(job: Job) {
@@ -154,6 +165,7 @@ export const useMicroscopeStore = defineStore("microscope", () => {
     position,
     cameraSettings,
     images,
+    videos,
     jobs,
     savedPositions,
     logs,
@@ -163,6 +175,7 @@ export const useMicroscopeStore = defineStore("microscope", () => {
     isSystemHealthy,
     activeJobs,
     recentImages,
+    recentVideos,
 
     // Actions
     updateSystemStatus,
@@ -170,6 +183,8 @@ export const useMicroscopeStore = defineStore("microscope", () => {
     updateCameraSettings,
     addImage,
     setImages,
+    addVideo,
+    setVideos,
     addJob,
     updateJob,
     setJobs,

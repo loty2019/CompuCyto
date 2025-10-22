@@ -19,6 +19,7 @@
     </div>
 
     <div id="gallery" class="mb-5"><ImageGallery /></div>
+    <div id="video-gallery" class="mb-5"><VideoGallery /></div>
     <div id="jobs" class="mb-5"><JobManager /></div>
     <div id="console" class="mb-5"><ConsoleLog /></div>
   </div>
@@ -35,6 +36,7 @@ import StageControl from "@/components/StageControl.vue";
 import MicroscopeMap from "@/components/MicroscopeMap.vue";
 import JobManager from "@/components/JobManager.vue";
 import ImageGallery from "@/components/ImageGallery.vue";
+import VideoGallery from "@/components/VideoGallery.vue";
 import ConsoleLog from "@/components/ConsoleLog.vue";
 
 const store = useMicroscopeStore();

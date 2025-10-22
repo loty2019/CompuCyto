@@ -226,4 +226,151 @@ export class CameraController {
   async getPreview() {
     return this.cameraService.getPreviewUrl();
   }
+
+  /**
+   * Start video recording
+   *
+   * @route POST /api/v1/camera/video/start
+   * @protected Requires JWT authentication
+   */
+  @Post('video/start')
+  @ApiOperation({
+    summary: 'Start video recording',
+    description:
+      'Start recording video from camera. Optionally specify duration, frame rate, and decimation.',
+  })
+  @ApiBody({
+    schema: {
+      example: {
+        duration: 30,
+        playbackFrameRate: 25,
+        decimation: 1,
+      },
+    },
+    required: false,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Video recording started',
+    schema: {
+      example: {
+        success: true,
+        message: 'Video recording started',
+        filename: 'recording_20251022_120811_231.avi',
+      },
+    },
+  })
+  @ApiResponse({
+    status: 503,
+    description: 'Python camera service unavailable',
+  })
+  async startVideoRecording(
+    @Body()
+    body?: {
+      duration?: number;
+      playbackFrameRate?: number;
+      decimation?: number;
+    },
+  ) {
+    return this.cameraService.startVideoRecording(
+      body?.duration,
+      body?.playbackFrameRate,
+      body?.decimation,
+    );
+  }
+
+  /**
+   * Stop video recording
+   *
+   * @route POST /api/v1/camera/video/stop
+   * @protected Requires JWT authentication
+   */
+  @Post('video/stop')
+  @ApiOperation({
+    summary: 'Stop video recording',
+    description:
+      'Stop recording video and finalize the file. Video metadata will be saved to database.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Video recording stopped and saved',
+    schema: {
+      example: {
+        success: true,
+        message: 'Video recording completed',
+        filename: 'recording_20251022_120811_231.avi',
+        videoId: 1,
+        databaseSaved: true,
+        duration: 30.5,
+        fileSize: 15456789,
+      },
+    },
+  })
+  @ApiResponse({
+    status: 503,
+    description: 'Python camera service unavailable',
+  })
+  async stopVideoRecording(@Request() req) {
+    const userId = req.user.id;
+    return this.cameraService.stopVideoRecording(userId);
+  }
+
+  /**
+   * Cancel video recording
+   *
+   * @route POST /api/v1/camera/video/cancel
+   * @protected Requires JWT authentication
+   */
+  @Post('video/cancel')
+  @ApiOperation({
+    summary: 'Cancel video recording',
+    description: 'Cancel ongoing video recording without saving.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Video recording canceled',
+    schema: {
+      example: {
+        success: true,
+        message: 'Video recording canceled',
+      },
+    },
+  })
+  @ApiResponse({
+    status: 503,
+    description: 'Python camera service unavailable',
+  })
+  async cancelVideoRecording() {
+    return this.cameraService.cancelVideoRecording();
+  }
+
+  /**
+   * Get video recording status
+   *
+   * @route GET /api/v1/camera/video/status
+   * @protected Requires JWT authentication
+   */
+  @Get('video/status')
+  @ApiOperation({
+    summary: 'Get video recording status',
+    description: 'Check if video is currently being recorded.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Recording status retrieved',
+    schema: {
+      example: {
+        is_recording: true,
+        elapsed: 15.3,
+        metadata: {},
+      },
+    },
+  })
+  @ApiResponse({
+    status: 503,
+    description: 'Python camera service unavailable',
+  })
+  async getVideoRecordingStatus() {
+    return this.cameraService.getVideoRecordingStatus();
+  }
 }

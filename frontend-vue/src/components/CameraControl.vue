@@ -743,20 +743,19 @@ async function startRecording() {
   try {
     store.addLog("Starting video recording...", "info");
 
-    const API_BASE_URL =
-      import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
-    const response = await fetch(
-      `${API_BASE_URL}/video/record/start?duration=30&playback_frame_rate=25&decimation=1`.replace(
-        ":3000",
-        ":8001"
-      ),
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      }
-    );
+    const token = localStorage.getItem("access_token");
+    const response = await fetch("/api/v1/camera/video/start", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        duration: 30,
+        playbackFrameRate: 25,
+        decimation: 1,
+      }),
+    });
 
     const result = await response.json();
 
@@ -774,7 +773,7 @@ async function startRecording() {
       }, 100);
 
       store.addLog(
-        `Recording started: ${result.filename} (${result.duration}s max)`,
+        `Recording started (click Stop Recording to finish)`,
         "success"
       );
     } else {
@@ -795,17 +794,14 @@ async function stopRecording() {
 
     store.addLog("Stopping video recording...", "info");
 
-    const API_BASE_URL =
-      import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
-    const response = await fetch(
-      `${API_BASE_URL}/video/record/stop`.replace(":3000", ":8001"),
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      }
-    );
+    const token = localStorage.getItem("access_token");
+    const response = await fetch("/api/v1/camera/video/stop", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
 
     const result = await response.json();
 
@@ -814,10 +810,22 @@ async function stopRecording() {
       recordingTime.value = 0;
       recordingStartTime = null;
 
+      const fileSizeMB = result.file_size ? (result.file_size / 1024 / 1024).toFixed(2) : "?";
+      const durationSec = result.duration?.toFixed(1) || "?";
+      
       store.addLog(
-        `Video saved: ${result.filename} (${result.duration.toFixed(1)}s, ${(result.fileSize / 1024 / 1024).toFixed(2)}MB)`,
+        `✅ Video saved: ${result.filename} (${durationSec}s, ${fileSizeMB}MB)`,
         "success"
       );
+
+      // Dispatch event to notify video gallery to refresh
+      if (result.videoId) {
+        window.dispatchEvent(
+          new CustomEvent("video-recorded", {
+            detail: { videoId: result.videoId, filename: result.filename },
+          })
+        );
+      }
     } else {
       store.addLog("Failed to stop recording", "error");
     }

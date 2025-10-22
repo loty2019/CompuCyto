@@ -22,6 +22,13 @@ class Settings(BaseSettings):
     image_format: str = "jpg"
     image_quality: int = 95
     
+    # Video Recording Configuration
+    video_save_path: str = "./videos"
+    video_format: str = "avi"
+    video_default_duration: float = 10.0  # seconds
+    video_default_playback_fps: float = 25.0
+    video_default_decimation: int = 1
+    
     # CORS Configuration
     allowed_origins: str = "http://localhost:3000,http://localhost:5173"
     
@@ -29,10 +36,6 @@ class Settings(BaseSettings):
     def origins_list(self) -> List[str]:
         """Parse CORS origins from comma-separated string"""
         return [origin.strip() for origin in self.allowed_origins.split(",")]
-    
-    class Config:
-        env_file = ".env"
-        case_sensitive = False
 
 
 # Global settings instance

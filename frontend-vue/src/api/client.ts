@@ -16,6 +16,8 @@ import type {
   PositionCreate,
   SavedPosition,
   PositionListResponse,
+  Video,
+  VideoListResponse,
 } from "@/types";
 
 // Declare global window type for logging
@@ -325,6 +327,37 @@ export const positionAPI = {
 
   async deletePosition(positionId: number): Promise<void> {
     await apiClient.delete(`/positions/${positionId}`);
+  },
+};
+
+// Video endpoints
+export const videoAPI = {
+  async listVideos(params?: {
+    filter?: "mine" | "all";
+    page?: number;
+    limit?: number;
+  }): Promise<VideoListResponse> {
+    const { data } = await apiClient.get<VideoListResponse>("/api/v1/videos", {
+      params,
+    });
+    // Ensure videos array exists for backwards compatibility
+    return {
+      ...data,
+      videos: data.data || [],
+      total: data.pagination?.total || 0,
+    };
+  },
+
+  async getVideo(videoId: number): Promise<Video> {
+    const { data } = await apiClient.get<Video>(`/api/v1/videos/${videoId}`);
+    return data;
+  },
+
+  async deleteVideo(
+    videoId: number
+  ): Promise<{ success: boolean; message: string; videoId: number }> {
+    const { data } = await apiClient.delete(`/api/v1/videos/${videoId}`);
+    return data;
   },
 };
 

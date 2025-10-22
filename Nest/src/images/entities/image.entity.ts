@@ -90,7 +90,7 @@ export class Image {
     example: 100,
     nullable: true,
   })
-  @Column({ name: 'exposure_time', nullable: true })
+  @Column({ name: 'exposure_time', type: 'float', nullable: true })
   exposureTime: number;
 
   @ApiProperty({

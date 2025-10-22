@@ -738,10 +738,14 @@ class PixelinkCamera:
         try:
             # Ensure stream is running
             if not self.is_streaming:
-                logger.info("Starting stream for video recording")
+                logger.info("📹 Starting stream for video recording")
                 ret = PxLApi.setStreamState(self.camera_handle, PxLApi.StreamState.START)
                 if PxLApi.apiSuccess(ret[0]):
                     self.is_streaming = True
+                    # CRITICAL: Give the stream time to stabilize before capturing
+                    # The sample code starts the stream well before calling getEncodedClip
+                    logger.info("⏳ Waiting for stream to stabilize...")
+                    time.sleep(1.0)  # 1 second delay for stream startup
                 else:
                     raise RuntimeError(f"Failed to start stream: {ret[0]}")
             
@@ -750,14 +754,16 @@ class PixelinkCamera:
             num_images = int(duration * camera_fps / decimation)
             
             logger.info(f"🎬 Starting video recording:")
-            logger.info(f"   Duration: {duration}s")
+            logger.info(f"   Duration requested: {duration}s")
             logger.info(f"   Camera FPS: {camera_fps:.2f}")
             logger.info(f"   Playback FPS: {playback_frame_rate}")
             logger.info(f"   Decimation: {decimation}")
             logger.info(f"   Total images to capture: {num_images}")
+            logger.info(f"   Expected capture time: {num_images / camera_fps:.2f}s")
             
             # Create H.264 file path (intermediate file)
             h264_path = save_path.with_suffix('.h264')
+            logger.info(f"   H.264 file: {h264_path}")
             
             # Configure clip encoding
             clip_info = PxLApi.ClipEncodingInfo()
@@ -778,7 +784,10 @@ class PixelinkCamera:
                 self.num_images_streamed = numberOfFrameBlocksStreamed
                 self.capture_rc = retCode
                 self.capture_finished = True
-                logger.info(f"📹 Video capture callback: streamed={numberOfFrameBlocksStreamed}, rc={retCode}")
+                logger.info(f"📹 === CALLBACK FIRED ===")
+                logger.info(f"   Frames captured: {numberOfFrameBlocksStreamed}")
+                logger.info(f"   Return code: {retCode}")
+                logger.info(f"   Success: {PxLApi.apiSuccess(retCode)}")
                 return PxLApi.ReturnCode.ApiSuccess
             
             self.video_callback = term_fn
@@ -819,6 +828,10 @@ class PixelinkCamera:
         """
         Stop recording and finalize video file.
         
+        This can be called to:
+        1. Abort an ongoing recording early (user clicked stop)
+        2. Finalize after natural completion (callback fired on its own)
+        
         Args:
             h264_path: Path to intermediate H.264 file
             avi_path: Path to final AVI file
@@ -829,42 +842,59 @@ class PixelinkCamera:
             raise RuntimeError("Not currently recording")
         
         try:
-            logger.info("🛑 Stopping video recording IMMEDIATELY...")
+            logger.info("🛑 Stopping video recording...")
+            logger.info(f"   Capture finished flag: {self.capture_finished}")
+            logger.info(f"   Is streaming: {self.is_streaming}")
             
-            # IMMEDIATELY stop the stream to abort the capture
-            # This will trigger the callback with whatever frames have been captured so far
-            logger.info("⏹️ Stopping camera stream to abort clip capture...")
-            ret = PxLApi.setStreamState(self.camera_handle, PxLApi.StreamState.STOP)
-            if PxLApi.apiSuccess(ret[0]):
-                self.is_streaming = False
-                logger.info("✅ Stream stopped successfully")
+            # If recording is still in progress (not yet finished), abort it by stopping the stream
+            # This follows the PixeLink sample code pattern for aborting early
+            if not self.capture_finished:
+                logger.info("⏹️ Aborting capture by stopping stream (user stopped early)...")
+                if self.is_streaming:
+                    ret = PxLApi.setStreamState(self.camera_handle, PxLApi.StreamState.STOP)
+                    if PxLApi.apiSuccess(ret[0]):
+                        self.is_streaming = False
+                        logger.info("   Stream stopped successfully")
+                    else:
+                        logger.warning(f"⚠️ Failed to stop stream: {ret[0]}")
             else:
-                logger.warning(f"⚠️ Failed to stop stream: {ret[0]}")
+                logger.info("✅ Capture already finished naturally (full duration completed)")
             
-            # Wait briefly for the callback to complete (max 2 seconds)
-            timeout = 2.0
+            # Wait for the callback to complete (it should fire immediately after stream stop)
+            logger.info("⏳ Waiting for capture callback to complete...")
+            timeout = 10.0  # 10 second timeout
             start_time = time.time()
+            poll_count = 0
             
             while not self.capture_finished:
-                if time.time() - start_time > timeout:
-                    logger.warning("⏱️ Callback did not complete, proceeding anyway")
+                elapsed = time.time() - start_time
+                poll_count += 1
+                if poll_count % 20 == 0:  # Log every second
+                    logger.info(f"   Still waiting... ({elapsed:.1f}s elapsed)")
+                if elapsed > timeout:
+                    logger.error(f"⏱️ Callback timeout after {timeout}s!")
+                    logger.error(f"   Capture finished: {self.capture_finished}")
+                    logger.error(f"   Images streamed: {self.num_images_streamed}")
+                    logger.error(f"   Capture RC: {self.capture_rc}")
                     break
-                time.sleep(0.05)
+                time.sleep(0.05)  # Poll every 50ms
+            
+            callback_wait_time = time.time() - start_time
+            logger.info(f"   Callback completed in {callback_wait_time:.3f}s")
             
             self.is_recording = False
             
             # Check capture result
-            # Error -2147483630 (stream stopped) is expected when we abort early, so don't warn about it
             if self.capture_rc and not PxLApi.apiSuccess(self.capture_rc):
-                if self.capture_rc == -2147483630:
-                    # This is the expected "stream stopped" error when we abort recording early
-                    logger.info(f"📹 Video capture stopped early (as expected)")
+                if self.capture_rc == -2147483630:  # ApiStreamStopped
+                    logger.info(f"📹 Capture was aborted (user stopped early)")
+                elif self.capture_rc == PxLApi.ReturnCode.ApiSuccessWithFrameLoss:
+                    logger.warning(f"⚠️ Some frames were lost during capture")
                 else:
-                    # Unexpected error - log as warning
-                    logger.warning(f"⚠️ Video capture returned error: {self.capture_rc}")
+                    logger.warning(f"⚠️ Capture error code: {self.capture_rc}")
             
             num_images_captured = self.num_images_streamed
-            logger.info(f"📹 Video capture completed: {num_images_captured} images captured")
+            logger.info(f"📹 Captured {num_images_captured} frames")
             
             # Check if H.264 file was created
             if not h264_path.exists():
@@ -874,14 +904,16 @@ class PixelinkCamera:
                 parent_dir = h264_path.parent
                 h264_files = list(parent_dir.glob("*.h264"))
                 if h264_files:
-                    logger.info(f"Found {len(h264_files)} H.264 files in {parent_dir}")
-                    # Use the most recent one
                     h264_path = max(h264_files, key=lambda p: p.stat().st_mtime)
                     logger.info(f"Using most recent H.264 file: {h264_path}")
                 else:
                     raise RuntimeError(f"H.264 file not found: {h264_path}")
             
-            logger.info(f"🔄 Converting H.264 to AVI...")
+            # Check H.264 file size
+            h264_size = h264_path.stat().st_size if h264_path.exists() else 0
+            logger.info(f"📄 H.264: {h264_size / 1024:.1f} KB")
+            
+            logger.info(f"🔄 Converting to AVI...")
             ret = PxLApi.formatClip(
                 str(h264_path),
                 str(avi_path),
@@ -891,7 +923,6 @@ class PixelinkCamera:
             
             if not PxLApi.apiSuccess(ret[0]):
                 logger.error(f"Failed to convert video to AVI: {ret[0]}")
-                # Still try to clean up
                 try:
                     h264_path.unlink()
                 except:
@@ -901,12 +932,11 @@ class PixelinkCamera:
             # Get file info
             file_size = avi_path.stat().st_size if avi_path.exists() else 0
             
-            logger.info(f"✅ Video saved: {avi_path} ({file_size / 1024 / 1024:.2f} MB)")
+            logger.info(f"✅ Video saved: {file_size / 1024 / 1024:.2f} MB")
             
             # Clean up H.264 file
             try:
                 h264_path.unlink()
-                logger.info(f"🗑️ Cleaned up temporary H.264 file")
             except Exception as e:
                 logger.warning(f"Could not delete H.264 file: {e}")
             

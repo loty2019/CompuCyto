@@ -175,6 +175,43 @@ export interface PositionListResponse {
   positions: SavedPosition[];
 }
 
+export interface Video {
+  id: number;
+  filename: string;
+  thumbnailPath: string | null;
+  capturedAt: string;
+  duration: number | null;
+  frameRate: number | null;
+  captureFrameRate: number | null;
+  xPosition: number | null;
+  yPosition: number | null;
+  zPosition: number | null;
+  exposureTime: number | null;
+  gain: number | null;
+  gamma: number | null;
+  fileSize: number | null;
+  width: number | null;
+  height: number | null;
+  encodingFormat: string | null;
+  containerFormat: string | null;
+  metadata: Record<string, any>;
+  userId: number;
+  jobId: number | null;
+  user?: User;
+}
+
+export interface VideoListResponse {
+  data: Video[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+  total: number;
+  videos: Video[];
+}
+
 // WebSocket Message Types
 
 export interface WSMessage {

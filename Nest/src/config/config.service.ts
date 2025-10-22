@@ -58,6 +58,16 @@ export class ConfigService {
     return this.configService.get<string>('DATABASE_NAME', 'microscope_db');
   }
 
+  // ==================== Python Configuration ====================
+
+  /**
+   * Python service port
+   * @default 8001
+   */
+  get pythonPort(): number {
+    return this.configService.get<number>('PYTHON_PORT', 8001);
+  }
+
   // ==================== JWT Configuration ====================
 
   /**

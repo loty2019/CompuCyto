@@ -97,6 +97,7 @@ async function bootstrap() {
   // ==================== Start Server ====================
   const port = configService.port; // From PORT env var (default: 3000)
   const frontendPort = configService.frontendPort; // From FRONTEND_PORT env var (default: 5173)
+  const pythonPort = configService.pythonPort; // From PYTHON_PORT env var (default: 8001)
   await app.listen(port);
 
   // Log startup information
@@ -107,6 +108,7 @@ async function bootstrap() {
   console.log(
     `📚 API Documentation (Swagger): http://localhost:${port}/api-docs`,
   );
+  console.log(`📦 Python API (Swagger): http://localhost:${pythonPort}/docs`);
   console.log(`📋 Health check: http://localhost:${port}/api/v1/health`);
   console.log(`🔐 API Base: http://localhost:${port}/api/v1`);
 }

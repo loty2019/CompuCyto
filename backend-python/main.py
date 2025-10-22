@@ -291,17 +291,17 @@ async def perform_auto_exposure_once():
 
 @app.post("/video/record/start")
 async def start_video_recording(
-    duration: float = 10.0,
-    playback_frame_rate: float = 25.0,
-    decimation: int = 1
+    duration: Optional[float] = None,
+    playback_frame_rate: Optional[float] = None,
+    decimation: Optional[int] = None
 ):
     """
     Start recording video from camera.
     
     Args:
-        duration: Recording duration in seconds (default: 10)
-        playback_frame_rate: Playback frame rate in fps (default: 25)
-        decimation: Frame decimation factor - use every N'th frame (default: 1)
+        duration: Recording duration in seconds (default from config)
+        playback_frame_rate: Playback frame rate in fps (default from config)
+        decimation: Frame decimation factor - use every N'th frame (default from config)
     """
     global video_recording_state
     
@@ -312,22 +312,23 @@ async def start_video_recording(
         raise HTTPException(status_code=409, detail="Already recording video")
     
     try:
-        # Pause streaming to prevent conflicts
-        streaming_was_active = streamer.is_streaming
-        if streaming_was_active:
-            await streamer.pause_streaming()
+        # Use config values if not provided
+        duration = duration if duration is not None else settings.video_default_duration
+        playback_frame_rate = playback_frame_rate if playback_frame_rate is not None else settings.video_default_playback_fps
+        decimation = decimation if decimation is not None else settings.video_default_decimation
         
         # Generate filename with timestamp
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
-        filename = f"recording_{timestamp}.avi"
+        filename = f"recording_{timestamp}.{settings.video_format}"
         
-        videos_path = Path("videos")
+        videos_path = Path(settings.video_save_path)
         videos_path.mkdir(parents=True, exist_ok=True)
         
         avi_path = videos_path / filename
         h264_path = videos_path / f"recording_{timestamp}.h264"
         
         # Start recording
+        # NOTE: Camera will manage its own stream - do NOT pause the streamer!
         result = camera.start_video_recording(
             save_path=avi_path,
             duration=duration,
@@ -341,8 +342,7 @@ async def start_video_recording(
             "h264_path": h264_path,
             "avi_path": avi_path,
             "start_time": datetime.now(),
-            "metadata": result,
-            "streaming_was_active": streaming_was_active
+            "metadata": result
         }
         
         logger.info(f"Video recording started: {filename}")
@@ -355,9 +355,6 @@ async def start_video_recording(
         }
         
     except Exception as e:
-        # Resume streaming if it was active
-        if streaming_was_active:
-            await streamer.resume_streaming()
         logger.error(f"Failed to start video recording: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -378,7 +375,6 @@ async def stop_video_recording():
     try:
         h264_path = video_recording_state["h264_path"]
         avi_path = video_recording_state["avi_path"]
-        streaming_was_active = video_recording_state.get("streaming_was_active", False)
         
         # Stop and finalize recording
         result = camera.stop_video_recording(h264_path, avi_path)
@@ -397,18 +393,29 @@ async def stop_video_recording():
             "metadata": {}
         }
         
-        # Resume streaming if it was active before recording
-        if streaming_was_active:
-            await streamer.resume_streaming()
-        
         logger.info(f"Video recording stopped: {result['filename']} ({actual_duration:.1f}s)")
+        
+        # Get camera settings for metadata
+        current_settings = camera.get_settings()
         
         return {
             "success": True,
             "message": "Video recording completed",
+            "filename": result['filename'],
+            "filepath": result['filepath'],
             "capturedAt": start_time.isoformat(),
             "duration": actual_duration,
-            **result
+            "file_size": result.get('fileSize', 0),
+            "width": result.get('width', 0),
+            "height": result.get('height', 0),
+            "playback_frame_rate": video_recording_state["metadata"].get("frameRate", 25),
+            "capture_frame_rate": video_recording_state["metadata"].get("cameraFrameRate", 30),
+            "exposure_time": result.get('exposureTime'),
+            "gain": result.get('gain'),
+            "gamma": result.get('gamma'),
+            "encoding_format": "H264",
+            "container_format": "AVI",
+            "metadata": result.get('metadata', {})
         }
         
     except Exception as e:
@@ -502,12 +509,12 @@ async def get_recording_status():
 async def list_videos():
     """List all recorded videos in the videos folder."""
     try:
-        videos_path = Path("videos")
+        videos_path = Path(settings.video_save_path)
         if not videos_path.exists():
             return {"files": [], "count": 0, "path": str(videos_path)}
         
         files = []
-        for file in sorted(videos_path.glob("*.avi"), reverse=True):
+        for file in sorted(videos_path.glob(f"*.{settings.video_format}"), reverse=True):
             stat = file.stat()
             files.append({
                 "filename": file.name,
@@ -581,7 +588,7 @@ app.mount("/captures", StaticFiles(directory=str(captures_path)), name="captures
 logger.info(f"📁 Static files mounted: /captures -> {captures_path.absolute()}")
 
 # Mount static files for recorded videos
-videos_path = Path("videos")
+videos_path = Path(settings.video_save_path)
 videos_path.mkdir(parents=True, exist_ok=True)
 app.mount("/videos", StaticFiles(directory=str(videos_path)), name="videos")
 logger.info(f"📁 Static files mounted: /videos -> {videos_path.absolute()}")
