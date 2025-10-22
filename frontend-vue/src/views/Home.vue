@@ -18,8 +18,8 @@
       </div>
     </div>
 
-    <div id="jobs" class="mb-5"><JobManager /></div>
     <div id="gallery" class="mb-5"><ImageGallery /></div>
+    <div id="jobs" class="mb-5"><JobManager /></div>
     <div id="console" class="mb-5"><ConsoleLog /></div>
   </div>
 </template>
