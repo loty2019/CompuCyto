@@ -1,8 +1,4 @@
-import {
-  Injectable,
-  ServiceUnavailableException,
-  Logger,
-} from '@nestjs/common';
+import { Injectable, ServiceUnavailableException, Logger } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -72,9 +68,7 @@ export class CameraService {
           .pipe(
             catchError((error: AxiosError) => {
               this.logger.error(`Camera capture failed: ${error.message}`);
-              throw new ServiceUnavailableException(
-                'Camera service unavailable',
-              );
+              throw new ServiceUnavailableException('Camera service unavailable');
             }),
           ),
       );
@@ -89,8 +83,7 @@ export class CameraService {
             ...data,
             imageId: null,
             databaseSaved: false,
-            warning:
-              'Image captured but not saved to database: User not authenticated',
+            warning: 'Image captured but not saved to database: User not authenticated',
           };
         }
 
@@ -161,18 +154,12 @@ export class CameraService {
     try {
       // GET request to Python service for current camera settings
       const { data } = await firstValueFrom(
-        this.httpService
-          .get(`${this.baseUrl}/settings`, { timeout: this.timeout })
-          .pipe(
-            catchError((error: AxiosError) => {
-              this.logger.error(
-                `Failed to get camera settings: ${error.message}`,
-              );
-              throw new ServiceUnavailableException(
-                'Camera service unavailable',
-              );
-            }),
-          ),
+        this.httpService.get(`${this.baseUrl}/settings`, { timeout: this.timeout }).pipe(
+          catchError((error: AxiosError) => {
+            this.logger.error(`Failed to get camera settings: ${error.message}`);
+            throw new ServiceUnavailableException('Camera service unavailable');
+          }),
+        ),
       );
       return data;
     } catch (error) {
@@ -202,12 +189,8 @@ export class CameraService {
           .put(`${this.baseUrl}/settings`, settings, { timeout: this.timeout })
           .pipe(
             catchError((error: AxiosError) => {
-              this.logger.error(
-                `Failed to update camera settings: ${error.message}`,
-              );
-              throw new ServiceUnavailableException(
-                'Camera service unavailable',
-              );
+              this.logger.error(`Failed to update camera settings: ${error.message}`);
+              throw new ServiceUnavailableException('Camera service unavailable');
             }),
           ),
       );
@@ -274,8 +257,7 @@ export class CameraService {
     try {
       const params: any = {};
       if (duration !== undefined) params.duration = duration;
-      if (playbackFrameRate !== undefined)
-        params.playback_frame_rate = playbackFrameRate;
+      if (playbackFrameRate !== undefined) params.playback_frame_rate = playbackFrameRate;
       if (decimation !== undefined) params.decimation = decimation;
 
       const { data } = await firstValueFrom(
@@ -286,19 +268,13 @@ export class CameraService {
           })
           .pipe(
             catchError((error: AxiosError) => {
-              this.logger.error(
-                `Failed to start video recording: ${error.message}`,
-              );
-              throw new ServiceUnavailableException(
-                'Camera service unavailable',
-              );
+              this.logger.error(`Failed to start video recording: ${error.message}`);
+              throw new ServiceUnavailableException('Camera service unavailable');
             }),
           ),
       );
 
-      this.logger.log(
-        `Video recording started: ${data.filename || 'unknown'}`,
-      );
+      this.logger.log(`Video recording started: ${data.filename || 'unknown'}`);
       return data;
     } catch (error) {
       this.logger.error(`Start video recording error: ${error.message}`);
@@ -324,19 +300,13 @@ export class CameraService {
           })
           .pipe(
             catchError((error: AxiosError) => {
-              this.logger.error(
-                `Failed to stop video recording: ${error.message}`,
-              );
-              throw new ServiceUnavailableException(
-                'Camera service unavailable',
-              );
+              this.logger.error(`Failed to stop video recording: ${error.message}`);
+              throw new ServiceUnavailableException('Camera service unavailable');
             }),
           ),
       );
 
-      this.logger.log(
-        `Video recording stopped: ${data.filename || 'unknown'}`,
-      );
+      this.logger.log(`Video recording stopped: ${data.filename || 'unknown'}`);
 
       // Attempt to save video metadata to database with user ID
       if (data && data.success && data.filename) {
@@ -348,8 +318,7 @@ export class CameraService {
             ...data,
             videoId: null,
             databaseSaved: false,
-            warning:
-              'Video recorded but not saved to database: User not authenticated',
+            warning: 'Video recorded but not saved to database: User not authenticated',
           };
         }
 
@@ -399,9 +368,7 @@ export class CameraService {
       }
 
       // Python service returned unsuccessful response
-      this.logger.error(
-        `Video recording unsuccessful: ${JSON.stringify(data)}`,
-      );
+      this.logger.error(`Video recording unsuccessful: ${JSON.stringify(data)}`);
       return {
         ...data,
         videoId: null,
@@ -430,12 +397,8 @@ export class CameraService {
           })
           .pipe(
             catchError((error: AxiosError) => {
-              this.logger.error(
-                `Failed to cancel video recording: ${error.message}`,
-              );
-              throw new ServiceUnavailableException(
-                'Camera service unavailable',
-              );
+              this.logger.error(`Failed to cancel video recording: ${error.message}`);
+              throw new ServiceUnavailableException('Camera service unavailable');
             }),
           ),
       );
@@ -464,12 +427,8 @@ export class CameraService {
           })
           .pipe(
             catchError((error: AxiosError) => {
-              this.logger.error(
-                `Failed to get recording status: ${error.message}`,
-              );
-              throw new ServiceUnavailableException(
-                'Camera service unavailable',
-              );
+              this.logger.error(`Failed to get recording status: ${error.message}`);
+              throw new ServiceUnavailableException('Camera service unavailable');
             }),
           ),
       );

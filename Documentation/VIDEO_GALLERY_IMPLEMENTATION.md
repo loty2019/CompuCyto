@@ -1,11 +1,13 @@
 # Video Gallery Implementation
 
 ## Overview
+
 Created a video gallery component similar to the image gallery to display and manage recorded microscope videos.
 
 ## Files Created/Modified
 
 ### New Files
+
 1. **`frontend-vue/src/components/VideoGallery.vue`**
    - Video gallery component with grid layout
    - Filter toggle (My Videos / All Videos)
@@ -37,6 +39,7 @@ Created a video gallery component similar to the image gallery to display and ma
 ## Features
 
 ### Video Gallery Component
+
 - **Grid Layout**: Videos displayed in responsive grid (200px minimum width)
 - **Video Thumbnails**: Shows video thumbnail or placeholder icon
 - **Duration Badge**: Displays video duration in MM:SS format
@@ -49,6 +52,7 @@ Created a video gallery component similar to the image gallery to display and ma
   - Close button
 
 ### Backend Integration
+
 - Videos served from Python backend at `http://localhost:8001/videos/`
 - NestJS API endpoint: `GET /api/v1/videos`
   - Supports pagination (`page`, `limit`)
@@ -58,18 +62,23 @@ Created a video gallery component similar to the image gallery to display and ma
   - Admins can delete any video
 
 ## Video Recording Event
+
 The component listens for a `video-recorded` custom event to auto-refresh the gallery when new videos are recorded.
 
 To dispatch this event after recording:
+
 ```javascript
-window.dispatchEvent(new CustomEvent('video-recorded', {
-  detail: { videoId: 123, filename: 'recording_xyz.avi' }
-}));
+window.dispatchEvent(
+  new CustomEvent("video-recorded", {
+    detail: { videoId: 123, filename: "recording_xyz.avi" },
+  })
+);
 ```
 
 ## API Response Format
 
 ### List Videos Response
+
 ```json
 {
   "data": [
@@ -124,12 +133,14 @@ The video gallery is automatically displayed on the home page alongside the imag
 ## File Storage
 
 Videos are stored in:
+
 - **Backend**: `backend-python/videos/`
 - **URL**: `http://localhost:8001/videos/filename.avi`
 
 ## Next Steps
 
 Potential enhancements:
+
 1. Generate video thumbnails from first frame
 2. Add video download button
 3. Add video sharing/export functionality

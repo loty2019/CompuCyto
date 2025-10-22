@@ -78,7 +78,10 @@
           class="w-full h-full object-cover cursor-pointer rounded-md"
           preload="metadata"
         />
-        <div v-else class="flex flex-col items-center justify-center p-2 pointer-events-none">
+        <div
+          v-else
+          class="flex flex-col items-center justify-center p-2 pointer-events-none"
+        >
           <svg
             class="w-12 h-12 text-gray-400 mb-2"
             fill="none"
@@ -153,7 +156,9 @@
         class="bg-gray-900 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-auto"
         @click.stop
       >
-        <div class="p-4 border-b border-gray-700 flex justify-between items-center">
+        <div
+          class="p-4 border-b border-gray-700 flex justify-between items-center"
+        >
           <h3 class="text-white font-medium">{{ selectedVideo.filename }}</h3>
           <div class="flex gap-2 items-center">
             <a
@@ -162,8 +167,18 @@
               class="text-blue-400 hover:text-blue-300 text-sm px-3 py-1 bg-gray-800 rounded hover:bg-gray-700 transition-colors flex items-center gap-1"
               @click.stop
             >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+              <svg
+                class="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                />
               </svg>
               Download
             </a>
