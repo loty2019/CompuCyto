@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     
     # Video Recording Configuration
     video_save_path: str = "./videos"
-    video_format: str = "avi"
+    video_format: str = "mp4"  # Changed from 'avi' to 'mp4' for browser compatibility
     video_default_duration: float = 10.0  # seconds
     video_default_playback_fps: float = 25.0
     video_default_decimation: int = 1

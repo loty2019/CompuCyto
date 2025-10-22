@@ -1,8 +1,12 @@
 <template>
   <div class="bg-white rounded-lg shadow-md p-6">
     <div class="flex items-center justify-between mb-4">
-      <h2 class="text-xl font-bold text-gray-800">Videos</h2>
-
+      <div class="flex items-center gap-3">
+        <h2 class="text-xl font-bold text-gray-800">Videos</h2>
+        <span class="text-sm text-gray-600 px-1 border border-gray-300">
+          {{ store.recentVideos.length }}
+        </span>
+      </div>
       <!-- Filter Toggle -->
       <div class="flex gap-2">
         <button

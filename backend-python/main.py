@@ -39,7 +39,7 @@ camera: Optional[PixelinkCamera] = None
 video_recording_state = {
     "is_recording": False,
     "h264_path": None,
-    "avi_path": None,
+    "mp4_path": None,  # Changed from avi_path to mp4_path
     "start_time": None,
     "metadata": {}
 }
@@ -324,13 +324,13 @@ async def start_video_recording(
         videos_path = Path(settings.video_save_path)
         videos_path.mkdir(parents=True, exist_ok=True)
         
-        avi_path = videos_path / filename
+        mp4_path = videos_path / filename
         h264_path = videos_path / f"recording_{timestamp}.h264"
         
         # Start recording
         # NOTE: Camera will manage its own stream - do NOT pause the streamer!
         result = camera.start_video_recording(
-            save_path=avi_path,
+            save_path=mp4_path,
             duration=duration,
             playback_frame_rate=playback_frame_rate,
             decimation=decimation
@@ -340,7 +340,7 @@ async def start_video_recording(
         video_recording_state = {
             "is_recording": True,
             "h264_path": h264_path,
-            "avi_path": avi_path,
+            "mp4_path": mp4_path,  # Changed from avi_path to mp4_path
             "start_time": datetime.now(),
             "metadata": result
         }
@@ -374,10 +374,10 @@ async def stop_video_recording():
     
     try:
         h264_path = video_recording_state["h264_path"]
-        avi_path = video_recording_state["avi_path"]
+        mp4_path = video_recording_state["mp4_path"]
         
         # Stop and finalize recording
-        result = camera.stop_video_recording(h264_path, avi_path)
+        result = camera.stop_video_recording(h264_path, mp4_path)
         
         # Calculate duration
         start_time = video_recording_state["start_time"]
@@ -414,7 +414,7 @@ async def stop_video_recording():
             "gain": result.get('gain'),
             "gamma": result.get('gamma'),
             "encoding_format": "H264",
-            "container_format": "AVI",
+            "container_format": "MP4",  # Changed from AVI to MP4
             "metadata": result.get('metadata', {})
         }
         
@@ -423,7 +423,7 @@ async def stop_video_recording():
         video_recording_state = {
             "is_recording": False,
             "h264_path": None,
-            "avi_path": None,
+            "mp4_path": None,  # Changed from avi_path to mp4_path
             "start_time": None,
             "metadata": {}
         }

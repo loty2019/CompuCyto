@@ -721,7 +721,7 @@ class PixelinkCamera:
         Start recording video from camera.
         
         Args:
-            save_path: Path where to save the video (should end with .avi)
+            save_path: Path where to save the video (should end with .mp4)
             duration: Recording duration in seconds
             playback_frame_rate: Frame rate for video playback (fps)
             decimation: Use every N'th frame (1 = all frames, 5 = every 5th frame)
@@ -816,7 +816,7 @@ class PixelinkCamera:
                 "decimation": decimation,
                 "expectedImages": num_images,
                 "h264Path": str(h264_path),
-                "aviPath": str(save_path)
+                "mp4Path": str(save_path)  # Changed from aviPath to mp4Path
             }
             
         except Exception as e:
@@ -824,7 +824,7 @@ class PixelinkCamera:
             logger.error(f"Error starting video recording: {e}", exc_info=True)
             raise
     
-    def stop_video_recording(self, h264_path: Path, avi_path: Path) -> Dict:
+    def stop_video_recording(self, h264_path: Path, mp4_path: Path) -> Dict:
         """
         Stop recording and finalize video file.
         
@@ -834,7 +834,7 @@ class PixelinkCamera:
         
         Args:
             h264_path: Path to intermediate H.264 file
-            avi_path: Path to final AVI file
+            mp4_path: Path to final MP4 file
             
         Returns: Metadata dict with video information
         """
@@ -913,24 +913,24 @@ class PixelinkCamera:
             h264_size = h264_path.stat().st_size if h264_path.exists() else 0
             logger.info(f"📄 H.264: {h264_size / 1024:.1f} KB")
             
-            logger.info(f"🔄 Converting to AVI...")
+            logger.info(f"🔄 Converting H.264 to MP4 container...")
             ret = PxLApi.formatClip(
                 str(h264_path),
-                str(avi_path),
+                str(mp4_path),
                 PxLApi.ClipEncodingFormat.H264,
-                PxLApi.ClipFileContainerFormat.AVI
+                PxLApi.ClipFileContainerFormat.MP4  # Changed from AVI to MP4 for browser compatibility
             )
             
             if not PxLApi.apiSuccess(ret[0]):
-                logger.error(f"Failed to convert video to AVI: {ret[0]}")
+                logger.error(f"Failed to convert video to MP4: {ret[0]}")
                 try:
                     h264_path.unlink()
                 except:
                     pass
-                raise RuntimeError(f"Failed to convert video to AVI: {ret[0]}")
+                raise RuntimeError(f"Failed to convert video to MP4: {ret[0]}")
             
             # Get file info
-            file_size = avi_path.stat().st_size if avi_path.exists() else 0
+            file_size = mp4_path.stat().st_size if mp4_path.exists() else 0
             
             logger.info(f"✅ Video saved: {file_size / 1024 / 1024:.2f} MB")
             
@@ -952,8 +952,8 @@ class PixelinkCamera:
             
             return {
                 "success": True,
-                "filename": avi_path.name,
-                "filepath": str(avi_path.absolute()),
+                "filename": mp4_path.name,
+                "filepath": str(mp4_path.absolute()),
                 "fileSize": file_size,
                 "numImages": num_images_captured,
                 "exposureTime": self.exposure,
@@ -962,7 +962,7 @@ class PixelinkCamera:
                 "width": self.width,
                 "height": self.height,
                 "metadata": {
-                    "format": "AVI",
+                    "format": "MP4",  # Changed from AVI to MP4
                     "encoding": "H264",
                     "cameraConnected": self.is_connected
                 }
