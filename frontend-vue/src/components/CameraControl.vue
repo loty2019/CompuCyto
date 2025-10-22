@@ -122,7 +122,16 @@
     <!-- Live Camera Feed Section -->
     <div class="my-4 pb-4">
       <div class="flex items-center justify-between mb-3">
-        <h3 class="text-base font-bold text-gray-800">Live Preview</h3>
+        <div class="flex items-center gap-2">
+          <h3 class="text-base font-bold text-gray-800">Live Preview</h3>
+          <span
+            v-if="feedUrl && !feedError && lightWarning"
+            class="text-xs font-semibold text-yellow-600 bg-yellow-50 px-2 py-1 rounded border border-yellow-300 flex items-center gap-1"
+            title="The microscope light is currently off"
+          >
+            ⚠️ Light is OFF
+          </span>
+        </div>
         <button
           v-if="feedUrl && !feedError"
           @click="stopFeed"
@@ -259,9 +268,10 @@
 </style>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from "vue";
+import { ref, onMounted, onUnmounted, computed, watch } from "vue";
 import { useMicroscopeStore } from "@/stores/microscope";
 import { useCamera } from "@/composables/useCamera";
+import apiClient from "@/api/client";
 
 const store = useMicroscopeStore();
 const camera = useCamera();
@@ -289,6 +299,22 @@ const feedError = ref("");
 let websocket: WebSocket | null = null;
 let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
 const isConnecting = ref(false);
+
+// Computed warning based on store's light status and feed status
+const lightWarning = computed(() => {
+  return feedUrl.value !== "" && !feedError.value && !store.lightStatus.isOn;
+});
+
+// Watch for light status changes and log them
+watch(
+  () => store.lightStatus.isOn,
+  (isOn, wasOn) => {
+    // Only log if feed is active and light status changed
+    if (feedUrl.value && wasOn !== undefined && !isOn && wasOn) {
+      store.addLog("⚠️ Camera light turned OFF", "warning");
+    }
+  }
+);
 
 onMounted(async () => {
   await loadCameraSettings();
@@ -518,7 +544,7 @@ async function capture() {
   });
 }
 
-function startFeed() {
+async function startFeed() {
   if (websocket && websocket.readyState === WebSocket.OPEN) {
     console.log("WebSocket already connected");
     return;
@@ -533,6 +559,18 @@ function startFeed() {
   isConnecting.value = true;
   feedError.value = "";
   feedUrl.value = ""; // Clear old image
+
+  // Check light status once when starting feed (update store)
+  try {
+    const response = await apiClient.get("/api/v1/microscope/light/status");
+    store.updateLightStatus(response.data.isOn, response.data.brightness);
+
+    if (!response.data.isOn) {
+      store.addLog("⚠️ Camera light is OFF", "warning");
+    }
+  } catch (error) {
+    console.error("Failed to check light status:", error);
+  }
 
   // Connect to WebSocket stream
   const wsBaseUrl = (

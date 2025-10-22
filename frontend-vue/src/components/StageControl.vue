@@ -224,6 +224,8 @@ async function fetchLightStatus() {
     lightError.value = "";
     const response = await apiClient.get("/api/v1/microscope/light/status");
     isLightOn.value = response.data.isOn;
+    // Update store so other components can react
+    store.updateLightStatus(response.data.isOn, response.data.brightness);
   } catch (err: any) {
     console.error("Failed to fetch light status:", err);
     lightError.value = "Failed to connect";
@@ -238,6 +240,8 @@ async function toggleLight() {
     lightError.value = "";
     const response = await apiClient.post("/api/v1/microscope/light/toggle");
     isLightOn.value = response.data.isOn;
+    // Update store immediately so other components can react
+    store.updateLightStatus(response.data.isOn, response.data.brightness);
   } catch (err: any) {
     console.error("Failed to toggle light:", err);
     lightError.value = "Failed to toggle";
