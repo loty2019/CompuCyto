@@ -15,7 +15,7 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="LED Control API", description="Control LED via HTTP API")
+app = FastAPI(title="CytoPi API", description="Control the CytoPi via HTTP API")
 
 # GPIO configuration
 LED_PIN = 23  # GPIO23 - Physical pin 16
