@@ -603,12 +603,14 @@ async def websocket_camera_stream(websocket: WebSocket):
 # IMPORTANT: This must come AFTER all API endpoints to avoid conflicts
 # Now accessible via http://localhost:8001/captures/filename.jpg
 captures_path = Path(settings.image_save_path)
+videos_path = Path(settings.video_save_path)
+
+for media_path in (captures_path, videos_path):
+    media_path.mkdir(parents=True, exist_ok=True)
+
 app.mount("/captures", StaticFiles(directory=str(captures_path)), name="captures")
 logger.info(f"📁 Static files mounted: /captures -> {captures_path.absolute()}")
 
-# Mount static files for recorded videos
-videos_path = Path(settings.video_save_path)
-videos_path.mkdir(parents=True, exist_ok=True)
 app.mount("/videos", StaticFiles(directory=str(videos_path)), name="videos")
 logger.info(f"📁 Static files mounted: /videos -> {videos_path.absolute()}")
 
