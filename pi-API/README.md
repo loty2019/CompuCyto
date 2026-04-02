@@ -40,5 +40,3 @@ Access the interactive API docs at: `http://<Raspberry_Pi_IP>:8000/docs`
 
 ## Management Dashboard
 Access the management dashboard at: `http://<Raspberry_Pi_IP>:9090`
-
-## test git 
