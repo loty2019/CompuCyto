@@ -176,7 +176,7 @@
 import { ref, onMounted, onUnmounted } from "vue";
 import { useMicroscopeStore } from "@/stores/microscope";
 import { useStage } from "@/composables/useStage";
-import apiClient from "@/api/client";
+import apiClient, { piAPI } from "@/api/client";
 
 const store = useMicroscopeStore();
 const stage = useStage();
@@ -222,10 +222,10 @@ async function fetchLightStatus() {
   try {
     lightLoading.value = true;
     lightError.value = "";
-    const response = await apiClient.get("/api/v1/microscope/light/status");
-    isLightOn.value = response.data.isOn;
+    const response = await piAPI.getLedLampState();
+    isLightOn.value = response.is_on;
     // Update store so other components can react
-    store.updateLightStatus(response.data.isOn, response.data.brightness);
+    store.updateLightStatus(response.is_on);
   } catch (err: any) {
     console.error("Failed to fetch light status:", err);
     lightError.value = "Failed to connect";
@@ -238,10 +238,10 @@ async function toggleLight() {
   try {
     isToggling.value = true;
     lightError.value = "";
-    const response = await apiClient.post("/api/v1/microscope/light/toggle");
-    isLightOn.value = response.data.isOn;
+    const response = await piAPI.toggleLedLamp();
+    isLightOn.value = response.is_on;
     // Update store immediately so other components can react
-    store.updateLightStatus(response.data.isOn, response.data.brightness);
+    store.updateLightStatus(response.is_on);
   } catch (err: any) {
     console.error("Failed to toggle light:", err);
     lightError.value = "Failed to toggle";

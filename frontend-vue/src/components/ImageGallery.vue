@@ -77,7 +77,7 @@
       >
         <!-- Actual Image -->
         <img
-          :src="`http://localhost:8001/captures/${image.filename}`"
+          :src="getImageUrl(image.filename)"
           :alt="image.filename"
           class="w-full h-full object-cover cursor-pointer rounded-md"
           @error="handleImageError($event)"
@@ -158,7 +158,7 @@
           <h3 class="text-white font-medium">{{ selectedImage.filename }}</h3>
           <div class="flex gap-2 items-center">
             <a
-              :href="`http://localhost:8001/captures/${selectedImage.filename}`"
+              :href="getImageUrl(selectedImage.filename)"
               :download="selectedImage.filename"
               class="text-blue-400 hover:text-blue-300 text-sm px-3 py-1 bg-gray-800 rounded hover:bg-gray-700 transition-colors flex items-center gap-1"
               @click.stop
@@ -188,7 +188,7 @@
         </div>
         <div class="p-4">
           <img
-            :src="`http://localhost:8001/captures/${selectedImage.filename}`"
+            :src="getImageUrl(selectedImage.filename)"
             :alt="selectedImage.filename"
             class="w-full rounded"
           />
@@ -230,7 +230,7 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref, watch } from "vue";
 import { useMicroscopeStore } from "@/stores/microscope";
-import { imageAPI } from "@/api/client";
+import { imageAPI, getImageUrl } from "@/api/client";
 import type { Image } from "@/types";
 
 const store = useMicroscopeStore();
@@ -273,7 +273,7 @@ const handleImageError = (event: Event) => {
       "justify-center",
       "flex-col",
       "text-center",
-      "p-2"
+      "p-2",
     );
     const filename = img.alt;
     parent.innerHTML += `<span class="text-xs text-gray-500 break-all">${filename}</span>`;
@@ -303,7 +303,7 @@ const loadImages = async () => {
     console.log("🔍 [FRONTEND] Loading images with filter:", photoFilter.value);
     store.addLog(
       `Loading ${photoFilter.value === "mine" ? "your" : "all"} images from database...`,
-      "info"
+      "info",
     );
     const result = await imageAPI.listImages({
       limit: 20,
@@ -323,7 +323,7 @@ const loadImages = async () => {
     store.setImages(result.images);
     store.addLog(
       `Loaded ${result.images.length} images (${result.total} total)`,
-      "success"
+      "success",
     );
   } catch (error: any) {
     console.error("❌ [FRONTEND] Failed to load images:", error);

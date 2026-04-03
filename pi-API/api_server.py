@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
 FastAPI server for Raspberry Pi 5
+Now supports direct frontend access with JWT authentication.
 """
-# TODO: add better validation
 
-from operator import add
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import lgpio
 import uvicorn
@@ -14,11 +14,23 @@ import subprocess
 import threading
 import time
 
+from config import settings
+from auth import verify_jwt
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Pi Control API", description="Control Pi via HTTP API")
+
+# CORS middleware for direct frontend access
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # GPIO configuration 
 LED_LAMP_PIN = 13  # GPIO13 - LED Lamp (existing LED)
@@ -233,11 +245,10 @@ async def health_check():
 
 
 @app.get("/led-lamp/state", response_model=LEDState)
-async def get_led_lamp_state():
-    """Get the current state of the LED Lamp"""
+async def get_led_lamp_state(user: dict = Depends(verify_jwt)):
+    """Get the current state of the LED Lamp. Protected endpoint."""
     global led_lamp_isOn
     try:
-        # Read actual GPIO state
         current_state = lgpio.gpio_read(h, LED_LAMP_PIN)
         led_lamp_isOn = (current_state == 0)  # Inverted logic
         return LEDState(is_on=led_lamp_isOn, pin=LED_LAMP_PIN)
@@ -246,12 +257,11 @@ async def get_led_lamp_state():
 
 
 @app.post("/led-lamp/toggle", response_model=ToggleResponse)
-async def toggle_led_lamp():
-    """Toggle the LED Lamp on or off"""
+async def toggle_led_lamp(user: dict = Depends(verify_jwt)):
+    """Toggle the LED Lamp on or off. Protected endpoint."""
     global led_lamp_isOn
     
     try:
-        # Read current hardware state to ensure sync
         current_state = lgpio.gpio_read(h, LED_LAMP_PIN)
         led_lamp_isOn = (current_state == 0)  # Inverted logic
         
@@ -272,11 +282,10 @@ async def toggle_led_lamp():
 
 
 @app.get("/psu/state", response_model=LEDState)
-async def get_psu_state():
-    """Get the current state of the PSU"""
+async def get_psu_state(user: dict = Depends(verify_jwt)):
+    """Get the current state of the PSU. Protected endpoint."""
     global psu_isOn
     try:
-        # Read actual GPIO state
         current_state = lgpio.gpio_read(h, PSU_PIN)
         psu_isOn = (current_state == 1)
         return LEDState(is_on=psu_isOn, pin=PSU_PIN)
@@ -285,19 +294,14 @@ async def get_psu_state():
 
 
 @app.post("/psu/toggle", response_model=ToggleResponse)
-async def toggle_psu():
-    """Toggle the PSU on or off"""
+async def toggle_psu(user: dict = Depends(verify_jwt)):
+    """Toggle the PSU on or off. Protected endpoint."""
     global psu_isOn
     
     try:
-        # Read current hardware state to ensure sync
         current_state = lgpio.gpio_read(h, PSU_PIN)
         psu_isOn = (current_state == 1)
-        
-        # Toggle the state
         psu_isOn = not psu_isOn
-        
-        # Write to GPIO
         lgpio.gpio_write(h, PSU_PIN, 1 if psu_isOn else 0)
         
         return ToggleResponse(
@@ -311,32 +315,26 @@ async def toggle_psu():
 
 
 @app.get("/led-flr/state", response_model=LEDState)
-async def get_led_flr_state():
-    """Get the current state of the FLR LED"""
+async def get_led_flr_state(user: dict = Depends(verify_jwt)):
+    """Get the current state of the FLR LED. Protected endpoint."""
     global led_flr_isOn
     try:
-        # Read actual GPIO state
         current_state = lgpio.gpio_read(h, LED_FLR_PIN)
-        led_flr_isOn = (current_state == 0)  # Inverted logic (same as LED_LAMP)
+        led_flr_isOn = (current_state == 0)
         return LEDState(is_on=led_flr_isOn, pin=LED_FLR_PIN)
     except Exception as e:
         return LEDState(is_on=led_flr_isOn, pin=LED_FLR_PIN)
 
 
 @app.post("/led-flr/toggle", response_model=ToggleResponse)
-async def toggle_led_flr():
-    """Toggle the FLR LED on or off"""
+async def toggle_led_flr(user: dict = Depends(verify_jwt)):
+    """Toggle the FLR LED on or off. Protected endpoint."""
     global led_flr_isOn
     
     try:
-        # Read current hardware state to ensure sync
         current_state = lgpio.gpio_read(h, LED_FLR_PIN)
-        led_flr_isOn = (current_state == 0)  # Inverted logic (same as LED_LAMP)
-        
-        # Toggle the state
+        led_flr_isOn = (current_state == 0)
         led_flr_isOn = not led_flr_isOn
-        
-        # Write to GPIO (inverted: 0=ON, 1=OFF)
         lgpio.gpio_write(h, LED_FLR_PIN, 0 if led_flr_isOn else 1)
         
         return ToggleResponse(
@@ -350,13 +348,11 @@ async def toggle_led_flr():
 
 
 @app.post("/system/shutdown", response_model=ShutdownResponse)
-async def shutdown_system():
-    """Gracefully shutdown the Raspberry Pi"""
+async def shutdown_system(user: dict = Depends(verify_jwt)):
+    """Gracefully shutdown the Raspberry Pi. Protected endpoint."""
     try:
         logger.info("Shutdown command received via API")
-        # Clean up GPIO before shutdown
         cleanup_gpio()
-        # Use shutdown now command
         result = subprocess.run(["sudo", "shutdown", "-h", "now"], capture_output=True, text=True)
         logger.info(f"Shutdown command executed: stdout={result.stdout}, stderr={result.stderr}")
         return ShutdownResponse(
@@ -369,30 +365,29 @@ async def shutdown_system():
 
 
 @app.post("/scan/start", response_model=ToggleResponse)
-async def start_scan():
-    """Start scanning mode"""
+async def start_scan(user: dict = Depends(verify_jwt)):
+    """Start scanning mode. Protected endpoint."""
     global is_scanning
     is_scanning = True
     return ToggleResponse(
         success=True,
         is_on=True,
-        pin=0, # Virtual state
+        pin=0,
         message="Scanning started"
     )
 
 @app.post("/scan/stop", response_model=ToggleResponse)
-async def stop_scan():
-    """Stop scanning mode"""
+async def stop_scan(user: dict = Depends(verify_jwt)):
+    """Stop scanning mode. Protected endpoint."""
     global is_scanning
     is_scanning = False
     return ToggleResponse(
         success=True,
         is_on=False,
-        pin=0, # Virtual state
+        pin=0,
         message="Scanning stopped"
     )
 
 
 if __name__ == "__main__":
-    # Run the server
     uvicorn.run(app, host="0.0.0.0", port=8000)

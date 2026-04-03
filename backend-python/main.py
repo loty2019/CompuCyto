@@ -1,6 +1,7 @@
 """
 FastAPI Camera Service - Minimal Essential API
-Provides HTTP endpoints for NestJS backend to control Pixelink camera
+Provides HTTP endpoints for frontend and NestJS backend to control Pixelink camera
+Now supports direct frontend access with JWT authentication.
 """
 import logging
 from pathlib import Path
@@ -8,7 +9,7 @@ from datetime import datetime
 from typing import Optional
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -16,6 +17,7 @@ from pydantic import BaseModel, Field
 from config import settings
 from pixelink_camera import PixelinkCamera
 from camera_streamer import streamer
+from auth import verify_jwt, get_optional_user
 
 # Configure logging
 logging.basicConfig(
@@ -131,8 +133,11 @@ async def health_check():
 
 
 @app.get("/captures/list")
-async def list_captures():
-    """List all captured images in the captures folder."""
+async def list_captures(user: dict = Depends(verify_jwt)):
+    """
+    List all captured images in the captures folder.
+    Protected endpoint - requires JWT token.
+    """
     try:
         captures_path = Path(settings.image_save_path)
         if not captures_path.exists():
@@ -158,10 +163,11 @@ async def list_captures():
 
 
 @app.post("/capture")
-async def capture_image(request: CaptureRequest):
+async def capture_image(request: CaptureRequest, user: dict = Depends(verify_jwt)):
     """
     Capture image from camera.
-    Called by NestJS camera.service.ts
+    Protected endpoint - requires JWT token.
+    Called by NestJS camera.service.ts (which adds DB metadata).
     Returns metadata matching NestJS Image entity structure.
     """
     if not camera:
@@ -227,10 +233,10 @@ async def capture_image(request: CaptureRequest):
 
 
 @app.get("/settings")
-async def get_settings():
+async def get_settings(user: dict = Depends(verify_jwt)):
     """
     Get current camera settings.
-    Called by NestJS camera.service.ts
+    Protected endpoint - requires JWT token.
     """
     if not camera:
         raise HTTPException(status_code=503, detail="Camera not initialized")
@@ -239,10 +245,10 @@ async def get_settings():
 
 
 @app.put("/settings")
-async def update_settings(settings_update: SettingsUpdate):
+async def update_settings(settings_update: SettingsUpdate, user: dict = Depends(verify_jwt)):
     """
     Update camera settings.
-    Called by NestJS camera.service.ts or frontend
+    Protected endpoint - requires JWT token.
     """
     if not camera or not camera.is_connected:
         raise HTTPException(status_code=503, detail="Camera not connected")
@@ -262,10 +268,10 @@ async def update_settings(settings_update: SettingsUpdate):
 
 
 @app.post("/settings/auto-exposure/once")
-async def perform_auto_exposure_once():
+async def perform_auto_exposure_once(user: dict = Depends(verify_jwt)):
     """
     Perform a one-time auto-exposure adjustment.
-    Camera will automatically determine optimal exposure, then return to manual control.
+    Protected endpoint - requires JWT token.
     """
     if not camera or not camera.is_connected:
         raise HTTPException(status_code=503, detail="Camera not connected")
@@ -293,10 +299,12 @@ async def perform_auto_exposure_once():
 async def start_video_recording(
     duration: Optional[float] = None,
     playback_frame_rate: Optional[float] = None,
-    decimation: Optional[int] = None
+    decimation: Optional[int] = None,
+    user: dict = Depends(verify_jwt)
 ):
     """
     Start recording video from camera.
+    Protected endpoint - requires JWT token.
     
     Args:
         duration: Recording duration in seconds (default from config)
@@ -360,9 +368,10 @@ async def start_video_recording(
 
 
 @app.post("/video/record/stop")
-async def stop_video_recording():
+async def stop_video_recording(user: dict = Depends(verify_jwt)):
     """
     Stop recording video and finalize the file.
+    Protected endpoint - requires JWT token.
     """
     global video_recording_state
     
@@ -435,9 +444,10 @@ async def stop_video_recording():
 
 
 @app.post("/video/record/cancel")
-async def cancel_video_recording():
+async def cancel_video_recording(user: dict = Depends(verify_jwt)):
     """
     Cancel ongoing video recording.
+    Protected endpoint - requires JWT token.
     """
     global video_recording_state
     
@@ -486,9 +496,10 @@ async def cancel_video_recording():
 
 
 @app.get("/video/record/status")
-async def get_recording_status():
+async def get_recording_status(user: dict = Depends(verify_jwt)):
     """
     Get current video recording status.
+    Protected endpoint - requires JWT token.
     """
     global video_recording_state
     
@@ -506,8 +517,11 @@ async def get_recording_status():
 
 
 @app.get("/videos/list")
-async def list_videos():
-    """List all recorded videos in the videos folder."""
+async def list_videos(user: dict = Depends(verify_jwt)):
+    """
+    List all recorded videos in the videos folder.
+    Protected endpoint - requires JWT token.
+    """
     try:
         videos_path = Path(settings.video_save_path)
         if not videos_path.exists():

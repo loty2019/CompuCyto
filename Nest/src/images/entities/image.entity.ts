@@ -7,32 +7,22 @@ import {
   Index,
 } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
-import { Job } from '../../jobs/entities/job.entity';
 import { User } from '../../users/entities/user.entity';
 
 /**
  * Image Entity
  *
  * Represents a captured microscope image with metadata.
- * Images are linked to users and optionally to automated jobs.
+ * Images are linked to users.
  *
  * @entity images
  */
 @Entity('images')
-@Index(['jobId', 'capturedAt'])
 @Index(['userId', 'capturedAt'])
 export class Image {
   @ApiProperty({ description: 'Unique image identifier', example: 1 })
   @PrimaryGeneratedColumn()
   id: number;
-
-  @ApiProperty({
-    description: 'Associated job ID (if part of automated job)',
-    example: 5,
-    nullable: true,
-  })
-  @Column({ name: 'job_id', nullable: true })
-  jobId: number;
 
   @ApiProperty({ description: 'User who captured the image', example: 1 })
   @Column({ name: 'user_id' })
@@ -44,6 +34,14 @@ export class Image {
   })
   @Column({ unique: true })
   filename: string;
+
+  @ApiProperty({
+    description: 'Full path to the image file',
+    example: '/captures/capture_20250116_103045_123.jpg',
+    nullable: true,
+  })
+  @Column({ nullable: true })
+  filepath: string;
 
   @ApiProperty({
     description: 'Path to thumbnail image',
@@ -141,10 +139,6 @@ export class Image {
   metadata: Record<string, any>;
 
   // Relationships
-  @ManyToOne(() => Job, (job) => job.images, { nullable: true })
-  @JoinColumn({ name: 'job_id' })
-  job: Job;
-
   @ManyToOne(() => User, (user) => user.images)
   @JoinColumn({ name: 'user_id' })
   user: User;

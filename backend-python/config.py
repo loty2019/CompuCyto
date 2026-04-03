@@ -2,17 +2,22 @@
 Configuration module for FastAPI Camera Service
 Loads settings from environment variables with sensible defaults
 """
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import List
 
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables"""
     
+    model_config = SettingsConfigDict(env_file='.env', env_file_encoding='utf-8')
+    
     # Server Configuration
     host: str = "0.0.0.0"
     port: int = 8001
     debug: bool = True
+    
+    # JWT Configuration (must match NestJS backend)
+    jwt_secret: str = ""  # Required - same value as NestJS JWT_SECRET
     
     # Camera Configuration
     camera_serial_number: str = ""  # Empty means use first available camera

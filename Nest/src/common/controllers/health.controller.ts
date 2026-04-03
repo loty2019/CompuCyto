@@ -1,8 +1,9 @@
 import { Controller, Get } from '@nestjs/common';
+import { HttpService } from '@nestjs/axios';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { ConfigService } from '../../config/config.service';
 import { CameraService } from '../../camera/camera.service';
-import { MicroscopeService } from '../../microscope/microscope.service';
+import { firstValueFrom, catchError, of } from 'rxjs';
 
 /**
  * Health Check Controller
@@ -13,8 +14,7 @@ import { MicroscopeService } from '../../microscope/microscope.service';
  * Checks:
  * - Database connectivity (if this endpoint responds, DB is working)
  * - Python camera service availability
- * - Raspberry Pi controller availability (via microscope service)
- * - Redis availability (Phase 2 - currently always true)
+ * - Raspberry Pi controller availability (direct HTTP check)
  *
  * @controller /api/v1/health
  */
@@ -22,10 +22,26 @@ import { MicroscopeService } from '../../microscope/microscope.service';
 @Controller('api/v1/health')
 export class HealthController {
   constructor(
+    private httpService: HttpService,
     private configService: ConfigService,
     private cameraService: CameraService,
-    private microscopeService: MicroscopeService,
   ) {}
+
+  /**
+   * Check Raspberry Pi health directly
+   */
+  private async checkPiHealth(): Promise<boolean> {
+    try {
+      const response = await firstValueFrom(
+        this.httpService
+          .get(`${this.configService.raspberryPiUrl}/health`, { timeout: 5000 })
+          .pipe(catchError(() => of({ data: { healthy: false } }))),
+      );
+      return response.data?.healthy === true;
+    } catch {
+      return false;
+    }
+  }
 
   /**
    * Health check endpoint
@@ -35,24 +51,9 @@ export class HealthController {
    *
    * @returns Health status object with service availability
    * @public No authentication required
-   *
-   * @example
-   * GET /api/v1/health
-   * {
-   *   "status": "healthy",
-   *   "checks": {
-   *     "database": true,
-   *     "pythonCamera": true,
-   *     "raspberryPi": false,
-   *     "redis": true
-   *   },
-   *   "timestamp": "2025-10-09T10:30:00.000Z"
-   * }
    */
   @Get()
-  @ApiOperation({
-    summary: 'System health check',
-  })
+  @ApiOperation({ summary: 'System health check' })
   @ApiResponse({
     status: 200,
     description: 'Health check completed',
@@ -63,26 +64,23 @@ export class HealthController {
           database: true,
           pythonCamera: true,
           raspberryPi: true,
-          redis: true,
         },
         timestamp: '2025-01-09T10:30:45.123Z',
       },
     },
   })
   async check() {
-    // Check external services in parallel for fast response
     const [pythonCamera, raspberryPi] = await Promise.all([
       this.cameraService.checkHealth().catch(() => false),
-      this.microscopeService.checkHealth().catch(() => false),
+      this.checkPiHealth(),
     ]);
 
     return {
-      status: 'healthy', // If we got here, the app is running
+      status: 'healthy',
       checks: {
-        database: true, // If database was down, app wouldn't start
-        pythonCamera, // Python camera service on port 8001
-        raspberryPi, // Raspberry Pi controller on port 5000/8000
-        redis: true, // TODO: Add Redis check when Bull is implemented (Phase 2)
+        database: true,
+        pythonCamera,
+        raspberryPi,
       },
       timestamp: new Date().toISOString(),
     };

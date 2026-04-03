@@ -153,7 +153,9 @@
           <div
             class="inline-block w-16 h-16 border-4 border-blue-400 border-t-transparent rounded-full animate-spin"
           ></div>
-          <p class="text-lg font-semibold">Loading camera feed... (might take some time)</p>
+          <p class="text-lg font-semibold">
+            Loading camera feed... (might take some time)
+          </p>
         </div>
         <div
           v-else-if="feedError"
@@ -298,7 +300,7 @@
 import { ref, onMounted, onUnmounted, computed, watch } from "vue";
 import { useMicroscopeStore } from "@/stores/microscope";
 import { useCamera } from "@/composables/useCamera";
-import apiClient from "@/api/client";
+import apiClient, { piAPI } from "@/api/client";
 
 const store = useMicroscopeStore();
 const camera = useCamera();
@@ -346,7 +348,7 @@ watch(
     if (feedUrl.value && wasOn !== undefined && !isOn && wasOn) {
       store.addLog("⚠️ Camera light turned OFF", "warning");
     }
-  }
+  },
 );
 
 onMounted(async () => {
@@ -514,14 +516,14 @@ async function performAutoExposureOnce() {
     const response = await fetch(
       `${API_BASE_URL}/api/v1/camera/settings/auto-exposure/once`.replace(
         ":3000",
-        ":8001"
+        ":8001",
       ),
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-      }
+      },
     );
 
     const result = await response.json();
@@ -530,7 +532,7 @@ async function performAutoExposureOnce() {
       exposure.value = result.exposure;
       store.addLog(
         `Auto-exposure completed: ${result.exposure.toFixed(1)}ms`,
-        "success"
+        "success",
       );
       await loadCameraSettings(); // Reload all settings
     } else {
@@ -595,10 +597,10 @@ async function startFeed() {
 
   // Check light status once when starting feed (update store)
   try {
-    const response = await apiClient.get("/api/v1/microscope/light/status");
-    store.updateLightStatus(response.data.isOn, response.data.brightness);
+    const response = await piAPI.getLedLampState();
+    store.updateLightStatus(response.is_on);
 
-    if (!response.data.isOn) {
+    if (!response.is_on) {
       store.addLog("⚠️ Camera light is OFF", "warning");
     }
   } catch (error) {
@@ -775,7 +777,7 @@ async function startRecording() {
 
       store.addLog(
         `Recording started (click Stop Recording to finish)`,
-        "success"
+        "success",
       );
     } else {
       store.addLog("Failed to start recording", "error");
@@ -818,7 +820,7 @@ async function stopRecording() {
 
       store.addLog(
         `✅ Video saved: ${result.filename} (${durationSec}s, ${fileSizeMB}MB)`,
-        "success"
+        "success",
       );
 
       // Dispatch event to notify video gallery to refresh
@@ -826,7 +828,7 @@ async function stopRecording() {
         window.dispatchEvent(
           new CustomEvent("video-recorded", {
             detail: { videoId: result.videoId, filename: result.filename },
-          })
+          }),
         );
       }
     } else {

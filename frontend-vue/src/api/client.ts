@@ -25,7 +25,7 @@ declare global {
   interface Window {
     __logToConsole?: (
       message: string,
-      type: "info" | "success" | "error" | "warning"
+      type: "info" | "success" | "error" | "warning",
     ) => void;
   }
 }
@@ -63,8 +63,35 @@ export interface AuthResponse {
 // Use root so that calls to '/api/v1/...' are proxied by Vite to the backend
 const API_BASE_URL = import.meta.env.VITE_API_URL || "/";
 
+// Global Pi IP address (used for direct local connections when env vars are missing)
+const PI_IP_ADDRESS = "192.168.100.1";
+
+// Python camera service URL for direct calls (settings, streaming, status)
+const PYTHON_CAMERA_URL =
+  import.meta.env.VITE_PYTHON_CAMERA_URL || `http://${PI_IP_ADDRESS}:8001`;
+
+// Pi-API URL for direct GPIO control (lights, PSU, etc.)
+const PI_API_URL =
+  import.meta.env.VITE_PI_API_URL || `http://${PI_IP_ADDRESS}:8000`;
+
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
+
+// Separate client for Python camera service (direct calls)
+const pythonClient = axios.create({
+  baseURL: PYTHON_CAMERA_URL,
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
+
+// Separate client for Pi-API (GPIO control)
+const piClient = axios.create({
+  baseURL: PI_API_URL,
   headers: {
     "Content-Type": "application/json",
   },
@@ -96,7 +123,7 @@ apiClient.interceptors.request.use(
       window.__logToConsole(`Request failed: ${error.message}`, "error");
     }
     return Promise.reject(error);
-  }
+  },
 );
 
 // Add response interceptor to handle 401 errors and log responses
@@ -136,7 +163,130 @@ apiClient.interceptors.response.use(
       }
     }
     return Promise.reject(error);
-  }
+  },
+);
+
+// Add same interceptors for Python client (direct camera access)
+pythonClient.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("access_token");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+
+    const method = config.method?.toUpperCase() || "REQUEST";
+    const url = config.url || "";
+    const logMessage = `${method} [Python] ${url}`;
+
+    if (window.__logToConsole) {
+      window.__logToConsole(logMessage, "info");
+    }
+
+    return config;
+  },
+  (error) => {
+    if (window.__logToConsole) {
+      window.__logToConsole(`Python request failed: ${error.message}`, "error");
+    }
+    return Promise.reject(error);
+  },
+);
+
+pythonClient.interceptors.response.use(
+  (response) => {
+    const method = response.config.method?.toUpperCase() || "REQUEST";
+    const url = response.config.url || "";
+    const status = response.status;
+    const logMessage = ` ${method} [Python] ${url} - ${status}`;
+
+    if (window.__logToConsole) {
+      window.__logToConsole(logMessage, "success");
+    }
+
+    return response;
+  },
+  (error) => {
+    const method = error.config?.method?.toUpperCase() || "REQUEST";
+    const url = error.config?.url || "unknown";
+    const status = error.response?.status || "Network Error";
+    const message = error.response?.data?.detail || error.message;
+    const logMessage = ` ${method} [Python] ${url} - ${status}: ${message}`;
+
+    if (window.__logToConsole) {
+      window.__logToConsole(logMessage, "error");
+    }
+
+    // Handle 401 from Python service same as main API
+    if (error.response?.status === 401) {
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("user");
+      if (window.location.pathname !== "/login") {
+        window.location.href = "/login";
+      }
+    }
+    return Promise.reject(error);
+  },
+);
+
+// Add interceptors for Pi-API client (GPIO control)
+piClient.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("access_token");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+
+    const method = config.method?.toUpperCase() || "REQUEST";
+    const url = config.url || "";
+    const logMessage = `${method} [Pi] ${url}`;
+
+    if (window.__logToConsole) {
+      window.__logToConsole(logMessage, "info");
+    }
+
+    return config;
+  },
+  (error) => {
+    if (window.__logToConsole) {
+      window.__logToConsole(`Pi-API request failed: ${error.message}`, "error");
+    }
+    return Promise.reject(error);
+  },
+);
+
+piClient.interceptors.response.use(
+  (response) => {
+    const method = response.config.method?.toUpperCase() || "REQUEST";
+    const url = response.config.url || "";
+    const status = response.status;
+    const logMessage = ` ${method} [Pi] ${url} - ${status}`;
+
+    if (window.__logToConsole) {
+      window.__logToConsole(logMessage, "success");
+    }
+
+    return response;
+  },
+  (error) => {
+    const method = error.config?.method?.toUpperCase() || "REQUEST";
+    const url = error.config?.url || "unknown";
+    const status = error.response?.status || "Network Error";
+    const message = error.response?.data?.detail || error.message;
+    const logMessage = ` ${method} [Pi] ${url} - ${status}: ${message}`;
+
+    if (window.__logToConsole) {
+      window.__logToConsole(logMessage, "error");
+    }
+
+    if (error.response?.status === 401) {
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("user");
+      if (window.location.pathname !== "/login") {
+        window.location.href = "/login";
+      }
+    }
+    return Promise.reject(error);
+  },
 );
 
 // Auth endpoints
@@ -144,7 +294,7 @@ export const authAPI = {
   async login(credentials: LoginRequest): Promise<AuthResponse> {
     const { data } = await apiClient.post<AuthResponse>(
       "/api/v1/auth/login",
-      credentials
+      credentials,
     );
     return data;
   },
@@ -152,14 +302,14 @@ export const authAPI = {
   async register(userData: RegisterRequest): Promise<AuthResponse> {
     const { data } = await apiClient.post<AuthResponse>(
       "/api/v1/auth/register",
-      userData
+      userData,
     );
     return data;
   },
 
   async getProfile(): Promise<AuthResponse["user"]> {
     const { data } = await apiClient.get<AuthResponse["user"]>(
-      "/api/v1/auth/profile"
+      "/api/v1/auth/profile",
     );
     return data;
   },
@@ -168,9 +318,7 @@ export const authAPI = {
 // Control endpoints
 export const controlAPI = {
   async getStatus(): Promise<SystemStatus> {
-    const { data } = await apiClient.get<SystemStatus>(
-      "/api/v1/control/status"
-    );
+    const { data } = await apiClient.get<SystemStatus>("/api/v1/stage/status");
     return data;
   },
 
@@ -182,45 +330,80 @@ export const controlAPI = {
   async captureImage(request: CaptureRequest): Promise<CaptureResponse> {
     const { data } = await apiClient.post<CaptureResponse>(
       "/api/v1/camera/capture",
-      request
+      request,
     );
     return data;
   },
 
   async moveStage(request: MoveRequest): Promise<MoveResponse> {
     const { data } = await apiClient.post<MoveResponse>(
-      "/api/v1/control/move",
-      request
+      "/api/v1/stage/move",
+      request,
     );
     return data;
   },
 
   async getPosition(): Promise<Position> {
-    //const { data } = await apiClient.get<Position>("/api/v1/control/position");
+    //const { data } = await apiClient.get<Position>("/api/v1/stage/position");
     //return a placeholder for now
     const data: Position = { x: 0, y: 0, z: 0 };
     return data;
   },
 
   async homeStage(): Promise<{ status: string; message: string }> {
-    const { data } = await apiClient.post("/api/v1/control/home");
+    const { data } = await apiClient.post("/api/v1/stage/home");
     return data;
   },
 
   async emergencyStop(): Promise<{ status: string; message: string }> {
-    const { data } = await apiClient.post("/api/v1/control/stop");
+    const { data } = await apiClient.post("/api/v1/stage/stop");
     return data;
   },
 
   async getCameraSettings(): Promise<CameraSettings> {
-    const { data } = await apiClient.get<CameraSettings>(
-      "/api/v1/camera/settings"
-    );
+    // Direct call to Python camera service (bypasses NestJS proxy)
+    const { data } = await pythonClient.get<CameraSettings>("/settings");
     return data;
   },
 
   async updateCameraSettings(settings: Partial<CameraSettings>): Promise<void> {
-    await apiClient.put("/api/v1/camera/settings", settings);
+    // Direct call to Python camera service (bypasses NestJS proxy)
+    await pythonClient.put("/settings", settings);
+  },
+
+  // Get video stream URL (direct from Python)
+  getVideoStreamUrl(): string {
+    return `${PYTHON_CAMERA_URL}/video/feed`;
+  },
+
+  // Video recording - direct Python calls
+  async startVideoRecording(params?: {
+    duration?: number;
+    playbackFrameRate?: number;
+    decimation?: number;
+  }): Promise<{ success: boolean; message: string; filename?: string }> {
+    const { data } = await pythonClient.post("/video/record/start", null, {
+      params: {
+        duration: params?.duration,
+        playback_frame_rate: params?.playbackFrameRate,
+        decimation: params?.decimation,
+      },
+    });
+    return data;
+  },
+
+  async getVideoRecordingStatus(): Promise<{
+    is_recording: boolean;
+    elapsed?: number;
+    metadata?: Record<string, any>;
+  }> {
+    const { data } = await pythonClient.get("/video/record/status");
+    return data;
+  },
+
+  async cancelVideoRecording(): Promise<{ success: boolean; message: string }> {
+    const { data } = await pythonClient.post("/video/record/cancel");
+    return data;
   },
 };
 
@@ -251,7 +434,7 @@ export const imageAPI = {
   },
 
   async deleteImage(
-    imageId: number
+    imageId: number,
   ): Promise<{ success: boolean; message: string }> {
     const { data } = await apiClient.delete(`/api/v1/images/${imageId}`);
     return data;
@@ -309,14 +492,14 @@ export const positionAPI = {
   async createPosition(position: PositionCreate): Promise<SavedPosition> {
     const { data } = await apiClient.post<SavedPosition>(
       "/positions",
-      position
+      position,
     );
     return data;
   },
 
   async getPosition(positionId: number): Promise<SavedPosition> {
     const { data } = await apiClient.get<SavedPosition>(
-      `/positions/${positionId}`
+      `/positions/${positionId}`,
     );
     return data;
   },
@@ -354,11 +537,89 @@ export const videoAPI = {
   },
 
   async deleteVideo(
-    videoId: number
+    videoId: number,
   ): Promise<{ success: boolean; message: string; videoId: number }> {
     const { data } = await apiClient.delete(`/api/v1/videos/${videoId}`);
     return data;
   },
 };
+
+// Pi-API types
+interface LEDState {
+  is_on: boolean;
+  pin: number;
+}
+
+interface ToggleResponse {
+  success: boolean;
+  is_on: boolean;
+  pin: number;
+  message: string;
+}
+
+// Pi-API endpoints (direct GPIO control - bypasses NestJS)
+export const piAPI = {
+  // LED Lamp (main microscope light)
+  async getLedLampState(): Promise<LEDState> {
+    const { data } = await piClient.get<LEDState>("/led-lamp/state");
+    return data;
+  },
+
+  async toggleLedLamp(): Promise<ToggleResponse> {
+    const { data } = await piClient.post<ToggleResponse>("/led-lamp/toggle");
+    return data;
+  },
+
+  // LED FLR (fluorescence light)
+  async getLedFlrState(): Promise<LEDState> {
+    const { data } = await piClient.get<LEDState>("/led-flr/state");
+    return data;
+  },
+
+  async toggleLedFlr(): Promise<ToggleResponse> {
+    const { data } = await piClient.post<ToggleResponse>("/led-flr/toggle");
+    return data;
+  },
+
+  // PSU (power supply unit)
+  async getPsuState(): Promise<LEDState> {
+    const { data } = await piClient.get<LEDState>("/psu/state");
+    return data;
+  },
+
+  async togglePsu(): Promise<ToggleResponse> {
+    const { data } = await piClient.post<ToggleResponse>("/psu/toggle");
+    return data;
+  },
+
+  // Scanning mode
+  async startScan(): Promise<ToggleResponse> {
+    const { data } = await piClient.post<ToggleResponse>("/scan/start");
+    return data;
+  },
+
+  async stopScan(): Promise<ToggleResponse> {
+    const { data } = await piClient.post<ToggleResponse>("/scan/stop");
+    return data;
+  },
+
+  // System shutdown
+  async shutdown(): Promise<{ success: boolean; message: string }> {
+    const { data } = await piClient.post("/system/shutdown");
+    return data;
+  },
+};
+
+// Helper to construct image/video URLs
+export const getImageUrl = (filename: string): string => {
+  return `${PYTHON_CAMERA_URL}/captures/${filename}`;
+};
+
+export const getVideoUrl = (filename: string): string => {
+  return `${PYTHON_CAMERA_URL}/videos/${filename}`;
+};
+
+// Export the base URL for components that need it
+export const CAMERA_BASE_URL = PYTHON_CAMERA_URL;
 
 export default apiClient;

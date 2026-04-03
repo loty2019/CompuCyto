@@ -77,8 +77,8 @@
       >
         <!-- Video Thumbnail or Placeholder -->
         <video
-          v-if="video.thumbnailPath"
-          :src="`http://localhost:3000${video.thumbnailPath}`"
+          v-if="video.filename"
+          :src="getVideoUrl(video.filename)"
           class="w-full h-full object-cover cursor-pointer rounded-md"
           preload="metadata"
         />
@@ -166,7 +166,7 @@
           <h3 class="text-white font-medium">{{ selectedVideo.filename }}</h3>
           <div class="flex gap-2 items-center">
             <a
-              :href="`http://localhost:8001/videos/${selectedVideo.filename}`"
+              :href="getVideoUrl(selectedVideo.filename)"
               :download="selectedVideo.filename"
               class="text-blue-400 hover:text-blue-300 text-sm px-3 py-1 bg-gray-800 rounded hover:bg-gray-700 transition-colors flex items-center gap-1"
               @click.stop
@@ -196,7 +196,7 @@
         </div>
         <div class="p-4">
           <video
-            :src="`http://localhost:8001/videos/${selectedVideo.filename}`"
+            :src="getVideoUrl(selectedVideo.filename)"
             controls
             autoplay
             class="w-full rounded"
@@ -227,7 +227,7 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref, watch } from "vue";
 import { useMicroscopeStore } from "@/stores/microscope";
-import { videoAPI } from "@/api/client";
+import { videoAPI, getVideoUrl, CAMERA_BASE_URL } from "@/api/client";
 import type { Video } from "@/types";
 
 const store = useMicroscopeStore();
@@ -286,7 +286,7 @@ const loadVideos = async () => {
     console.log("🔍 [FRONTEND] Loading videos with filter:", videoFilter.value);
     store.addLog(
       `Loading ${videoFilter.value === "mine" ? "your" : "all"} videos from database...`,
-      "info"
+      "info",
     );
     const result = await videoAPI.listVideos({
       limit: 20,
@@ -306,7 +306,7 @@ const loadVideos = async () => {
     store.setVideos(result.videos);
     store.addLog(
       `Loaded ${result.videos.length} videos (${result.total} total)`,
-      "success"
+      "success",
     );
   } catch (error: any) {
     console.error("❌ [FRONTEND] Failed to load videos:", error);
