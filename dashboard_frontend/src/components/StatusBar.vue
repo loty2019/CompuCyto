@@ -11,7 +11,7 @@
       :class="[
         'rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-wide',
         store.isSystemHealthy
-          ? 'border border-slate-200 bg-white text-slate-700'
+          ? 'border border-green-200 bg-green-50 text-slate-700'
           : 'border border-amber-200 bg-amber-50 text-amber-700',
       ]"
     >
