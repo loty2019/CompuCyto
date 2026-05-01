@@ -173,10 +173,10 @@ def setup_gpio():
         lgpio.gpio_write(h, LED_LAMP_PIN, 1)
         lgpio.gpio_write(h, LED_FLR_PIN, 1)
         lgpio.gpio_write(h, FRONT_PANEL_LED_PIN, 0)  # Front Panel LED starts off
-        lgpio.gpio_write(h, PSU_PIN, 0)
+        lgpio.gpio_write(h, PSU_PIN, 1)
         led_lamp_isOn = False
         led_flr_isOn = False
-        psu_isOn = False
+        psu_isOn = True
         
         print(f"✓ GPIO pins initialized: LED_LAMP={LED_LAMP_PIN}({led_lamp_isOn}), PSU={PSU_PIN}({psu_isOn}), LED_FLR={LED_FLR_PIN}({led_flr_isOn})")
     except Exception as e:
