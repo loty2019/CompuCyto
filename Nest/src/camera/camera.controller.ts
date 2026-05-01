@@ -51,11 +51,13 @@ export class CameraController {
     @Body() captureDto: CaptureDto,
   ): Promise<CaptureResponseDto> {
     const userId = req.user.id;
+    const authHeader = req.headers.authorization;
     return this.cameraService.capture(
       captureDto.exposure,
       captureDto.gain,
       captureDto.gamma,
       userId,
+      authHeader,
     );
   }
 
@@ -77,6 +79,7 @@ export class CameraController {
   @ApiResponse({ status: 503, description: 'Camera service unavailable' })
   async stopVideoRecording(@Request() req) {
     const userId = req.user.id;
-    return this.cameraService.stopVideoRecording(userId);
+    const authHeader = req.headers.authorization;
+    return this.cameraService.stopVideoRecording(userId, authHeader);
   }
 }

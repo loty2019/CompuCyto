@@ -68,7 +68,7 @@ const PI_IP_ADDRESS = "192.168.100.1";
 
 // Python camera service URL for direct calls (settings, streaming, status)
 const PYTHON_CAMERA_URL =
-  import.meta.env.VITE_PYTHON_CAMERA_URL || `http://${PI_IP_ADDRESS}:8001`;
+  import.meta.env.VITE_PYTHON_CAMERA_URL || "http://localhost:8001";
 
 // Pi-API URL for direct GPIO control (lights, PSU, etc.)
 const PI_API_URL =

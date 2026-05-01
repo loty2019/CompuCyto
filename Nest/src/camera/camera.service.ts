@@ -49,14 +49,16 @@ export class CameraService {
     gain?: number,
     gamma?: number,
     userId?: number,
+    authHeader?: string,
   ): Promise<any> {
     try {
+      const headers = authHeader ? { Authorization: authHeader } : {};
       const { data } = await firstValueFrom(
         this.httpService
           .post(
             `${this.baseUrl}/capture`,
             { exposure, gain, gamma },
-            { timeout: this.timeout },
+            { timeout: this.timeout, headers },
           )
           .pipe(
             catchError((error: AxiosError) => {
@@ -149,12 +151,14 @@ export class CameraService {
    * @param userId - ID of the user who recorded the video
    * @returns Video metadata with database ID
    */
-  async stopVideoRecording(userId?: number): Promise<any> {
+  async stopVideoRecording(userId?: number, authHeader?: string): Promise<any> {
     try {
+      const headers = authHeader ? { Authorization: authHeader } : {};
       const { data } = await firstValueFrom(
         this.httpService
           .post(`${this.baseUrl}/video/record/stop`, null, {
             timeout: 30000,
+            headers,
           })
           .pipe(
             catchError((error: AxiosError) => {
