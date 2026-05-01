@@ -66,13 +66,12 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || "/";
 // Global Pi IP address (used for direct local connections when env vars are missing)
 const PI_IP_ADDRESS = "192.168.100.1";
 
-// Python camera service URL for direct calls (settings, streaming, status)
+// Python camera service URL
 const PYTHON_CAMERA_URL =
-  import.meta.env.VITE_PYTHON_CAMERA_URL || "http://localhost:8001";
+  import.meta.env.VITE_PYTHON_CAMERA_URL || "/camera-api";
 
 // Pi-API URL for direct GPIO control (lights, PSU, etc.)
-const PI_API_URL =
-  import.meta.env.VITE_PI_API_URL || `http://${PI_IP_ADDRESS}:8000`;
+const PI_API_URL = import.meta.env.VITE_PI_API_URL || "/pi-api";
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,

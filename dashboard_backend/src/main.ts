@@ -41,10 +41,7 @@ async function bootstrap() {
     .addTag('Auth', 'Authentication and user management')
     .addTag('Camera', 'Camera control and image capture')
     .addTag('Stage', 'Microscope stage movement control')
-    .addTag(
-      'Microscope',
-      'General microscope hardware control (light, focus, filters)',
-    )
+    .addTag('Microscope', 'General microscope hardware control (light, focus, filters)')
     .addTag('Health', 'System health monitoring')
     .addTag('Images', 'Image management')
     .addTag('Jobs', 'Automated job management (Phase 2)')
@@ -101,13 +98,10 @@ async function bootstrap() {
   await app.listen(port);
 
   // Log startup information
-  // front end is running at port 5173
   console.log(
     `🚀 Application is running on (frontend): http://localhost:${frontendPort}`,
   );
-  console.log(
-    `📚 API Documentation (Swagger): http://localhost:${port}/api-docs`,
-  );
+  console.log(`📚 API Documentation (Swagger): http://localhost:${port}/api-docs`);
   console.log(`📦 Python API (Swagger): http://localhost:${pythonPort}/docs`);
   console.log(`📋 Health check: http://localhost:${port}/api/v1/health`);
   console.log(`🔐 API Base: http://localhost:${port}/api/v1`);

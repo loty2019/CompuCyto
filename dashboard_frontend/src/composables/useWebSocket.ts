@@ -9,8 +9,9 @@ export function useWebSocket() {
   const wsStore = useWebSocketStore();
 
   const socket = ref<Socket | null>(null);
-  // Connect to NestJS backend on port 3000 with /ws namespace
-  const WS_URL = import.meta.env.VITE_WS_URL || "http://localhost:3000";
+  const WS_URL =
+    import.meta.env.VITE_WS_URL ||
+    (typeof window !== "undefined" ? window.location.origin : "http://localhost:3000");
 
   function connect() {
     if (socket.value?.connected) {
@@ -36,8 +37,12 @@ export function useWebSocket() {
         handleMessage(message);
       });
 
-      socket.value.on("status", (data: any) => {
-        handleMessage({ type: "status", data });
+      socket.value.on("status", (payload: any) => {
+        if (payload?.type && payload?.data) {
+          handleMessage(payload);
+        } else {
+          handleMessage({ type: "status", data: payload });
+        }
       });
 
       socket.value.on("disconnect", () => {

@@ -1,95 +1,27 @@
 <template>
-  <div class="flex gap-5 items-center">
-    <div class="flex items-center gap-2 text-sm" title="Backend Python">
-      <div class="relative flex items-center justify-center w-3 h-3">
-        <div
-          :class="[
-            'absolute w-3 h-3 rounded-full transition-colors z-10',
-            isConnected(store.systemStatus.camera)
-              ? 'bg-green-500'
-              : 'bg-red-500',
-          ]"
-        ></div>
-        <div
-          v-if="isConnected(store.systemStatus.camera)"
-          class="absolute w-3 h-3 rounded-full bg-green-500 animate-ping opacity-75"
-        ></div>
-      </div>
-      <span>Camera</span>
-    </div>
-    <!-- <div class="flex items-center gap-2 text-sm">
-      <div class="relative flex items-center justify-center w-3 h-3">
-        <div :class="['absolute w-3 h-3 rounded-full transition-colors z-10', isConnected(store.systemStatus.stage) ? 'bg-green-500' : 'bg-red-500']"></div>
-        <div v-if="isConnected(store.systemStatus.stage)" class="absolute w-3 h-3 rounded-full bg-green-500 animate-ping opacity-75"></div>
-      </div>
-      <span>Stage</span>
-    </div> -->
-    <div class="flex items-center gap-2 text-sm" title="Postgres">
-      <div class="relative flex items-center justify-center w-3 h-3">
-        <div
-          :class="[
-            'absolute w-3 h-3 rounded-full transition-colors z-10',
-            isConnected(store.systemStatus.database)
-              ? 'bg-green-500'
-              : 'bg-red-500',
-          ]"
-        ></div>
-        <div
-          v-if="isConnected(store.systemStatus.database)"
-          class="absolute w-3 h-3 rounded-full bg-green-500 animate-ping opacity-75"
-        ></div>
-      </div>
-      <span>Database</span>
-    </div>
-    <div class="flex items-center gap-2 text-sm" title="Raspberry Pi 5">
-      <div class="relative flex items-center justify-center w-3 h-3">
-        <div
-          :class="[
-            'absolute w-3 h-3 rounded-full transition-colors z-10',
-            isConnected(store.systemStatus.raspberryPi)
-              ? 'bg-green-500'
-              : 'bg-red-500',
-          ]"
-        ></div>
-        <div
-          v-if="isConnected(store.systemStatus.raspberryPi)"
-          class="absolute w-3 h-3 rounded-full bg-green-500 animate-ping opacity-75"
-        ></div>
-      </div>
-      <span>Stage</span>
-    </div>
-    <div class="flex items-center gap-2 text-sm">
-      <div class="relative flex items-center justify-center w-3 h-3">
-        <div
-          :class="[
-            'absolute w-3 h-3 rounded-full transition-colors z-10',
-            isWsConnected ? 'bg-green-500' : 'bg-red-500',
-          ]"
-        ></div>
-        <div
-          v-if="isWsConnected"
-          class="absolute w-3 h-3 rounded-full bg-green-500 animate-ping opacity-75"
-        ></div>
-      </div>
-      <span>WebSocket</span>
-    </div>
+  <div
+    class="flex flex-wrap items-center gap-1.5 rounded-xl px-2 py-1.5"
+  >
+    <StatusPill label="Camera" :connected="isConnected(store.systemStatus.camera)" />
+    <StatusPill label="Database" :connected="isConnected(store.systemStatus.database)" />
+    <StatusPill label="Stage" :connected="isConnected(store.systemStatus.raspberryPi)" />
+    <StatusPill label="WebSocket" :connected="isWsConnected" />
+
     <div
-      v-if="store.isSystemHealthy"
-      class="ml-4 px-3 py-1 rounded-full text-sm font-semibold bg-green-100 text-green-700"
+      :class="[
+        'rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-wide',
+        store.isSystemHealthy
+          ? 'border border-slate-200 bg-white text-slate-700'
+          : 'border border-amber-200 bg-amber-50 text-amber-700',
+      ]"
     >
-      ✓ System Healthy
-    </div>
-    <div
-      v-else
-      class="ml-4 px-3 py-1 rounded-full text-sm font-semibold bg-orange-100 text-orange-700"
-    >
-      ⚠ System Degraded
+      {{ store.isSystemHealthy ? "System Healthy" : "System Degraded" }}
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, defineComponent, h } from "vue";
 import { useMicroscopeStore } from "@/stores/microscope";
 import { useWebSocketStore } from "@/stores/websocket";
 import { storeToRefs } from "pinia";
@@ -99,6 +31,39 @@ const wsStore = useWebSocketStore();
 const { state: wsState } = storeToRefs(wsStore);
 
 const isWsConnected = computed(() => wsState.value.isConnected);
+
+const StatusPill = defineComponent({
+  props: {
+    label: {
+      type: String,
+      required: true,
+    },
+    connected: {
+      type: Boolean,
+      required: true,
+    },
+  },
+  setup(props) {
+    return () =>
+      h(
+        "div",
+        {
+          class:
+            "flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-bold text-slate-600 shadow-sm",
+          title: props.label,
+        },
+        [
+          h("span", {
+            class: [
+              "h-2 w-2 rounded-full shadow-sm",
+              props.connected ? "bg-teal-500" : "bg-red-500",
+            ],
+          }),
+          h("span", props.label),
+        ],
+      );
+  },
+});
 
 function isConnected(status: string): boolean {
   return status === "connected" || status === "running";

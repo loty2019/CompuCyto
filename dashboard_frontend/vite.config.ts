@@ -1,27 +1,60 @@
-import { defineConfig } from 'vite'
-import vue from '@vitejs/plugin-vue'
-import { fileURLToPath, URL } from 'node:url'
+import { defineConfig } from "vite";
+import vue from "@vitejs/plugin-vue";
+import { fileURLToPath, URL } from "node:url";
 
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [vue()],
   resolve: {
     alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url))
-    }
+      "@": fileURLToPath(new URL("./src", import.meta.url)),
+    },
   },
   server: {
     port: 5173,
     proxy: {
-      '/api': {
+      "/api": {
         // Proxy API requests to the NestJS backend running on port 3000
-        target: 'http://localhost:3000',
-        changeOrigin: true
+        target: "http://localhost:3000",
+        changeOrigin: true,
       },
-      '/ws': {
-        target: 'ws://localhost:3000',
-        ws: true
-      }
-    }
-  }
-})
+      "/socket.io": {
+        target: "http://localhost:3000",
+        ws: true,
+      },
+      "/camera-api": {
+        target: "http://localhost:8001",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/camera-api/, ""),
+      },
+      "/pi-api": {
+        target: "http://192.168.100.1:8000",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/pi-api/, ""),
+      },
+    },
+  },
+  preview: {
+    port: 5173,
+    proxy: {
+      "/api": {
+        target: "http://localhost:3000",
+        changeOrigin: true,
+      },
+      "/socket.io": {
+        target: "http://localhost:3000",
+        ws: true,
+      },
+      "/camera-api": {
+        target: "http://localhost:8001",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/camera-api/, ""),
+      },
+      "/pi-api": {
+        target: "http://192.168.100.1:8000",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/pi-api/, ""),
+      },
+    },
+  },
+});

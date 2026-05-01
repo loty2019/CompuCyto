@@ -1,46 +1,40 @@
 <template>
-  <div class="min-h-screen bg-gray-100">
-    <header v-if="authStore.isAuthenticated" class="bg-white shadow-sm border-b border-gray-200">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-        <div class="flex items-center gap-6">
-          <div class="flex items-center gap-6">
-            <div>
-              <h1 class="text-5xl font-bold text-gray-900">🔬 CytoCore</h1>
-              <span class="text-sm text-gray-500">LinkBiosystems</span>
+  <div class="min-h-screen bg-slate-200">
+    <header
+      v-if="authStore.isAuthenticated"
+      class="sticky top-0 z-30 border-b border-slate-200/80 bg-white/90 shadow-sm backdrop-blur"
+    >
+      <div
+        class="mx-auto flex max-w-screen-xl flex-col gap-2 px-3 py-2 lg:flex-row lg:items-center lg:justify-between"
+      >
+        <div class="flex items-center justify-between gap-4">
+          <div>
+            <h1 class="text-2xl font-black tracking-tight text-slate-950">
+              CytoCore
+            </h1>
+            <div
+              class="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400"
+            >
+              LinkBiosystems
             </div>
-            <span class="text-base text-gray-600">
-              Welcome, <strong>{{ authStore.currentUser?.username }}</strong>
-            </span>
           </div>
-          
-          <nav class="flex items-center gap-2 border-l border-gray-300 pl-6">
-            <button @click="scrollToSection('camera')" class="px-3 py-1.5 text-sm font-medium rounded-lg transition-all bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 hover:border-blue-300 hover:shadow-sm hover:-translate-y-0.5 active:bg-blue-200 active:translate-y-0">
-              Camera
-            </button>
-            <button @click="scrollToSection('stage')" class="px-3 py-1.5 text-sm font-medium rounded-lg transition-all bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 hover:border-blue-300 hover:shadow-sm hover:-translate-y-0.5 active:bg-blue-200 active:translate-y-0">
-              Stage
-            </button>
-            <button @click="scrollToSection('map')" class="px-3 py-1.5 text-sm font-medium rounded-lg transition-all bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 hover:border-blue-300 hover:shadow-sm hover:-translate-y-0.5 active:bg-blue-200 active:translate-y-0">
-              Map
-            </button>
-            <button @click="scrollToSection('jobs')" class="px-3 py-1.5 text-sm font-medium rounded-lg transition-all bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 hover:border-blue-300 hover:shadow-sm hover:-translate-y-0.5 active:bg-blue-200 active:translate-y-0">
-              Jobs
-            </button>
-            <button @click="scrollToSection('gallery')" class="px-3 py-1.5 text-sm font-medium rounded-lg transition-all bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 hover:border-blue-300 hover:shadow-sm hover:-translate-y-0.5 active:bg-blue-200 active:translate-y-0">
-              Gallery
-            </button>
-            <button @click="scrollToSection('console')" class="px-3 py-1.5 text-sm font-medium rounded-lg transition-all bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 hover:border-blue-300 hover:shadow-sm hover:-translate-y-0.5 active:bg-blue-200 active:translate-y-0">
-              Console
-            </button>
-          </nav>
+          <span class="hidden text-sm text-slate-500 sm:inline">
+            Welcome, <strong>{{ authStore.currentUser?.username }}</strong>
+          </span>
         </div>
-        
-        <button
-          @click="handleLogout"
-          class="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors"
+
+        <div
+          class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between lg:gap-4"
         >
-          Logout
-        </button>
+          <StatusBar />
+          <div class="hidden h-7 w-px bg-slate-300 sm:block"></div>
+          <button
+            @click="handleLogout"
+            class="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 transition-all hover:-translate-y-0.5 hover:border-red-300 hover:bg-red-50 hover:text-red-700 hover:shadow-sm"
+          >
+            Logout
+          </button>
+        </div>
       </div>
     </header>
 
@@ -49,26 +43,20 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
+import { onMounted } from "vue";
+import { useRouter } from "vue-router";
+import { useAuthStore } from "@/stores/auth";
+import StatusBar from "@/components/StatusBar.vue";
 
-const router = useRouter()
-const authStore = useAuthStore()
+const router = useRouter();
+const authStore = useAuthStore();
 
 onMounted(() => {
-  authStore.initializeAuth()
-})
+  authStore.initializeAuth();
+});
 
 const handleLogout = () => {
-  authStore.logout()
-  router.push('/login')
-}
-
-const scrollToSection = (sectionId: string) => {
-  const element = document.getElementById(sectionId)
-  if (element) {
-    element.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }
-}
+  authStore.logout();
+  router.push("/login");
+};
 </script>

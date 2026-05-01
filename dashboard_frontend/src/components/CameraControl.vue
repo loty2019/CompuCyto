@@ -1,131 +1,11 @@
 <template>
-  <div class="bg-white p-4 rounded-xl shadow-lg">
-    <h2 class="text-xl font-bold mb-4 text-gray-900">Camera Controls</h2>
-
-    <!-- Two Column Layout for Controls -->
-    <div class="grid grid-cols-2 gap-4 mb-4">
-      <!-- Left Column -->
-      <div class="space-y-4">
-        <!-- Auto-Exposure Controls -->
-        <div class="p-3 bg-gray-50 rounded-lg border border-gray-200">
-          <div class="flex flex-col gap-2">
-            <label class="flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                v-model="autoExposure"
-                @change="toggleAutoExposure"
-                :disabled="!autoExposureSupported"
-                class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2 disabled:cursor-not-allowed disabled:opacity-50"
-              />
-              <span class="ml-2 text-sm font-semibold text-gray-700"
-                >Auto-Exposure</span
-              >
-              <span
-                v-if="!autoExposureSupported"
-                class="ml-2 text-xs text-red-600"
-                >(Not Supported)</span
-              >
-            </label>
-            <button
-              @click="performAutoExposureOnce"
-              :disabled="autoExposure || !autoExposureSupported"
-              class="w-full px-3 py-1 text-xs font-medium text-white bg-blue-500 rounded hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-            >
-              Auto Once
-            </button>
-          </div>
-        </div>
-
-        <!-- Exposure Slider -->
-        <div>
-          <div class="flex justify-between items-center mb-1">
-            <label class="text-sm font-semibold text-gray-700">
-              Exposure
-              <span v-if="autoExposure" class="text-xs text-blue-600 ml-1"
-                >(Auto)</span
-              >
-            </label>
-            <span
-              class="text-xs font-mono text-gray-900 bg-gray-100 px-2 py-0.5 rounded"
-              >{{ exposure.toFixed(1) }} ms</span
-            >
-          </div>
-          <input
-            type="range"
-            :value="exposureToSlider(exposure)"
-            :min="0"
-            :max="100"
-            step="1"
-            :disabled="autoExposure"
-            @input="onExposureSliderChange"
-            class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 slider"
-          />
-          <div class="flex justify-between text-xs text-gray-500 mt-0.5">
-            <span>{{ exposureMin.toFixed(3) }} ms</span>
-            <span>{{ exposureMax.toFixed(1) }} ms</span>
-          </div>
-        </div>
+  <div class="camera-panel rounded-xl border border-slate-200/80 bg-white p-2.5 shadow-md">
+    <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+      <div class="flex items-baseline gap-2">
+        <h2 class="text-lg font-black text-slate-950">Camera</h2>
+        <span class="text-xs font-bold uppercase text-slate-500">Live Preview</span>
       </div>
-
-      <!-- Right Column -->
-      <div class="space-y-4">
-        <!-- Gain Slider -->
-        <div>
-          <div class="flex justify-between items-center mb-1">
-            <label class="text-sm font-semibold text-gray-700">Gain</label>
-            <span
-              class="text-xs font-mono text-gray-900 bg-gray-100 px-2 py-0.5 rounded"
-              >{{ gain.toFixed(2) }}x</span
-            >
-          </div>
-          <input
-            type="range"
-            v-model.number="gain"
-            :min="gainMin"
-            :max="gainMax"
-            step="0.01"
-            @input="onGainChange"
-            class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
-          />
-          <div class="flex justify-between text-xs text-gray-500 mt-0.5">
-            <span>{{ gainMin.toFixed(1) }}x</span>
-            <span>{{ gainMax.toFixed(1) }}x</span>
-          </div>
-        </div>
-
-        <!-- Gamma Slider -->
-        <div v-if="gammaSupported">
-          <div class="flex justify-between items-center mb-1">
-            <label class="text-sm font-semibold text-gray-700">Gamma</label>
-            <span
-              class="text-xs font-mono text-gray-900 bg-gray-100 px-2 py-0.5 rounded"
-              >{{ gamma.toFixed(2) }}</span
-            >
-          </div>
-          <input
-            type="range"
-            :value="gammaToSlider(gamma)"
-            :min="0"
-            :max="100"
-            step="1"
-            @input="onGammaSliderChange"
-            class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
-          />
-          <div class="flex justify-between text-xs text-gray-500 mt-0.5">
-            <span>{{ gammaMin.toFixed(1) }}</span>
-            <span>{{ gammaMax.toFixed(1) }}</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Live Camera Feed Section -->
-    <div class="mt-4 pb-4 pt-2 border-t-2">
-      <div class="flex items-center justify-between mb-3">
-        <div class="flex items-center gap-2">
-          <h3 class="text-base font-bold text-gray-800 text-xl">
-            Live Preview
-          </h3>
+      <div class="flex items-center gap-2">
           <span
             v-if="feedUrl && !feedError && lightWarning"
             class="text-xs font-semibold text-yellow-600 bg-yellow-50 px-2 py-1 rounded border border-yellow-300 flex items-center gap-1"
@@ -137,18 +17,21 @@
         <button
           v-if="feedUrl && !feedError"
           @click="stopFeed"
-          class="bg-red-500 text-white px-3 py-1.5 text-s rounded hover:bg-red-600 transition-colors font-medium shadow-sm"
+          class="rounded-md border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-bold text-red-700 shadow-sm transition-all hover:bg-red-100 hover:shadow"
         >
           Stop Feed
         </button>
       </div>
-      <div
-        class="bg-gray-900 rounded-xl overflow-hidden relative flex items-center justify-center shadow-2xl border-4 border-gray-300"
-        style="aspect-ratio: 4/3; min-height: 400px"
-      >
+    <!-- Live Camera Feed Section -->
+    <div class="mt-2">
+      <div class="grid items-start gap-2 xl:grid-cols-[minmax(0,1fr)_260px]">
+        <div
+          class="relative flex items-center justify-center overflow-hidden rounded-xl border border-slate-700 bg-slate-950 shadow-lg shadow-slate-300/40 ring-4 ring-slate-900"
+          style="aspect-ratio: 4/3; min-height: 245px"
+        >
         <div
           v-if="isLoadingFeed"
-          class="flex flex-col items-center justify-center gap-4 text-blue-400 w-full h-full p-8"
+          class="flex flex-col items-center justify-center gap-4 text-blue-300 w-full h-full p-8"
         >
           <div
             class="inline-block w-16 h-16 border-4 border-blue-400 border-t-transparent rounded-full animate-spin"
@@ -159,7 +42,7 @@
         </div>
         <div
           v-else-if="feedError"
-          class="flex flex-col items-center justify-center gap-4 text-red-400 w-full h-full p-8"
+          class="flex flex-col items-center justify-center gap-4 text-red-300 w-full h-full p-8"
         >
           <span class="text-6xl mb-2">⚠️</span>
           <p class="text-base font-semibold text-center max-w-md">
@@ -167,19 +50,19 @@
           </p>
           <button
             @click="reconnectFeed"
-            class="bg-blue-500 text-white px-6 py-3 text-base rounded-lg hover:bg-blue-700 transition-colors shadow-lg font-medium"
+            class="rounded-lg bg-blue-500 px-6 py-3 text-base font-bold text-white shadow-lg transition-colors hover:bg-blue-600"
           >
             Reconnect
           </button>
         </div>
         <div
           v-else-if="!feedUrl"
-          class="flex flex-col items-center justify-center gap-4 text-gray-400 w-full h-full p-8"
+          class="flex flex-col items-center justify-center gap-4 text-slate-400 w-full h-full p-8"
         >
           <p class="text-lg font-semibold">Camera feed not started</p>
           <button
             @click="startFeed"
-            class="bg-blue-500 text-white px-6 py-3 text-base rounded-lg hover:bg-blue-700 transition-colors shadow-lg font-medium"
+            class="rounded-lg bg-blue-500 px-6 py-3 text-base font-bold text-white shadow-lg transition-colors hover:bg-blue-600"
           >
             Start Feed
           </button>
@@ -192,12 +75,121 @@
           @error="handleFeedError"
           @load="handleFeedLoad"
         />
+        </div>
+        <div class="space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-2 shadow-inner">
+          <div class="rounded-xl border border-white/80 bg-white/85 p-2 shadow-sm">
+            <div class="mb-2 flex items-center justify-between">
+              <span class="text-[11px] font-black uppercase text-slate-700">Camera Tuning</span>
+              <span class="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-bold text-slate-600">Controls</span>
+            </div>
+            <div class="space-y-1.5">
+              <div class="rounded-lg border border-slate-200 bg-white p-2 shadow-sm">
+                <label class="flex cursor-pointer items-center">
+                  <input
+                    type="checkbox"
+                    v-model="autoExposure"
+                    @change="toggleAutoExposure"
+                    :disabled="!autoExposureSupported"
+                    class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  />
+                  <span class="ml-2 text-xs font-semibold text-gray-700">
+                    Auto-Exposure
+                  </span>
+                  <span
+                    v-if="!autoExposureSupported"
+                    class="ml-2 text-xs text-red-600"
+                  >
+                    Not Supported
+                  </span>
+                </label>
+              </div>
+
+              <div
+                v-if="gammaSupported"
+                class="rounded-lg border border-slate-200 bg-white p-2 shadow-sm"
+              >
+                <div class="flex justify-between items-center mb-1">
+                  <label class="text-xs font-semibold text-gray-700">Gamma</label>
+                  <span
+                    class="text-xs font-mono text-gray-900 bg-gray-100 px-2 py-0.5 rounded"
+                    >{{ gamma.toFixed(2) }}</span
+                  >
+                </div>
+                <input
+                  type="range"
+                  :value="gammaToSlider(gamma)"
+                  :min="0"
+                  :max="100"
+                  step="1"
+                  @input="onGammaSliderChange"
+                  class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+                />
+                <div class="flex justify-between text-xs text-gray-500 mt-0.5">
+                  <span>{{ gammaMin.toFixed(1) }}</span>
+                  <span>{{ gammaMax.toFixed(1) }}</span>
+                </div>
+              </div>
+
+              <div class="rounded-lg border border-slate-200 bg-white p-2 shadow-sm">
+                <div class="flex justify-between items-center mb-1">
+                  <label class="text-xs font-semibold text-gray-700">
+                    Exposure
+                    <span v-if="autoExposure" class="text-xs text-blue-600 ml-1">
+                      Auto
+                    </span>
+                  </label>
+                  <span
+                    class="text-xs font-mono text-gray-900 bg-gray-100 px-2 py-0.5 rounded"
+                    >{{ exposure.toFixed(1) }} ms</span
+                  >
+                </div>
+                <input
+                  type="range"
+                  :value="exposureToSlider(exposure)"
+                  :min="0"
+                  :max="100"
+                  step="1"
+                  :disabled="autoExposure"
+                  @input="onExposureSliderChange"
+                  class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 slider"
+                />
+                <div class="flex justify-between text-xs text-gray-500 mt-0.5">
+                  <span>{{ exposureMin.toFixed(3) }} ms</span>
+                  <span>{{ exposureMax.toFixed(1) }} ms</span>
+                </div>
+              </div>
+
+              <div class="rounded-lg border border-slate-200 bg-white p-2 shadow-sm">
+                <div class="flex justify-between items-center mb-1">
+                  <label class="text-xs font-semibold text-gray-700">Gain</label>
+                  <span
+                    class="text-xs font-mono text-gray-900 bg-gray-100 px-2 py-0.5 rounded"
+                    >{{ gain.toFixed(2) }}x</span
+                  >
+                </div>
+                <input
+                  type="range"
+                  v-model.number="gain"
+                  :min="gainMin"
+                  :max="gainMax"
+                  step="0.01"
+                  @input="onGainChange"
+                  class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+                />
+                <div class="flex justify-between text-xs text-gray-500 mt-0.5">
+                  <span>{{ gainMin.toFixed(1) }}x</span>
+                  <span>{{ gainMax.toFixed(1) }}x</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Live Feed Info -->
       <div
         v-if="feedUrl && !feedError"
-        class="mt-2 text-xs text-gray-500 text-center"
+        class="hidden"
       >
         Live feed • Exposure: {{ exposure.toFixed(1) }}ms • Gain:
         {{ gain.toFixed(2) }}x
@@ -205,12 +197,12 @@
       </div>
     </div>
 
-    <div class="flex gap-6">
+    <div class="mt-2 grid gap-2 sm:grid-cols-2">
       <!-- Capture Image Button -->
       <button
         @click="capture"
         :disabled="camera.isCapturing.value"
-        class="w-full bg-blue-600 text-white px-4 py-3 rounded-lg cursor-pointer text-base font-bold transition-all hover:bg-blue-700 hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed shadow-md transform hover:scale-[1.01] active:scale-[0.99]"
+        class="action-button action-button-capture"
       >
         <span
           v-if="camera.isCapturing.value"
@@ -222,6 +214,7 @@
           Capturing...
         </span>
         <span v-else class="flex items-center justify-center gap-2">
+          <span class="action-button-icon action-button-icon-camera"></span>
           Capture Image
         </span>
       </button>
@@ -231,19 +224,18 @@
         @click="toggleRecording"
         :disabled="camera.isCapturing.value"
         :class="[
-          'w-full px-4 py-3 rounded-lg cursor-pointer text-base font-bold transition-all hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed shadow-md transform hover:scale-[1.01] active:scale-[0.99]',
+          'action-button',
           isRecording
-            ? 'bg-red-600 text-white hover:bg-red-700'
-            : 'bg-green-600 text-white hover:bg-green-700',
+            ? 'action-button-recording'
+            : 'action-button-record',
         ]"
       >
         <span v-if="isRecording" class="flex items-center justify-center gap-2">
-          <div
-            class="inline-block w-3 h-3 bg-white rounded-sm animate-pulse"
-          ></div>
+          <span class="action-button-icon action-button-icon-stop"></span>
           Stop Recording ({{ recordingTime.toFixed(0) }}s)
         </span>
         <span v-else class="flex items-center justify-center gap-2">
+          <span class="action-button-icon action-button-icon-record"></span>
           Record Video
         </span>
       </button>
@@ -252,11 +244,91 @@
 </template>
 
 <style scoped>
+.camera-panel {
+  background:
+    radial-gradient(circle at top left, rgba(148, 163, 184, 0.16), transparent 32%),
+    linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+}
+
+.action-button {
+  @apply flex min-h-[44px] w-full cursor-pointer items-center justify-center rounded-lg px-3 py-2 text-sm font-black shadow-md transition-all disabled:cursor-not-allowed disabled:opacity-60;
+}
+
+.action-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.action-button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.action-button-capture {
+  @apply border border-slate-700 bg-slate-800 text-white shadow-slate-300/60 hover:bg-slate-700 hover:shadow-lg;
+}
+
+.action-button-record {
+  @apply border border-blue-700 bg-blue-700 text-white shadow-blue-300/50 hover:bg-blue-800 hover:shadow-lg;
+}
+
+.action-button-recording {
+  @apply border border-red-400 bg-red-600 text-white shadow-red-200/70 hover:bg-red-700 hover:shadow-lg;
+}
+
+.action-button-icon {
+  @apply relative inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.action-button-icon-camera::before {
+  content: "";
+  width: 11px;
+  height: 8px;
+  border: 2px solid currentColor;
+  border-radius: 3px;
+}
+
+.action-button-icon-camera::after {
+  content: "";
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 9999px;
+  border: 1px solid currentColor;
+}
+
+.action-button-icon-record::before {
+  content: "";
+  width: 9px;
+  height: 9px;
+  border-radius: 9999px;
+  background: currentColor;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.22);
+}
+
+.action-button-icon-stop::before {
+  content: "";
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  background: currentColor;
+  animation: recording-stop-pulse 1s ease-in-out infinite;
+}
+
+@keyframes recording-stop-pulse {
+  0%,
+  100% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
 /* Custom slider styling */
 .slider::-webkit-slider-thumb {
   appearance: none;
-  width: 20px;
-  height: 20px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
   background: #3b82f6;
   cursor: pointer;
@@ -270,8 +342,8 @@
 }
 
 .slider::-moz-range-thumb {
-  width: 20px;
-  height: 20px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
   background: #3b82f6;
   cursor: pointer;
@@ -300,7 +372,7 @@
 import { ref, onMounted, onUnmounted, computed, watch } from "vue";
 import { useMicroscopeStore } from "@/stores/microscope";
 import { useCamera } from "@/composables/useCamera";
-import apiClient, { piAPI } from "@/api/client";
+import { piAPI } from "@/api/client";
 
 const store = useMicroscopeStore();
 const camera = useCamera();
@@ -504,42 +576,6 @@ async function toggleAutoExposure() {
   // Reload settings to get updated exposure value if auto-exposure was enabled
   if (autoExposure.value) {
     setTimeout(loadCameraSettings, 500);
-  }
-}
-
-async function performAutoExposureOnce() {
-  try {
-    store.addLog("Performing one-time auto-exposure...", "info");
-
-    const API_BASE_URL =
-      import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
-    const response = await fetch(
-      `${API_BASE_URL}/api/v1/camera/settings/auto-exposure/once`.replace(
-        ":3000",
-        ":8001",
-      ),
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      },
-    );
-
-    const result = await response.json();
-
-    if (result.success) {
-      exposure.value = result.exposure;
-      store.addLog(
-        `Auto-exposure completed: ${result.exposure.toFixed(1)}ms`,
-        "success",
-      );
-      await loadCameraSettings(); // Reload all settings
-    } else {
-      store.addLog("Auto-exposure failed", "error");
-    }
-  } catch (error: any) {
-    store.addLog(`Auto-exposure error: ${error.message}`, "error");
   }
 }
 

@@ -1,25 +1,22 @@
 <template>
-  <div class="max-w-screen-xl mx-auto px-5 pb-5 pt-2">
-    <header class="bg-white p-5 rounded-lg mb-2 shadow-md">
-      <StatusBar />
-    </header>
-
-    <!-- Main Control Panel: Camera (left) + Stage & Map (right column) -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-2 mb-5">
-      <!-- Camera Control - Takes up 2/3 on large screens -->
-      <div id="camera" class="lg:col-span-2">
+  <div class="mx-auto max-w-screen-2xl px-2 pb-3 pt-2 sm:px-3">
+    <!-- Main Control Panel: prioritize camera preview with a compact control rail -->
+    <div class="mb-3 grid grid-cols-1 gap-2 xl:grid-cols-[minmax(0,1fr)_300px] 2xl:grid-cols-[minmax(0,1fr)_320px]">
+      <div id="camera" class="min-w-0">
         <CameraControl />
       </div>
 
-      <!-- Right Column - Stage + Map stacked vertically -->
-      <div class="flex flex-col gap-2">
+      <aside class="flex min-w-0 flex-col gap-2 xl:sticky xl:top-20 xl:self-start">
+        <IlluminationControl />
         <div id="stage"><StageControl /></div>
-        <div id="map"><MicroscopeMap /></div>
-      </div>
+        <div id="map"><MicroscopeMap compact /></div>
+      </aside>
     </div>
 
-    <div id="gallery" class="mb-5"><ImageGallery /></div>
-    <div id="video-gallery" class="mb-5"><VideoGallery /></div>
+    <section class="mb-5 grid grid-cols-1 gap-2 xl:grid-cols-2">
+      <div id="gallery" class="min-w-0"><ImageGallery /></div>
+      <div id="video-gallery" class="min-w-0"><VideoGallery /></div>
+    </section>
     <div id="jobs" class="mb-5"><JobManager /></div>
     <div id="console" class="mb-5"><ConsoleLog /></div>
   </div>
@@ -30,10 +27,10 @@ import { onMounted } from "vue";
 import { useMicroscopeStore } from "@/stores/microscope";
 import { controlAPI } from "@/api/client";
 import { useWebSocket } from "@/composables/useWebSocket";
-import StatusBar from "@/components/StatusBar.vue";
 import CameraControl from "@/components/CameraControl.vue";
-import StageControl from "@/components/StageControl.vue";
+import IlluminationControl from "@/components/IlluminationControl.vue";
 import MicroscopeMap from "@/components/MicroscopeMap.vue";
+import StageControl from "@/components/StageControl.vue";
 import JobManager from "@/components/JobManager.vue";
 import ImageGallery from "@/components/ImageGallery.vue";
 import VideoGallery from "@/components/VideoGallery.vue";

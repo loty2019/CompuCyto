@@ -1,162 +1,158 @@
 <template>
-  <div class="bg-white p-4 rounded-lg shadow-md">
-    <h2 class="text-xl font-bold mb-4 text-gray-900">Stage Control</h2>
+  <div class="stage-panel overflow-hidden rounded-lg border border-slate-200/80 bg-white p-2 shadow-md">
+    <div class="mb-1.5 flex items-center justify-between gap-2">
+      <h2 class="text-sm font-black uppercase tracking-wide text-slate-950">Stage</h2>
+      <span class="rounded-full border border-slate-300 bg-slate-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-600">
+        Relative
+      </span>
+    </div>
 
-    <!-- Position Display (single uniform box) -->
-    <div class="mb-4">
-      <div
-        class="bg-gray-100 p-3 rounded flex items-center justify-between gap-4"
-      >
-        <div class="flex-1 text-center">
-          <div class="text-gray-600 text-xs">X</div>
-          <div class="font-semibold text-sm">
-            {{ store.position.x.toFixed(1) }}
-          </div>
-        </div>
-        <div class="flex-1 text-center">
-          <div class="text-gray-600 text-xs">Y</div>
-          <div class="font-semibold text-sm">
-            {{ store.position.y.toFixed(1) }}
-          </div>
-        </div>
-        <div class="flex-1 text-center">
-          <div class="text-gray-600 text-xs">Z</div>
-          <div class="font-semibold text-sm">
-            {{ store.position.z.toFixed(1) }}
-          </div>
-        </div>
+    <div class="mb-1.5 grid grid-cols-3 gap-1 rounded-md border border-slate-200 bg-slate-50 p-1 shadow-inner">
+      <div class="position-chip">
+        <span class="position-axis">X</span>
+        <span class="position-value">{{ store.position.x.toFixed(1) }}</span>
+      </div>
+      <div class="position-chip">
+        <span class="position-axis">Y</span>
+        <span class="position-value">{{ store.position.y.toFixed(1) }}</span>
+      </div>
+      <div class="position-chip">
+        <span class="position-axis">Z</span>
+        <span class="position-value">{{ store.position.z.toFixed(1) }}</span>
       </div>
     </div>
 
-    <div class="grid grid-cols-3 gap-2.5 mb-4">
-      <div></div>
-      <button
-        @click="
-          handleButtonClick('arrowup');
-          move(0, 100, 0);
-        "
-        :disabled="stage.isMoving.value"
-        class="bg-blue-500 text-white p-4 rounded text-sm font-medium hover:bg-blue-700"
-        :class="stage.isMoving.value ? 'cursor-not-allowed' : 'cursor-pointer'"
-        :style="getButtonStyle('arrowup')"
-      >
-        ↑ Y+
-      </button>
-      <div></div>
+    <div class="rounded-lg border border-slate-200 bg-slate-50 p-1.5">
+      <div class="mb-1 flex items-center justify-between">
+        <h3 class="section-label">XY Travel</h3>
+        <span class="text-[10px] font-semibold text-slate-500">100 um</span>
+      </div>
 
-      <button
-        @click="
-          handleButtonClick('arrowleft');
-          move(-100, 0, 0);
-        "
-        :disabled="stage.isMoving.value"
-        class="bg-blue-500 text-white p-4 rounded text-sm font-medium hover:bg-blue-700"
-        :class="stage.isMoving.value ? 'cursor-not-allowed' : 'cursor-pointer'"
-        :style="getButtonStyle('arrowleft')"
-      >
-        ← X-
-      </button>
-      <button
-        @click="
-          handleButtonClick('home');
-          stage.home();
-        "
-        :disabled="stage.isMoving.value"
-        class="bg-orange-400 text-white p-4 rounded text-sm font-medium hover:bg-orange-600"
-        :class="stage.isMoving.value ? 'cursor-not-allowed' : 'cursor-pointer'"
-        :style="getButtonStyle('home')"
-      >
-        ⌂ Home
-      </button>
-      <button
-        @click="
-          handleButtonClick('arrowright');
-          move(100, 0, 0);
-        "
-        :disabled="stage.isMoving.value"
-        class="bg-blue-500 text-white p-4 rounded text-sm font-medium hover:bg-blue-700"
-        :class="stage.isMoving.value ? 'cursor-not-allowed' : 'cursor-pointer'"
-        :style="getButtonStyle('arrowright')"
-      >
-        X+ →
-      </button>
+      <div class="grid grid-cols-3 gap-1">
+        <div></div>
+        <button
+          @click="
+            handleButtonClick('arrowup');
+            move(0, 100, 0);
+          "
+          :disabled="stage.isMoving.value"
+          class="stage-button stage-button-primary"
+          :class="
+            stage.isMoving.value
+              ? 'cursor-not-allowed opacity-60'
+              : 'cursor-pointer'
+          "
+          :style="getButtonStyle('arrowup')"
+        >
+          <span>Y+</span>
+        </button>
+        <div></div>
 
-      <div></div>
-      <button
-        @click="
-          handleButtonClick('arrowdown');
-          move(0, -100, 0);
-        "
-        :disabled="stage.isMoving.value"
-        class="bg-blue-500 text-white p-4 rounded text-sm font-medium hover:bg-blue-700"
-        :class="stage.isMoving.value ? 'cursor-not-allowed' : 'cursor-pointer'"
-        :style="getButtonStyle('arrowdown')"
-      >
-        ↓ Y-
-      </button>
+        <button
+          @click="
+            handleButtonClick('arrowleft');
+            move(-100, 0, 0);
+          "
+          :disabled="stage.isMoving.value"
+          class="stage-button stage-button-primary"
+          :class="
+            stage.isMoving.value
+              ? 'cursor-not-allowed opacity-60'
+              : 'cursor-pointer'
+          "
+          :style="getButtonStyle('arrowleft')"
+        >
+          <span>X-</span>
+        </button>
+        <button
+          @click="
+            handleButtonClick('home');
+            stage.home();
+          "
+          :disabled="stage.isMoving.value"
+          class="stage-button stage-button-home"
+          :class="
+            stage.isMoving.value
+              ? 'cursor-not-allowed opacity-60'
+              : 'cursor-pointer'
+          "
+          :style="getButtonStyle('home')"
+        >
+          <span>Home</span>
+        </button>
+        <button
+          @click="
+            handleButtonClick('arrowright');
+            move(100, 0, 0);
+          "
+          :disabled="stage.isMoving.value"
+          class="stage-button stage-button-primary"
+          :class="
+            stage.isMoving.value
+              ? 'cursor-not-allowed opacity-60'
+              : 'cursor-pointer'
+          "
+          :style="getButtonStyle('arrowright')"
+        >
+          <span>X+</span>
+        </button>
 
-      <!-- Light Toggle Button -->
-      <button
-        @click="
-          handleButtonClick('l');
-          toggleLight();
-        "
-        :disabled="isToggling || lightLoading"
-        :title="
-          isLightOn
-            ? 'Light ON - Click to turn OFF (Press L)'
-            : 'Light OFF - Click to turn ON (Press L)'
-        "
-        :class="[
-          'p-4 rounded text-xs leading-tight font-medium',
-          isLightOn
-            ? 'bg-yellow-500 text-white hover:bg-yellow-600 hover:shadow-lg shadow-lg shadow-yellow-500/60 '
-            : 'bg-blue-300 text-white hover:bg-blue-700',
-          isToggling || lightLoading ? 'cursor-not-allowed' : 'cursor-pointer',
-        ]"
-        :style="getButtonStyle('l')"
-      >
-        <span v-if="isLightOn">💡 ON</span>
-        <span v-else>💡 OFF</span>
-      </button>
+        <div></div>
+        <button
+          @click="
+            handleButtonClick('arrowdown');
+            move(0, -100, 0);
+          "
+          :disabled="stage.isMoving.value"
+          class="stage-button stage-button-primary outline-none"
+          :class="
+            stage.isMoving.value
+              ? 'cursor-not-allowed opacity-60'
+              : 'cursor-pointer'
+          "
+          :style="getButtonStyle('arrowdown')"
+        >
+          <span>Y-</span>
+        </button>
+        <div></div>
+      </div>
     </div>
 
-    <div
-      v-if="lightError"
-      class="text-xs text-red-600 bg-red-50 p-2 rounded mb-3"
-    >
-      ⚠️ {{ lightError }}
-    </div>
-
-    <!-- Focus Section (Z-Axis) -->
-    <div class="mt-6 pt-2 border-t-2 border-gray-200">
-      <h3 class="text-base font-semibold text-gray-700 mb-3">Focus</h3>
-      <div class="flex gap-2">
+    <div class="mt-1.5 rounded-lg border border-slate-200 bg-white p-1.5 shadow-sm">
+      <div class="mb-1 flex items-center justify-between">
+        <h3 class="section-label">Focus</h3>
+        <span class="text-[10px] font-semibold text-slate-500">10 um</span>
+      </div>
+      <div class="flex gap-1">
         <button
           @click="handleZClick('up')"
           :disabled="stage.isMoving.value"
-          class="flex-1 bg-blue-500 text-white px-5 py-2.5 rounded text-sm font-medium hover:bg-blue-700"
+          class="stage-button stage-button-primary flex-1"
           :class="
-            stage.isMoving.value ? 'cursor-not-allowed' : 'cursor-pointer'
+            stage.isMoving.value
+              ? 'cursor-not-allowed opacity-60'
+              : 'cursor-pointer'
           "
           :style="getButtonStyle('zup')"
         >
-          Z+ ↑
+          Z+
         </button>
         <button
           @click="handleZClick('down')"
           :disabled="stage.isMoving.value"
-          class="flex-1 bg-blue-500 text-white px-5 py-2.5 rounded text-sm font-medium hover:bg-blue-700"
+          class="stage-button stage-button-primary flex-1"
           :class="
-            stage.isMoving.value ? 'cursor-not-allowed' : 'cursor-pointer'
+            stage.isMoving.value
+              ? 'cursor-not-allowed opacity-60'
+              : 'cursor-pointer'
           "
           :style="getButtonStyle('zdown')"
         >
-          Z- ↓
+          Z-
         </button>
         <button
           @click="stage.stop()"
-          class="flex-1 bg-red-700 text-white px-5 py-2.5 rounded cursor-pointer text-sm font-medium hover:bg-red-800"
+          class="stage-button flex-1 cursor-pointer bg-red-600 text-white shadow-md shadow-red-300/40 hover:bg-red-700"
           :style="getButtonStyle('stop')"
           title="Emergency Stop"
         >
@@ -165,10 +161,6 @@
       </div>
     </div>
 
-    <!-- Keyboard Shortcuts Info -->
-    <div class="mt-3 p-2 bg-blue-50 rounded text-xs text-gray-600 text-center">
-      ⌨ Arrow Keys: Move • L: Light
-    </div>
   </div>
 </template>
 
@@ -176,21 +168,11 @@
 import { ref, onMounted, onUnmounted } from "vue";
 import { useMicroscopeStore } from "@/stores/microscope";
 import { useStage } from "@/composables/useStage";
-import apiClient, { piAPI } from "@/api/client";
 
 const store = useMicroscopeStore();
 const stage = useStage();
 
-const isLightOn = ref(false);
-const lightLoading = ref(true);
-const isToggling = ref(false);
-const lightError = ref("");
-const sameBoxConfirmed = ref(false);
-
-// Visual feedback for key presses
 const pressedKeys = ref<Set<string>>(new Set());
-
-// Visual feedback for button clicks
 const clickedButtons = ref<Set<string>>(new Set());
 
 let intervalId: number | null = null;
@@ -198,9 +180,7 @@ let intervalId: number | null = null;
 onMounted(() => {
   intervalId = window.setInterval(stage.updatePosition, 2000);
   stage.updatePosition();
-  fetchLightStatus();
 
-  // Add keyboard event listeners
   window.addEventListener("keydown", handleKeyDown);
   window.addEventListener("keyup", handleKeyUp);
 });
@@ -208,7 +188,6 @@ onMounted(() => {
 onUnmounted(() => {
   if (intervalId) clearInterval(intervalId);
 
-  // Remove keyboard event listeners
   window.removeEventListener("keydown", handleKeyDown);
   window.removeEventListener("keyup", handleKeyUp);
 });
@@ -218,41 +197,7 @@ async function move(x: number, y: number, z: number) {
   setTimeout(stage.updatePosition, 500);
 }
 
-async function fetchLightStatus() {
-  try {
-    lightLoading.value = true;
-    lightError.value = "";
-    const response = await piAPI.getLedLampState();
-    isLightOn.value = response.is_on;
-    // Update store so other components can react
-    store.updateLightStatus(response.is_on);
-  } catch (err: any) {
-    console.error("Failed to fetch light status:", err);
-    lightError.value = "Failed to connect";
-  } finally {
-    lightLoading.value = false;
-  }
-}
-
-async function toggleLight() {
-  try {
-    isToggling.value = true;
-    lightError.value = "";
-    const response = await piAPI.toggleLedLamp();
-    isLightOn.value = response.is_on;
-    // Update store immediately so other components can react
-    store.updateLightStatus(response.is_on);
-  } catch (err: any) {
-    console.error("Failed to toggle light:", err);
-    lightError.value = "Failed to toggle";
-    await fetchLightStatus();
-  } finally {
-    isToggling.value = false;
-  }
-}
-
 function handleKeyDown(event: KeyboardEvent) {
-  // Prevent handling if user is typing in an input field
   const target = event.target as HTMLElement;
   if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") {
     return;
@@ -260,27 +205,16 @@ function handleKeyDown(event: KeyboardEvent) {
 
   const key = event.key.toLowerCase();
 
-  // Prevent default browser behavior for arrow keys
   if (["arrowup", "arrowdown", "arrowleft", "arrowright"].includes(key)) {
     event.preventDefault();
   }
 
-  // Ignore if key is already pressed (prevent key repeat)
   if (pressedKeys.value.has(key)) {
     return;
   }
 
   pressedKeys.value.add(key);
 
-  // Handle light toggle (L key)
-  if (key === "l") {
-    if (!isToggling.value && !lightLoading.value) {
-      toggleLight();
-    }
-    return;
-  }
-
-  // Handle movement keys (Arrow keys)
   if (stage.isMoving.value) {
     return;
   }
@@ -314,7 +248,7 @@ function handleButtonClick(buttonId: string) {
   clickedButtons.value.add(buttonId);
   setTimeout(() => {
     clickedButtons.value.delete(buttonId);
-  }, 150); // Visual feedback for 150ms
+  }, 150);
 }
 
 function handleZClick(direction: "up" | "down") {
@@ -332,9 +266,48 @@ function getButtonStyle(buttonId: string): string {
   const isPressed = isKeyPressed(buttonId);
 
   if (isClicked || isPressed) {
-    // Darker and scaled down
-    return "filter: brightness(0.7); transform: scale(0.95); transition: all 0.05s ease;";
+    return "filter: brightness(0.82); transform: scale(0.96); transition: all 0.05s ease;";
   }
   return "transition: all 0.05s ease;";
 }
 </script>
+
+<style scoped>
+.stage-panel {
+  background:
+    radial-gradient(circle at top left, rgba(148, 163, 184, 0.16), transparent 34%),
+    linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+}
+
+.position-chip {
+  @apply flex flex-col rounded border border-slate-200 bg-white px-1.5 py-0.5 shadow-sm;
+}
+
+.position-axis {
+  @apply text-[9px] font-bold uppercase tracking-wide text-slate-500;
+}
+
+.position-value {
+  @apply font-mono text-xs font-semibold tracking-tight text-slate-900;
+}
+
+.section-label {
+  @apply text-[10px] font-bold uppercase tracking-wide text-slate-500;
+}
+
+.stage-button {
+  @apply flex min-h-[32px] items-center justify-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-bold shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md active:translate-y-0;
+}
+
+.stage-button-primary {
+  @apply border border-slate-700 bg-slate-800 text-white shadow-slate-300/50 hover:bg-slate-700;
+}
+
+.stage-button-home {
+  @apply border border-blue-700 bg-blue-700 text-white shadow-blue-300/40 hover:bg-blue-800;
+}
+
+.stage-button-symbol {
+  @apply text-xs leading-none;
+}
+</style>

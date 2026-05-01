@@ -76,10 +76,7 @@ export class ConfigService {
    * @default 'default-secret-change-me'
    */
   get jwtSecret(): string {
-    return this.configService.get<string>(
-      'JWT_SECRET',
-      'default-secret-change-me',
-    );
+    return this.configService.get<string>('JWT_SECRET', 'default-secret-change-me');
   }
 
   /**
@@ -97,10 +94,7 @@ export class ConfigService {
    * @default 'http://localhost:8001'
    */
   get pythonCameraUrl(): string {
-    return this.configService.get<string>(
-      'PYTHON_CAMERA_URL',
-      'http://localhost:8001',
-    );
+    return this.configService.get<string>('PYTHON_CAMERA_URL', 'http://localhost:8001');
   }
 
   /**
