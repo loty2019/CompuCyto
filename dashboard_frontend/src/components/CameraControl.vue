@@ -26,7 +26,7 @@
     <div class="mt-2">
       <div class="grid items-start gap-2 xl:grid-cols-[minmax(0,1fr)_260px]">
         <div
-          class="relative flex items-center justify-center overflow-hidden rounded-xl border border-slate-700 bg-slate-950 shadow-lg shadow-slate-300/40 ring-4 ring-slate-900"
+          class="relative flex items-center justify-center overflow-hidden rounded-xl border border-slate-700 bg-slate-600 shadow-lg shadow-slate-300/40 ring-2 ring-slate-900"
           style="aspect-ratio: 4/3; min-height: 245px"
         >
         <div
@@ -62,7 +62,7 @@
           <p class="text-lg font-semibold">Camera feed not started</p>
           <button
             @click="startFeed"
-            class="rounded-lg bg-blue-500 px-6 py-3 text-base font-bold text-white shadow-lg transition-colors hover:bg-blue-600"
+            class="rounded-lg bg-slate-900 px-6 py-3 text-base font-bold text-white shadow-lg transition-colors hover:bg-blue-600"
           >
             Start Feed
           </button>
@@ -161,7 +161,12 @@
 
               <div class="rounded-lg border border-slate-200 bg-white p-2 shadow-sm">
                 <div class="flex justify-between items-center mb-1">
-                  <label class="text-xs font-semibold text-gray-700">Gain</label>
+                  <label class="text-xs font-semibold text-gray-700">
+                    Gain
+                    <span v-if="autoExposure" class="text-xs text-blue-600 ml-1">
+                      Locked
+                    </span>
+                  </label>
                   <span
                     class="text-xs font-mono text-gray-900 bg-gray-100 px-2 py-0.5 rounded"
                     >{{ gain.toFixed(2) }}x</span
@@ -173,8 +178,9 @@
                   :min="gainMin"
                   :max="gainMax"
                   step="0.01"
+                  :disabled="autoExposure"
                   @input="onGainChange"
-                  class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+                  class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 slider"
                 />
                 <div class="flex justify-between text-xs text-gray-500 mt-0.5">
                   <span>{{ gainMin.toFixed(1) }}x</span>
@@ -527,6 +533,10 @@ function onExposureSliderChange(event: Event) {
 }
 
 function onGainChange() {
+  if (autoExposure.value) {
+    return;
+  }
+
   // Debounce the update to avoid flooding the API
   if (updateTimer) {
     clearTimeout(updateTimer);

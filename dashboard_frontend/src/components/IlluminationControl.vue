@@ -1,5 +1,5 @@
 <template>
-  <div class="illumination-panel rounded-lg border border-slate-200/80 bg-white p-2 shadow-md">
+  <div class="illumination-panel flex h-full flex-col rounded-lg border border-slate-200/80 bg-white p-2 shadow-md">
     <div class="mb-1.5 flex items-center justify-between">
       <h2 class="text-sm font-black uppercase tracking-wide text-slate-950">Light</h2>
       <span class="text-[10px] font-bold uppercase tracking-wide text-slate-400">L / F</span>
