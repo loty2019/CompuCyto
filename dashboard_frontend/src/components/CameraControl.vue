@@ -62,7 +62,7 @@
           <p class="text-lg font-semibold">Camera feed not started</p>
           <button
             @click="startFeed"
-            class="rounded-lg bg-slate-900 px-6 py-3 text-base font-bold text-white shadow-lg transition-colors hover:bg-blue-600"
+            class="rounded-lg bg-slate-900 px-6 py-3 text-base font-bold text-white shadow-lg transition-colors hover:bg-slate-800 hover:shadow-md hover:-translate-y-0.5"
           >
             Start Feed
           </button>
