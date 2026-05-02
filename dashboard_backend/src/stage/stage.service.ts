@@ -26,6 +26,7 @@ export class StageService {
   private readonly logger = new Logger(StageService.name);
   private readonly baseUrl: string;
   private readonly timeout: number;
+  private warnedPositionUnavailable = false;
 
   constructor(
     private httpService: HttpService,
@@ -61,8 +62,55 @@ export class StageService {
     relative: boolean = false,
   ): Promise<any> {
     try {
+      if (
+        relative &&
+        y !== undefined &&
+        x === undefined &&
+        z === undefined
+      ) {
+        try {
+          return await this.moveWithCurrentPosition(x, y, z, relative);
+        } catch (error) {
+          if (!this.isMissingPositionEndpoint(error)) {
+            throw error;
+          }
+
+          const { data } = await firstValueFrom(
+            this.httpService.post(
+              `${this.baseUrl}/move`,
+              { y, relative: true },
+              { timeout: this.timeout },
+            ),
+          );
+
+          return {
+            status: 'moving',
+            targetPosition: data.target_position ?? { x: 0, y, z: 0 },
+            target_position: data.target_position ?? { x: 0, y, z: 0 },
+            ...data,
+          };
+        }
+      }
+
+      return this.moveWithCurrentPosition(x, y, z, relative);
+    } catch (error) {
+      if (error instanceof ServiceUnavailableException) {
+        throw error;
+      }
+      this.logger.error(`Stage move error: ${error.message}`);
+      throw error;
+    }
+  }
+
+  private async moveWithCurrentPosition(
+    x?: number,
+    y?: number,
+    z?: number,
+    relative: boolean = false,
+  ): Promise<any> {
+    try {
       // STEP 1: Get current position from Raspberry Pi
-      const currentPosition = await this.getPosition();
+      const currentPosition = await this.fetchPositionFromController();
 
       // STEP 2: Calculate target position (handles absolute vs relative)
       const targetPosition = this.positionValidator.calculateTargetPosition(
@@ -101,13 +149,13 @@ export class StageService {
       return {
         status: 'moving',
         targetPosition,
+        target_position: targetPosition,
         ...data,
       };
     } catch (error) {
       if (error instanceof ServiceUnavailableException) {
         throw error;
       }
-      this.logger.error(`Stage move error: ${error.message}`);
       throw error;
     }
   }
@@ -122,26 +170,34 @@ export class StageService {
    */
   async getPosition(): Promise<Position> {
     try {
-      // GET request to Raspberry Pi for current motor positions
-      const { data } = await firstValueFrom(
-        this.httpService
-          .get(`${this.baseUrl}/position`, { timeout: this.timeout })
-          .pipe(
-            catchError((error: AxiosError) => {
-              this.logger.error(
-                `Failed to get stage position: ${error.message}`,
-              );
-              throw new ServiceUnavailableException(
-                'Stage controller unavailable',
-              );
-            }),
-          ),
-      );
-      return data;
+      return await this.fetchPositionFromController();
     } catch (error) {
+      if (this.isMissingPositionEndpoint(error)) {
+        if (!this.warnedPositionUnavailable) {
+          this.logger.warn(
+            'Stage controller does not expose /position yet; returning fallback position until Pi API is updated/restarted',
+          );
+          this.warnedPositionUnavailable = true;
+        }
+        return { x: 0, y: 0, z: 0 };
+      }
+
       this.logger.error(`Get position error: ${error.message}`);
       throw new ServiceUnavailableException('Stage controller unavailable');
     }
+  }
+
+  private async fetchPositionFromController(): Promise<Position> {
+    const { data } = await firstValueFrom(
+      this.httpService.get(`${this.baseUrl}/position`, {
+        timeout: this.timeout,
+      }),
+    );
+    return data;
+  }
+
+  private isMissingPositionEndpoint(error: any): boolean {
+    return error?.response?.status === 404;
   }
 
   /**

@@ -84,6 +84,7 @@ export interface MoveRequest {
 export interface MoveResponse {
   status: string;
   target_position: Position;
+  targetPosition?: Position;
 }
 
 export interface User {

@@ -343,9 +343,7 @@ export const controlAPI = {
   },
 
   async getPosition(): Promise<Position> {
-    //const { data } = await apiClient.get<Position>("/api/v1/stage/position");
-    //return a placeholder for now
-    const data: Position = { x: 0, y: 0, z: 0 };
+    const { data } = await apiClient.get<Position>("/api/v1/stage/position");
     return data;
   },
 

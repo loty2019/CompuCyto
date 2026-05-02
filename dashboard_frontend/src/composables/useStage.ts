@@ -11,11 +11,12 @@ export function useStage() {
     try {
       const result = await controlAPI.moveStage({ x, y, z, relative })
 
-      const pos = result.target_position
-      store.addLog(
-        `Moving to X:${pos.x.toFixed(1)} Y:${pos.y.toFixed(1)} Z:${pos.z.toFixed(1)}`,
-        'info'
-      )
+      const pos = result.target_position ?? result.targetPosition
+      if (pos) {
+        store.addLog(`Moving Y to ${pos.y.toFixed(0)} steps`, 'info')
+      } else {
+        store.addLog('Y move started', 'info')
+      }
 
       return result
     } catch (error: any) {
