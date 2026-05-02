@@ -56,7 +56,9 @@ Z_MOTOR_ENABLE = 9      # Purple - Disable/Enable
 Z_MOTOR_STEP = 27       # Yellow - Step
 Z_MOTOR_DIRECTION = 22  # Orange - Direction
 
-Y_STEP_DELAY_SECONDS = 0.001
+Y_STEP_PULSE_SECONDS = 0.005
+Y_STEP_LOW_SECONDS = 0.005
+Y_DIRECTION_SETTLE_SECONDS = 0.02
 Y_DIRECTION_POSITIVE = 1
 Y_DIRECTION_NEGATIVE = 0
 
@@ -131,7 +133,7 @@ def run_y_move(target_y: int):
         direction = Y_DIRECTION_POSITIVE if delta > 0 else Y_DIRECTION_NEGATIVE
         step_increment = 1 if delta > 0 else -1
         lgpio.gpio_write(h, Y_MOTOR_DIRECTION, direction)
-        time.sleep(0.002)
+        time.sleep(Y_DIRECTION_SETTLE_SECONDS)
 
         for _ in range(abs(delta)):
             if y_stop_event.is_set():
@@ -139,9 +141,9 @@ def run_y_move(target_y: int):
                 break
 
             lgpio.gpio_write(h, Y_MOTOR_STEP, 1)
-            time.sleep(Y_STEP_DELAY_SECONDS)
+            time.sleep(Y_STEP_PULSE_SECONDS)
             lgpio.gpio_write(h, Y_MOTOR_STEP, 0)
-            time.sleep(Y_STEP_DELAY_SECONDS)
+            time.sleep(Y_STEP_LOW_SECONDS)
             y_position_steps += step_increment
     except Exception as e:
         logger.error("Y movement failed: %s", e)

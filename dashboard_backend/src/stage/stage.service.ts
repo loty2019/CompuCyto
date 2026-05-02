@@ -62,12 +62,13 @@ export class StageService {
     relative: boolean = false,
   ): Promise<any> {
     try {
-      if (
+      const isRelativeYOnlyMove =
         relative &&
         y !== undefined &&
-        x === undefined &&
-        z === undefined
-      ) {
+        (x === undefined || x === 0) &&
+        (z === undefined || z === 0);
+
+      if (isRelativeYOnlyMove) {
         try {
           return await this.moveWithCurrentPosition(x, y, z, relative);
         } catch (error) {
