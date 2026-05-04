@@ -7,7 +7,7 @@
     <StatusPill label="Stage" :connected="isConnected(store.systemStatus.raspberryPi)" />
     <StatusPill label="WebSocket" :connected="isWsConnected" />
     <StatusPill
-      label="Closet"
+      label="Lid"
       :connected="store.closetStatus !== 'unknown'"
       :value="closetLabel"
       :alert="store.closetStatus === 'open'"

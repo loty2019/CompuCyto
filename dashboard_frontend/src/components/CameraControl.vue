@@ -26,7 +26,7 @@
     <div class="mt-2">
       <div class="grid items-start gap-2 xl:grid-cols-[minmax(0,1fr)_260px]">
         <div
-          class="relative flex items-center justify-center overflow-hidden rounded-xl border border-slate-700 bg-slate-600 shadow-lg shadow-slate-300/40 ring-2 ring-slate-900"
+          class="relative flex items-center justify-center overflow-hidden rounded-xl border border-slate-500 bg-slate-600 shadow-lg shadow-slate-300/40 ring-2 ring-slate-300"
           style="aspect-ratio: 4/3; min-height: 245px"
         >
         <div
@@ -463,7 +463,7 @@ const gammaSupported = ref(true); // Will be updated from camera
 const autoExposure = ref(false);
 const autoExposureSupported = ref(true); // Will be updated from camera
 const baseZStep = 25;
-const zMultipliers = [0.25, 0.5, 1, 2];
+const zMultipliers = [0.5, 1, 2, 4];
 const zMultiplier = ref(1);
 
 // Debounce timer for live updates

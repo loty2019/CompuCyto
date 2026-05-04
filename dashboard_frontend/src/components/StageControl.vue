@@ -32,7 +32,7 @@
     <div class="rounded-lg border border-slate-200 bg-slate-50 p-1.5">
       <div class="mb-1.5">
         <div class="mb-1 flex items-center justify-between gap-2">
-          <span class="section-label">XY Speed</span>
+          <span class="section-label">Speed</span>
           <span class="text-[10px] font-bold text-slate-500">{{ xyMultiplier }}x</span>
         </div>
         <div class="multiplier-grid">
