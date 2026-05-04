@@ -62,35 +62,30 @@ export class StageService {
     relative: boolean = false,
   ): Promise<any> {
     try {
-      const isRelativeYOnlyMove =
-        relative &&
-        y !== undefined &&
-        (x === undefined || x === 0) &&
-        (z === undefined || z === 0);
-
-      if (isRelativeYOnlyMove) {
-        try {
-          return await this.moveWithCurrentPosition(x, y, z, relative);
-        } catch (error) {
-          if (!this.isMissingPositionEndpoint(error)) {
-            throw error;
-          }
-
-          const { data } = await firstValueFrom(
-            this.httpService.post(
+      if (relative) {
+        const { data } = await firstValueFrom(
+          this.httpService
+            .post(
               `${this.baseUrl}/move`,
-              { y, relative: true },
+              { x, y, z, relative: true },
               { timeout: this.timeout },
+            )
+            .pipe(
+              catchError((error: AxiosError) => {
+                this.logger.error(`Stage move failed: ${error.message}`);
+                throw new ServiceUnavailableException(
+                  'Stage controller unavailable',
+                );
+              }),
             ),
-          );
+        );
 
-          return {
-            status: 'moving',
-            targetPosition: data.target_position ?? { x: 0, y, z: 0 },
-            target_position: data.target_position ?? { x: 0, y, z: 0 },
-            ...data,
-          };
-        }
+        return {
+          status: 'moving',
+          targetPosition: data.target_position,
+          target_position: data.target_position,
+          ...data,
+        };
       }
 
       return this.moveWithCurrentPosition(x, y, z, relative);

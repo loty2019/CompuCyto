@@ -25,7 +25,18 @@
     <div class="rounded-lg border border-slate-200 bg-slate-50 p-1.5">
       <div class="mb-1 flex items-center justify-between">
         <h3 class="section-label">XY Travel</h3>
-        <span class="text-[10px] font-semibold text-slate-500">100 um</span>
+        <div class="flex items-center gap-1">
+          <button
+            v-for="option in xyMultipliers"
+            :key="option"
+            @click="xyMultiplier = option"
+            class="multiplier-button"
+            :class="xyMultiplier === option ? 'multiplier-button-active' : ''"
+            type="button"
+          >
+            {{ option }}x
+          </button>
+        </div>
       </div>
 
       <div class="grid grid-cols-3 gap-1">
@@ -33,7 +44,7 @@
         <button
           @click="
             handleButtonClick('arrowup');
-            move(0, 100, 0);
+            moveAxis('x', 1);
           "
           :disabled="stage.isMoving.value"
           class="stage-button stage-button-primary"
@@ -43,15 +54,16 @@
               : 'cursor-pointer'
           "
           :style="getButtonStyle('arrowup')"
+          title="Move up"
         >
-          <span>Y+</span>
+          <span class="stage-button-symbol">↑</span>
         </button>
         <div></div>
 
         <button
           @click="
             handleButtonClick('arrowleft');
-            move(-100, 0, 0);
+            moveAxis('y', -1);
           "
           :disabled="stage.isMoving.value"
           class="stage-button stage-button-primary"
@@ -61,8 +73,9 @@
               : 'cursor-pointer'
           "
           :style="getButtonStyle('arrowleft')"
+          title="Move left"
         >
-          <span>X-</span>
+          <span class="stage-button-symbol">←</span>
         </button>
         <button
           @click="
@@ -83,7 +96,7 @@
         <button
           @click="
             handleButtonClick('arrowright');
-            move(100, 0, 0);
+            moveAxis('y', 1);
           "
           :disabled="stage.isMoving.value"
           class="stage-button stage-button-primary"
@@ -93,15 +106,16 @@
               : 'cursor-pointer'
           "
           :style="getButtonStyle('arrowright')"
+          title="Move right"
         >
-          <span>X+</span>
+          <span class="stage-button-symbol">→</span>
         </button>
 
         <div></div>
         <button
           @click="
             handleButtonClick('arrowdown');
-            move(0, -100, 0);
+            moveAxis('x', -1);
           "
           :disabled="stage.isMoving.value"
           class="stage-button stage-button-primary outline-none"
@@ -111,8 +125,9 @@
               : 'cursor-pointer'
           "
           :style="getButtonStyle('arrowdown')"
+          title="Move down"
         >
-          <span>Y-</span>
+          <span class="stage-button-symbol">↓</span>
         </button>
         <div></div>
       </div>
@@ -121,7 +136,7 @@
     <div class="mt-1.5 rounded-lg border border-slate-200 bg-white p-1.5 shadow-sm">
       <div class="mb-1 flex items-center justify-between">
         <h3 class="section-label">Focus</h3>
-        <span class="text-[10px] font-semibold text-slate-500">10 um</span>
+        <span class="text-[10px] font-semibold text-slate-500">{{ zStep }} step</span>
       </div>
       <div class="flex gap-1">
         <button
@@ -135,7 +150,7 @@
           "
           :style="getButtonStyle('zup')"
         >
-          Z+
+          +
         </button>
         <button
           @click="handleZClick('down')"
@@ -148,7 +163,7 @@
           "
           :style="getButtonStyle('zdown')"
         >
-          Z-
+          -
         </button>
         <button
           @click="stage.stop()"
@@ -172,6 +187,10 @@ import { useStage } from "@/composables/useStage";
 const store = useMicroscopeStore();
 const stage = useStage();
 
+const baseXYStep = 100;
+const zStep = 1;
+const xyMultipliers = [0.1, 0.5, 1, 2, 5, 10];
+const xyMultiplier = ref(1);
 const pressedKeys = ref<Set<string>>(new Set());
 const clickedButtons = ref<Set<string>>(new Set());
 
@@ -195,6 +214,15 @@ onUnmounted(() => {
 async function move(x: number, y: number, z: number) {
   await stage.move(x, y, z, true);
   setTimeout(stage.updatePosition, 500);
+}
+
+function moveAxis(axis: "x" | "y", direction: 1 | -1) {
+  const steps = Math.round(baseXYStep * xyMultiplier.value) * direction;
+  if (axis === "x") {
+    move(steps, 0, 0);
+  } else {
+    move(0, steps, 0);
+  }
 }
 
 function handleKeyDown(event: KeyboardEvent) {
@@ -221,16 +249,16 @@ function handleKeyDown(event: KeyboardEvent) {
 
   switch (key) {
     case "arrowup":
-      move(0, 100, 0);
+      moveAxis("x", 1);
       break;
     case "arrowdown":
-      move(0, -100, 0);
+      moveAxis("x", -1);
       break;
     case "arrowleft":
-      move(-100, 0, 0);
+      moveAxis("y", -1);
       break;
     case "arrowright":
-      move(100, 0, 0);
+      moveAxis("y", 1);
       break;
   }
 }
@@ -255,9 +283,9 @@ function handleZClick(direction: "up" | "down") {
   const buttonId = direction === "up" ? "zup" : "zdown";
   handleButtonClick(buttonId);
   if (direction === "up") {
-    move(0, 0, 10);
+    move(0, 0, zStep);
   } else {
-    move(0, 0, -10);
+    move(0, 0, -zStep);
   }
 }
 
@@ -308,6 +336,14 @@ function getButtonStyle(buttonId: string): string {
 }
 
 .stage-button-symbol {
-  @apply text-xs leading-none;
+  @apply text-base leading-none;
+}
+
+.multiplier-button {
+  @apply h-5 min-w-6 rounded border border-slate-300 bg-white px-1 text-[9px] font-bold text-slate-600 transition-colors hover:border-slate-500 hover:text-slate-900;
+}
+
+.multiplier-button-active {
+  @apply border-slate-800 bg-slate-800 text-white hover:border-slate-800 hover:text-white;
 }
 </style>

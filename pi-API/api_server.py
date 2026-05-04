@@ -43,24 +43,18 @@ FRONT_PANEL_LED_PIN = 20  # GPIO20 - Front Panel LED
 # Motor GPIO assignments
 # DM542 common-ground wiring:
 # PUL-/DIR- -> Pi GND, PUL+ -> step GPIO, DIR+ -> direction GPIO.
-# ENA is disconnected, so no enable pin is driven for the active Y axis.
-# X-motor
-X_MOTOR_ENABLE = 5      # Purple - Disable/Enable
-X_MOTOR_STEP = 11       # Yellow - Step
-X_MOTOR_DIRECTION = 10  # Orange - Direction
-# Y-motor
-Y_MOTOR_STEP = 6        # PUL+ on DM542
-Y_MOTOR_DIRECTION = 19  # DIR+ on DM542
-# Z-motor
-Z_MOTOR_ENABLE = 9      # Purple - Disable/Enable
-Z_MOTOR_STEP = 27       # Yellow - Step
-Z_MOTOR_DIRECTION = 22  # Orange - Direction
+# ENA is disconnected, so no enable pin is driven.
+MOTOR_AXES = {
+    "x": {"step": 5, "direction": 27},
+    "y": {"step": 6, "direction": 19},
+    "z": {"step": 26, "direction": 22},
+}
 
-Y_STEP_PULSE_SECONDS = 0.005
-Y_STEP_LOW_SECONDS = 0.005
-Y_DIRECTION_SETTLE_SECONDS = 0.02
-Y_DIRECTION_POSITIVE = 1
-Y_DIRECTION_NEGATIVE = 0
+STEP_PULSE_SECONDS = 0.005
+STEP_LOW_SECONDS = 0.005
+DIRECTION_SETTLE_SECONDS = 0.02
+DIRECTION_POSITIVE = 1
+DIRECTION_NEGATIVE = 0
 
 h = None
 led_lamp_isOn = False
@@ -69,10 +63,10 @@ led_flr_isOn = False
 gpio_initialized = False
 drawer_is_open = False
 is_scanning = False
-y_position_steps = 0
-y_is_moving = False
-y_stop_event = threading.Event()
-y_motion_lock = threading.Lock()
+axis_positions = {"x": 0, "y": 0, "z": 0}
+axis_is_moving = {"x": False, "y": False, "z": False}
+axis_stop_events = {axis: threading.Event() for axis in MOTOR_AXES}
+axis_motion_locks = {axis: threading.Lock() for axis in MOTOR_AXES}
 
 # Pydantic models
 class LEDState(BaseModel):
@@ -87,6 +81,11 @@ class ToggleResponse(BaseModel):
 
 class HealthCheck(BaseModel):
     healthy: bool
+
+class ClosetState(BaseModel):
+    is_open: bool
+    pin: int
+    label: str = "closet"
 
 class ShutdownResponse(BaseModel):
     success: bool
@@ -118,56 +117,70 @@ class StageCommandResponse(BaseModel):
 
 
 def current_stage_position() -> StagePosition:
-    return StagePosition(x=0, y=y_position_steps, z=0, is_moving=y_is_moving)
+    return StagePosition(
+        x=axis_positions["x"],
+        y=axis_positions["y"],
+        z=axis_positions["z"],
+        is_moving=any(axis_is_moving.values()),
+    )
 
 
-def run_y_move(target_y: int):
-    """Pulse the DM542 until the tracked Y position reaches target_y."""
-    global y_position_steps, y_is_moving
+def run_axis_move(axis: str, target_position: int):
+    """Pulse one DM542 axis until its tracked position reaches target_position."""
+    pins = MOTOR_AXES[axis]
 
     try:
-        delta = target_y - y_position_steps
+        delta = target_position - axis_positions[axis]
         if delta == 0:
             return
 
-        direction = Y_DIRECTION_POSITIVE if delta > 0 else Y_DIRECTION_NEGATIVE
+        direction = DIRECTION_POSITIVE if delta > 0 else DIRECTION_NEGATIVE
         step_increment = 1 if delta > 0 else -1
-        lgpio.gpio_write(h, Y_MOTOR_DIRECTION, direction)
-        time.sleep(Y_DIRECTION_SETTLE_SECONDS)
+        lgpio.gpio_write(h, pins["direction"], direction)
+        time.sleep(DIRECTION_SETTLE_SECONDS)
 
         for _ in range(abs(delta)):
-            if y_stop_event.is_set():
-                logger.warning("Y movement stopped at %s steps", y_position_steps)
+            if axis_stop_events[axis].is_set():
+                logger.warning(
+                    "%s movement stopped at %s steps",
+                    axis.upper(),
+                    axis_positions[axis],
+                )
                 break
 
-            lgpio.gpio_write(h, Y_MOTOR_STEP, 1)
-            time.sleep(Y_STEP_PULSE_SECONDS)
-            lgpio.gpio_write(h, Y_MOTOR_STEP, 0)
-            time.sleep(Y_STEP_LOW_SECONDS)
-            y_position_steps += step_increment
+            lgpio.gpio_write(h, pins["step"], 1)
+            time.sleep(STEP_PULSE_SECONDS)
+            lgpio.gpio_write(h, pins["step"], 0)
+            time.sleep(STEP_LOW_SECONDS)
+            axis_positions[axis] += step_increment
     except Exception as e:
-        logger.error("Y movement failed: %s", e)
+        logger.error("%s movement failed: %s", axis.upper(), e)
     finally:
-        lgpio.gpio_write(h, Y_MOTOR_STEP, 0)
-        with y_motion_lock:
-            y_is_moving = False
-            y_stop_event.clear()
+        lgpio.gpio_write(h, pins["step"], 0)
+        with axis_motion_locks[axis]:
+            axis_is_moving[axis] = False
+            axis_stop_events[axis].clear()
 
 
-def start_y_move(target_y: int):
-    """Start one non-blocking Y-axis move."""
-    global y_is_moving
-
+def start_axis_move(axis: str, target_position: int):
+    """Start one non-blocking axis move."""
     if h is None:
         raise HTTPException(status_code=503, detail="GPIO is not initialized")
 
-    with y_motion_lock:
-        if y_is_moving:
-            raise HTTPException(status_code=409, detail="Y axis is already moving")
-        y_stop_event.clear()
-        y_is_moving = True
+    with axis_motion_locks[axis]:
+        if axis_is_moving[axis]:
+            raise HTTPException(
+                status_code=409,
+                detail=f"{axis.upper()} axis is already moving",
+            )
+        axis_stop_events[axis].clear()
+        axis_is_moving[axis] = True
 
-    motion_thread = threading.Thread(target=run_y_move, args=(target_y,), daemon=True)
+    motion_thread = threading.Thread(
+        target=run_axis_move,
+        args=(axis, target_position),
+        daemon=True,
+    )
     motion_thread.start()
 
 
@@ -255,8 +268,9 @@ def setup_gpio():
         lgpio.gpio_claim_output(h, PSU_PIN, 0)
         lgpio.gpio_claim_output(h, LED_FLR_PIN, 0)
         lgpio.gpio_claim_output(h, FRONT_PANEL_LED_PIN, 0)
-        lgpio.gpio_claim_output(h, Y_MOTOR_STEP, 0)
-        lgpio.gpio_claim_output(h, Y_MOTOR_DIRECTION, 0)
+        for pins in MOTOR_AXES.values():
+            lgpio.gpio_claim_output(h, pins["step"], 0)
+            lgpio.gpio_claim_output(h, pins["direction"], 0)
         # Configure switch sensor with pull-up resistor
         lgpio.gpio_claim_input(h, SWITCH_SENSOR_PIN, lgpio.SET_PULL_UP)
         
@@ -270,7 +284,11 @@ def setup_gpio():
         led_flr_isOn = False
         psu_isOn = True
         
-        print(f"GPIO pins initialized: LED_LAMP={LED_LAMP_PIN}({led_lamp_isOn}), PSU={PSU_PIN}({psu_isOn}), LED_FLR={LED_FLR_PIN}({led_flr_isOn}), Y_STEP={Y_MOTOR_STEP}, Y_DIR={Y_MOTOR_DIRECTION}")
+        axis_pin_summary = ", ".join(
+            f"{axis.upper()}_STEP={pins['step']}, {axis.upper()}_DIR={pins['direction']}"
+            for axis, pins in MOTOR_AXES.items()
+        )
+        print(f"GPIO pins initialized: LED_LAMP={LED_LAMP_PIN}({led_lamp_isOn}), PSU={PSU_PIN}({psu_isOn}), LED_FLR={LED_FLR_PIN}({led_flr_isOn}), {axis_pin_summary}")
     except Exception as e:
         print(f"Error setting up GPIO: {e}")
         raise
@@ -285,7 +303,8 @@ def cleanup_gpio():
             lgpio.gpio_write(h, PSU_PIN, 0)
             lgpio.gpio_write(h, LED_FLR_PIN, 1)
             lgpio.gpio_write(h, FRONT_PANEL_LED_PIN, 0)
-            lgpio.gpio_write(h, Y_MOTOR_STEP, 0)
+            for pins in MOTOR_AXES.values():
+                lgpio.gpio_write(h, pins["step"], 0)
             lgpio.gpiochip_close(h)
             gpio_initialized = False
             logger.info("GPIO cleanup completed successfully")
@@ -327,10 +346,11 @@ async def root():
             "POST /system/shutdown": "Shutdown the Raspberry Pi gracefully",
             "POST /scan/start": "Start scanning mode",
             "POST /scan/stop": "Stop scanning mode",
+            "GET /closet/state": "Get current closet open/closed state",
             "GET /position": "Get current stage position",
-            "POST /move": "Move Y axis only",
-            "POST /home": "Reset tracked Y position to zero",
-            "POST /stop": "Stop Y-axis movement"
+            "POST /move": "Move X/Y/Z axes",
+            "POST /home": "Reset tracked X/Y/Z position to zero",
+            "POST /stop": "Stop stage movement"
         }
     }
 
@@ -340,63 +360,101 @@ async def health_check():
     """Health check endpoint to verify API and GPIO status"""
     return HealthCheck(healthy=True)
 
+@app.get("/closet/state", response_model=ClosetState)
+async def get_closet_state(user: dict = Depends(verify_jwt)):
+    """Get the current closet switch state. Protected endpoint."""
+    global drawer_is_open
+    try:
+        switch_state = lgpio.gpio_read(h, SWITCH_SENSOR_PIN)
+        drawer_is_open = (switch_state == 0)
+    except Exception:
+        pass
+
+    return ClosetState(is_open=drawer_is_open, pin=SWITCH_SENSOR_PIN)
+
 
 @app.get("/position", response_model=StagePosition)
 async def get_stage_position():
-    """Return tracked stage position. Only Y is active right now."""
+    """Return tracked stage position."""
     return current_stage_position()
 
 
 @app.post("/move", response_model=StageMoveResponse)
 async def move_stage(request: StageMoveRequest):
-    """Move Y axis only. X and Z are accepted for compatibility but ignored."""
-    requested_y = request.y
-    if requested_y is None:
+    """Move one or more axes."""
+    requested_moves = {
+        "x": request.x,
+        "y": request.y,
+        "z": request.z,
+    }
+    targets = {}
+
+    for axis, requested_position in requested_moves.items():
+        if requested_position is None:
+            continue
+
+        requested_steps = int(round(requested_position))
+        targets[axis] = (
+            axis_positions[axis] + requested_steps
+            if request.relative
+            else requested_steps
+        )
+
+    if not targets:
         return StageMoveResponse(
             success=True,
             status="idle",
             target_position=current_stage_position(),
-            message="No Y movement requested",
+            message="No movement requested",
         )
 
-    y_delta_or_target = int(round(requested_y))
-    target_y = y_position_steps + y_delta_or_target if request.relative else y_delta_or_target
-    start_y_move(target_y)
+    for axis, target_position in targets.items():
+        start_axis_move(axis, target_position)
+
+    target_stage_position = StagePosition(
+        x=targets.get("x", axis_positions["x"]),
+        y=targets.get("y", axis_positions["y"]),
+        z=targets.get("z", axis_positions["z"]),
+        is_moving=True,
+    )
 
     return StageMoveResponse(
         success=True,
         status="moving",
-        target_position=StagePosition(x=0, y=target_y, z=0, is_moving=True),
-        message=f"Y axis moving to {target_y} steps",
+        target_position=target_stage_position,
+        message="Stage movement started",
     )
 
 
 @app.post("/home", response_model=StageCommandResponse)
 async def home_stage():
-    """Reset tracked Y position to zero. No limit-switch homing is implemented yet."""
-    global y_position_steps
+    """Reset tracked position to zero. No limit-switch homing is implemented yet."""
 
-    if y_is_moving:
+    if any(axis_is_moving.values()):
         raise HTTPException(status_code=409, detail="Stop movement before homing")
 
-    y_position_steps = 0
+    for axis in axis_positions:
+        axis_positions[axis] = 0
+
     return StageCommandResponse(
         success=True,
         status="homed",
         position=current_stage_position(),
-        message="Y position reset to zero",
+        message="Stage position reset to zero",
     )
 
 
 @app.post("/stop", response_model=StageCommandResponse)
 async def stop_stage():
-    """Request an immediate stop for the active Y movement."""
-    y_stop_event.set()
+    """Request an immediate stop for active stage movement."""
+    for stop_event in axis_stop_events.values():
+        stop_event.set()
+
     return StageCommandResponse(
         success=True,
-        status="stopping" if y_is_moving else "idle",
+        status="stopping" if any(axis_is_moving.values()) else "idle",
         position=current_stage_position(),
-        message="Y stop requested",
+        message="Stage stop requested",
     )
 
 

@@ -554,6 +554,12 @@ interface ToggleResponse {
   message: string;
 }
 
+interface ClosetState {
+  is_open: boolean;
+  pin: number;
+  label: string;
+}
+
 // Pi-API endpoints (direct GPIO control - bypasses NestJS)
 export const piAPI = {
   // LED Lamp (main microscope light)
@@ -597,6 +603,12 @@ export const piAPI = {
 
   async stopScan(): Promise<ToggleResponse> {
     const { data } = await piClient.post<ToggleResponse>("/scan/stop");
+    return data;
+  },
+
+  // Closet sensor
+  async getClosetState(): Promise<ClosetState> {
+    const { data } = await piClient.get<ClosetState>("/closet/state");
     return data;
   },
 

@@ -13,9 +13,12 @@ export function useStage() {
 
       const pos = result.target_position ?? result.targetPosition
       if (pos) {
-        store.addLog(`Moving Y to ${pos.y.toFixed(0)} steps`, 'info')
+        store.addLog(
+          `Moving to X:${pos.x.toFixed(0)} Y:${pos.y.toFixed(0)} Z:${pos.z.toFixed(0)}`,
+          'info'
+        )
       } else {
-        store.addLog('Y move started', 'info')
+        store.addLog('Stage move started', 'info')
       }
 
       return result
