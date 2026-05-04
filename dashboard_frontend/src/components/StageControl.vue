@@ -7,6 +7,13 @@
       </span>
     </div>
 
+    <div
+      v-if="isClosetOpen"
+      class="mb-1.5 rounded-md border border-red-300 bg-red-50 px-2 py-1 text-[10px] font-black uppercase tracking-wide text-red-700"
+    >
+      Lid open - stage locked
+    </div>
+
     <div class="mb-1.5 grid grid-cols-3 gap-1 rounded-md border border-slate-200 bg-slate-50 p-1 shadow-inner">
       <div class="position-chip">
         <span class="position-axis">X</span>
@@ -23,12 +30,15 @@
     </div>
 
     <div class="rounded-lg border border-slate-200 bg-slate-50 p-1.5">
-      <div class="mb-1 flex items-center justify-between">
-        <h3 class="section-label">XY Travel</h3>
-        <div class="flex items-center gap-1">
+      <div class="mb-1.5">
+        <div class="mb-1 flex items-center justify-between gap-2">
+          <span class="section-label">XY Speed</span>
+          <span class="text-[10px] font-bold text-slate-500">{{ xyMultiplier }}x</span>
+        </div>
+        <div class="multiplier-grid">
           <button
             v-for="option in xyMultipliers"
-            :key="option"
+            :key="`xy-${option}`"
             @click="xyMultiplier = option"
             class="multiplier-button"
             :class="xyMultiplier === option ? 'multiplier-button-active' : ''"
@@ -39,24 +49,20 @@
         </div>
       </div>
 
-      <div class="grid grid-cols-3 gap-1">
+      <div class="grid grid-cols-3 gap-1.5">
         <div></div>
         <button
           @click="
             handleButtonClick('arrowup');
             moveAxis('x', 1);
           "
-          :disabled="stage.isMoving.value"
+          :disabled="movementDisabled"
           class="stage-button stage-button-primary"
-          :class="
-            stage.isMoving.value
-              ? 'cursor-not-allowed opacity-60'
-              : 'cursor-pointer'
-          "
+          :class="movementDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'"
           :style="getButtonStyle('arrowup')"
           title="Move up"
         >
-          <span class="stage-button-symbol">↑</span>
+          <span class="stage-button-symbol">&uarr;</span>
         </button>
         <div></div>
 
@@ -65,30 +71,22 @@
             handleButtonClick('arrowleft');
             moveAxis('y', -1);
           "
-          :disabled="stage.isMoving.value"
+          :disabled="movementDisabled"
           class="stage-button stage-button-primary"
-          :class="
-            stage.isMoving.value
-              ? 'cursor-not-allowed opacity-60'
-              : 'cursor-pointer'
-          "
+          :class="movementDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'"
           :style="getButtonStyle('arrowleft')"
           title="Move left"
         >
-          <span class="stage-button-symbol">←</span>
+          <span class="stage-button-symbol">&larr;</span>
         </button>
         <button
           @click="
             handleButtonClick('home');
-            stage.home();
+            homeStage();
           "
-          :disabled="stage.isMoving.value"
+          :disabled="movementDisabled"
           class="stage-button stage-button-home"
-          :class="
-            stage.isMoving.value
-              ? 'cursor-not-allowed opacity-60'
-              : 'cursor-pointer'
-          "
+          :class="movementDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'"
           :style="getButtonStyle('home')"
         >
           <span>Home</span>
@@ -98,17 +96,13 @@
             handleButtonClick('arrowright');
             moveAxis('y', 1);
           "
-          :disabled="stage.isMoving.value"
+          :disabled="movementDisabled"
           class="stage-button stage-button-primary"
-          :class="
-            stage.isMoving.value
-              ? 'cursor-not-allowed opacity-60'
-              : 'cursor-pointer'
-          "
+          :class="movementDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'"
           :style="getButtonStyle('arrowright')"
           title="Move right"
         >
-          <span class="stage-button-symbol">→</span>
+          <span class="stage-button-symbol">&rarr;</span>
         </button>
 
         <div></div>
@@ -117,70 +111,33 @@
             handleButtonClick('arrowdown');
             moveAxis('x', -1);
           "
-          :disabled="stage.isMoving.value"
+          :disabled="movementDisabled"
           class="stage-button stage-button-primary outline-none"
-          :class="
-            stage.isMoving.value
-              ? 'cursor-not-allowed opacity-60'
-              : 'cursor-pointer'
-          "
+          :class="movementDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'"
           :style="getButtonStyle('arrowdown')"
           title="Move down"
         >
-          <span class="stage-button-symbol">↓</span>
+          <span class="stage-button-symbol">&darr;</span>
         </button>
         <div></div>
       </div>
     </div>
 
-    <div class="mt-1.5 rounded-lg border border-slate-200 bg-white p-1.5 shadow-sm">
-      <div class="mb-1 flex items-center justify-between">
-        <h3 class="section-label">Focus</h3>
-        <span class="text-[10px] font-semibold text-slate-500">{{ zStep }} step</span>
-      </div>
-      <div class="flex gap-1">
-        <button
-          @click="handleZClick('up')"
-          :disabled="stage.isMoving.value"
-          class="stage-button stage-button-primary flex-1"
-          :class="
-            stage.isMoving.value
-              ? 'cursor-not-allowed opacity-60'
-              : 'cursor-pointer'
-          "
-          :style="getButtonStyle('zup')"
-        >
-          +
-        </button>
-        <button
-          @click="handleZClick('down')"
-          :disabled="stage.isMoving.value"
-          class="stage-button stage-button-primary flex-1"
-          :class="
-            stage.isMoving.value
-              ? 'cursor-not-allowed opacity-60'
-              : 'cursor-pointer'
-          "
-          :style="getButtonStyle('zdown')"
-        >
-          -
-        </button>
-        <button
-          @click="stage.stop()"
-          class="stage-button flex-1 cursor-pointer bg-red-600 text-white shadow-md shadow-red-300/40 hover:bg-red-700"
-          :style="getButtonStyle('stop')"
-          title="Emergency Stop"
-        >
-          STOP
-        </button>
-      </div>
+    <div class="mt-1.5">
+      <button
+        @click="stage.stop()"
+        class="stage-button w-full cursor-pointer bg-red-600 text-white shadow-md shadow-red-300/40 hover:bg-red-700"
+        :style="getButtonStyle('stop')"
+        title="Emergency Stop"
+      >
+        STOP
+      </button>
     </div>
-
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from "vue";
+import { computed, ref, onMounted, onUnmounted } from "vue";
 import { useMicroscopeStore } from "@/stores/microscope";
 import { useStage } from "@/composables/useStage";
 
@@ -188,11 +145,14 @@ const store = useMicroscopeStore();
 const stage = useStage();
 
 const baseXYStep = 100;
-const zStep = 1;
 const xyMultipliers = [0.1, 0.5, 1, 2, 5, 10];
 const xyMultiplier = ref(1);
 const pressedKeys = ref<Set<string>>(new Set());
 const clickedButtons = ref<Set<string>>(new Set());
+const isClosetOpen = computed(() => store.closetStatus === "open");
+const movementDisabled = computed(
+  () => stage.isMoving.value || isClosetOpen.value,
+);
 
 let intervalId: number | null = null;
 
@@ -212,8 +172,22 @@ onUnmounted(() => {
 });
 
 async function move(x: number, y: number, z: number) {
+  if (isClosetOpen.value) {
+    store.addLog("Stage movement blocked: lid is open", "warning");
+    return;
+  }
+
   await stage.move(x, y, z, true);
   setTimeout(stage.updatePosition, 500);
+}
+
+async function homeStage() {
+  if (isClosetOpen.value) {
+    store.addLog("Stage home blocked: lid is open", "warning");
+    return;
+  }
+
+  await stage.home();
 }
 
 function moveAxis(axis: "x" | "y", direction: 1 | -1) {
@@ -243,7 +217,7 @@ function handleKeyDown(event: KeyboardEvent) {
 
   pressedKeys.value.add(key);
 
-  if (stage.isMoving.value) {
+  if (movementDisabled.value) {
     return;
   }
 
@@ -277,16 +251,6 @@ function handleButtonClick(buttonId: string) {
   setTimeout(() => {
     clickedButtons.value.delete(buttonId);
   }, 150);
-}
-
-function handleZClick(direction: "up" | "down") {
-  const buttonId = direction === "up" ? "zup" : "zdown";
-  handleButtonClick(buttonId);
-  if (direction === "up") {
-    move(0, 0, zStep);
-  } else {
-    move(0, 0, -zStep);
-  }
 }
 
 function getButtonStyle(buttonId: string): string {
@@ -324,7 +288,7 @@ function getButtonStyle(buttonId: string): string {
 }
 
 .stage-button {
-  @apply flex min-h-[32px] items-center justify-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-bold shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md active:translate-y-0;
+  @apply flex min-h-[34px] items-center justify-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-bold shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md active:translate-y-0;
 }
 
 .stage-button-primary {
@@ -336,14 +300,18 @@ function getButtonStyle(buttonId: string): string {
 }
 
 .stage-button-symbol {
-  @apply text-base leading-none;
+  @apply text-lg leading-none;
 }
 
 .multiplier-button {
-  @apply h-5 min-w-6 rounded border border-slate-300 bg-white px-1 text-[9px] font-bold text-slate-600 transition-colors hover:border-slate-500 hover:text-slate-900;
+  @apply h-7 rounded border border-slate-300 bg-white px-1.5 text-[10px] font-bold text-slate-600 transition-colors hover:border-slate-500 hover:text-slate-900;
 }
 
 .multiplier-button-active {
   @apply border-slate-800 bg-slate-800 text-white hover:border-slate-800 hover:text-white;
+}
+
+.multiplier-grid {
+  @apply grid grid-cols-3 gap-1;
 }
 </style>

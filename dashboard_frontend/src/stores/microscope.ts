@@ -58,6 +58,7 @@ export const useMicroscopeStore = defineStore("microscope", () => {
     isOn: false,
     brightness: 100,
   });
+  const closetStatus = ref<"open" | "closed" | "unknown">("unknown");
 
   // Computed
   const isSystemHealthy = computed(
@@ -159,6 +160,10 @@ export const useMicroscopeStore = defineStore("microscope", () => {
     }
   }
 
+  function updateClosetStatus(status: "open" | "closed" | "unknown") {
+    closetStatus.value = status;
+  }
+
   return {
     // State
     systemStatus,
@@ -170,6 +175,7 @@ export const useMicroscopeStore = defineStore("microscope", () => {
     savedPositions,
     logs,
     lightStatus,
+    closetStatus,
 
     // Computed
     isSystemHealthy,
@@ -194,5 +200,6 @@ export const useMicroscopeStore = defineStore("microscope", () => {
     addLog,
     clearLogs,
     updateLightStatus,
+    updateClosetStatus,
   };
 });

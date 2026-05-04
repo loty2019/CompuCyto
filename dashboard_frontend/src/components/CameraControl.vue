@@ -62,7 +62,9 @@
           <p class="text-lg font-semibold">Camera feed not started</p>
           <button
             @click="startFeed"
+            :disabled="isClosetOpen"
             class="rounded-lg bg-slate-900 px-6 py-3 text-base font-bold text-white shadow-lg transition-colors hover:bg-slate-800 hover:shadow-md hover:-translate-y-0.5"
+            :class="isClosetOpen ? 'cursor-not-allowed opacity-60 hover:translate-y-0 hover:bg-slate-900' : ''"
           >
             Start Feed
           </button>
@@ -187,6 +189,45 @@
                   <span>{{ gainMax.toFixed(1) }}x</span>
                 </div>
               </div>
+
+              <div class="rounded-lg border border-slate-200 bg-white p-2 shadow-sm">
+                <div class="mb-1.5 flex items-center justify-between gap-2">
+                  <label class="text-xs font-semibold text-gray-700">Focus</label>
+                  <span class="text-[10px] font-bold text-slate-500">{{ zMultiplier }}x</span>
+                </div>
+                <div class="mb-1.5 grid grid-cols-4 gap-1">
+                  <button
+                    v-for="option in zMultipliers"
+                    :key="`z-${option}`"
+                    @click="zMultiplier = option"
+                    class="focus-multiplier-button"
+                    :class="zMultiplier === option ? 'focus-multiplier-button-active' : ''"
+                    type="button"
+                  >
+                    {{ option }}x
+                  </button>
+                </div>
+                <div class="grid grid-cols-2 gap-1.5">
+                  <button
+                    @click="moveFocus(1)"
+                    :disabled="focusDisabled"
+                    class="focus-button"
+                    :class="focusDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'"
+                    title="Focus up"
+                  >
+                    +
+                  </button>
+                  <button
+                    @click="moveFocus(-1)"
+                    :disabled="focusDisabled"
+                    class="focus-button"
+                    :class="focusDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'"
+                    title="Focus down"
+                  >
+                    -
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -203,12 +244,21 @@
       </div>
     </div>
 
-    <div class="mt-2 grid gap-2 sm:grid-cols-2">
+    <div
+      v-if="isClosetOpen"
+      class="mt-2 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-xs font-black uppercase tracking-wide text-red-700"
+    >
+      Lid open - capture and recording locked
+    </div>
+
+    <div class="mt-2 grid gap-2 xl:grid-cols-[minmax(0,1fr)_260px]">
+      <div class="grid gap-2 sm:grid-cols-2">
       <!-- Capture Image Button -->
       <button
         @click="capture"
-        :disabled="camera.isCapturing.value"
+        :disabled="cameraActionDisabled"
         class="action-button action-button-capture"
+        :title="isClosetOpen ? 'Close the lid before capture' : 'Capture image'"
       >
         <span
           v-if="camera.isCapturing.value"
@@ -228,7 +278,8 @@
       <!-- Record Video Button -->
       <button
         @click="toggleRecording"
-        :disabled="camera.isCapturing.value"
+        :disabled="cameraActionDisabled"
+        :title="isClosetOpen ? 'Close the lid before recording' : 'Record video'"
         :class="[
           'action-button',
           isRecording
@@ -245,6 +296,7 @@
           Record Video
         </span>
       </button>
+      </div>
     </div>
   </div>
 </template>
@@ -278,6 +330,18 @@
 
 .action-button-recording {
   @apply border border-red-400 bg-red-600 text-white shadow-red-200/70 hover:bg-red-700 hover:shadow-lg;
+}
+
+.focus-button {
+  @apply flex min-h-[30px] items-center justify-center rounded-md border border-slate-700 bg-slate-800 px-2 py-1 text-sm font-black text-white shadow-sm transition-all hover:-translate-y-0.5 hover:bg-slate-700 hover:shadow-md active:translate-y-0;
+}
+
+.focus-multiplier-button {
+  @apply h-6 rounded border border-slate-300 bg-white px-1 text-[9px] font-bold text-slate-600 transition-colors hover:border-slate-500 hover:text-slate-900;
+}
+
+.focus-multiplier-button-active {
+  @apply border-slate-800 bg-slate-800 text-white hover:border-slate-800 hover:text-white;
 }
 
 .action-button-icon {
@@ -378,10 +442,12 @@
 import { ref, onMounted, onUnmounted, computed, watch } from "vue";
 import { useMicroscopeStore } from "@/stores/microscope";
 import { useCamera } from "@/composables/useCamera";
+import { useStage } from "@/composables/useStage";
 import { piAPI } from "@/api/client";
 
 const store = useMicroscopeStore();
 const camera = useCamera();
+const stage = useStage();
 
 // Camera settings with limits
 const exposure = ref(100);
@@ -396,6 +462,9 @@ const gammaMax = ref(4.0);
 const gammaSupported = ref(true); // Will be updated from camera
 const autoExposure = ref(false);
 const autoExposureSupported = ref(true); // Will be updated from camera
+const baseZStep = 25;
+const zMultipliers = [0.25, 0.5, 1, 2];
+const zMultiplier = ref(1);
 
 // Debounce timer for live updates
 let updateTimer: ReturnType<typeof setTimeout> | null = null;
@@ -417,6 +486,11 @@ let recordingStartTime: Date | null = null;
 const lightWarning = computed(() => {
   return feedUrl.value !== "" && !feedError.value && !store.lightStatus.isOn;
 });
+const isClosetOpen = computed(() => store.closetStatus === "open");
+const cameraActionDisabled = computed(
+  () => camera.isCapturing.value || isClosetOpen.value,
+);
+const focusDisabled = computed(() => stage.isMoving.value || isClosetOpen.value);
 
 // Watch for light status changes and log them
 watch(
@@ -617,7 +691,23 @@ async function updateSettingsToCamera(settings: {
   }
 }
 
+async function moveFocus(direction: 1 | -1) {
+  if (isClosetOpen.value) {
+    store.addLog("Focus movement blocked: lid is open", "warning");
+    return;
+  }
+
+  const steps = Math.max(1, Math.round(baseZStep * zMultiplier.value));
+  await stage.move(0, 0, steps * direction, true);
+  setTimeout(stage.updatePosition, 500);
+}
+
 async function capture() {
+  if (isClosetOpen.value) {
+    store.addLog("Capture blocked: lid is open", "warning");
+    return;
+  }
+
   await camera.captureImage({
     exposure: exposure.value,
     gain: gain.value,
@@ -626,6 +716,11 @@ async function capture() {
 }
 
 async function startFeed() {
+  if (isClosetOpen.value) {
+    store.addLog("Camera feed blocked: lid is open", "warning");
+    return;
+  }
+
   if (websocket && websocket.readyState === WebSocket.OPEN) {
     console.log("WebSocket already connected");
     return;
@@ -781,6 +876,11 @@ function handleFeedLoad() {
 }
 
 async function toggleRecording() {
+  if (isClosetOpen.value && !isRecording.value) {
+    store.addLog("Recording blocked: lid is open", "warning");
+    return;
+  }
+
   if (isRecording.value) {
     await stopRecording();
   } else {

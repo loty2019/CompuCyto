@@ -8,9 +8,9 @@
     <StatusPill label="WebSocket" :connected="isWsConnected" />
     <StatusPill
       label="Closet"
-      :connected="closetStatus !== 'unknown'"
+      :connected="store.closetStatus !== 'unknown'"
       :value="closetLabel"
-      :alert="closetStatus === 'open'"
+      :alert="store.closetStatus === 'open'"
     />
 
     <div
@@ -27,7 +27,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, defineComponent, h, onMounted, onUnmounted, ref } from "vue";
+import { computed, defineComponent, h, onMounted, onUnmounted } from "vue";
 import { piAPI } from "@/api/client";
 import { useMicroscopeStore } from "@/stores/microscope";
 import { useWebSocketStore } from "@/stores/websocket";
@@ -38,15 +38,14 @@ const wsStore = useWebSocketStore();
 const { state: wsState } = storeToRefs(wsStore);
 
 const isWsConnected = computed(() => wsState.value.isConnected);
-const closetStatus = ref<"open" | "closed" | "unknown">("unknown");
 let closetPollTimer: number | undefined;
 
 const closetLabel = computed(() => {
-  if (closetStatus.value === "unknown") {
+  if (store.closetStatus === "unknown") {
     return "Unknown";
   }
 
-  return closetStatus.value === "open" ? "Open" : "Closed";
+  return store.closetStatus === "open" ? "Open" : "Closed";
 });
 
 const StatusPill = defineComponent({
@@ -76,7 +75,7 @@ const StatusPill = defineComponent({
           class: [
             "flex items-center gap-1.5 rounded-full border bg-white px-2 py-0.5 text-[11px] font-bold shadow-sm",
             props.alert
-              ? "border-red-200 bg-red-50 text-red-700"
+              ? "closet-alert border-red-400 bg-red-100 text-red-800"
               : "border-slate-200 text-slate-600",
           ],
           title: props.value ? `${props.label}: ${props.value}` : props.label,
@@ -86,7 +85,7 @@ const StatusPill = defineComponent({
             class: [
               "h-2 w-2 rounded-full shadow-sm",
               props.alert
-                ? "bg-red-500"
+                ? "closet-alert-dot bg-red-600"
                 : props.connected
                   ? "bg-teal-500"
                   : "bg-slate-400",
@@ -112,9 +111,9 @@ onUnmounted(() => {
 async function fetchClosetStatus() {
   try {
     const response = await piAPI.getClosetState();
-    closetStatus.value = response.is_open ? "open" : "closed";
+    store.updateClosetStatus(response.is_open ? "open" : "closed");
   } catch {
-    closetStatus.value = "unknown";
+    store.updateClosetStatus("unknown");
   }
 }
 
@@ -122,3 +121,35 @@ function isConnected(status: string): boolean {
   return status === "connected" || status === "running";
 }
 </script>
+
+<style scoped>
+.closet-alert {
+  animation: closet-alert-pulse 0.85s ease-in-out infinite;
+}
+
+.closet-alert-dot {
+  animation: closet-dot-pulse 0.85s ease-in-out infinite;
+}
+
+@keyframes closet-alert-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.42);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgba(220, 38, 38, 0.08);
+  }
+}
+
+@keyframes closet-dot-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.75;
+  }
+  50% {
+    transform: scale(1.45);
+    opacity: 1;
+  }
+}
+</style>

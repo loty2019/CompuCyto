@@ -394,6 +394,9 @@ async def move_stage(request: StageMoveRequest):
             continue
 
         requested_steps = int(round(requested_position))
+        if request.relative and requested_steps == 0:
+            continue
+
         targets[axis] = (
             axis_positions[axis] + requested_steps
             if request.relative
