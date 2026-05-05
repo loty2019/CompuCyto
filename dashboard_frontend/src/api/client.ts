@@ -560,6 +560,16 @@ interface ClosetState {
   label: string;
 }
 
+interface EnvironmentReading {
+  temperature_c: number | null;
+  temperature_f: number | null;
+  humidity: number | null;
+  pin: number;
+  sensor: string;
+  healthy: boolean;
+  message: string;
+}
+
 // Pi-API endpoints (direct GPIO control - bypasses NestJS)
 export const piAPI = {
   // LED Lamp (main microscope light)
@@ -609,6 +619,12 @@ export const piAPI = {
   // Closet sensor
   async getClosetState(): Promise<ClosetState> {
     const { data } = await piClient.get<ClosetState>("/closet/state");
+    return data;
+  },
+
+  // DHT11 temperature/humidity sensor
+  async getEnvironment(): Promise<EnvironmentReading> {
+    const { data } = await piClient.get<EnvironmentReading>("/environment");
     return data;
   },
 

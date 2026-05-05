@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     host: str = "0.0.0.0"
     port: int = 8000
     jwt_secret: str = ""
+    dht11_pin: int = 24
 
 
 settings = Settings()

@@ -15,6 +15,13 @@ import threading
 import time
 from typing import Optional, Union
 
+try:
+    import adafruit_dht
+    import board
+except ImportError:
+    adafruit_dht = None
+    board = None
+
 from config import settings
 from auth import verify_jwt
 
@@ -39,6 +46,7 @@ PSU_PIN = 21  # GPIO21 - PSU Green
 LED_FLR_PIN = 12  # GPIO12 - LED FLR (gray cable)
 SWITCH_SENSOR_PIN = 17  # GPIO17 - Switch sensor
 FRONT_PANEL_LED_PIN = 20  # GPIO20 - Front Panel LED
+DHT11_PIN = settings.dht11_pin  # GPIO pin number for DHT11 data wire
 
 # Motor GPIO assignments
 # DM542 common-ground wiring:
@@ -67,6 +75,8 @@ axis_positions = {"x": 0, "y": 0, "z": 0}
 axis_is_moving = {"x": False, "y": False, "z": False}
 axis_stop_events = {axis: threading.Event() for axis in MOTOR_AXES}
 axis_motion_locks = {axis: threading.Lock() for axis in MOTOR_AXES}
+dht11_device = None
+dht11_lock = threading.Lock()
 
 # Pydantic models
 class LEDState(BaseModel):
@@ -86,6 +96,15 @@ class ClosetState(BaseModel):
     is_open: bool
     pin: int
     label: str = "closet"
+
+class EnvironmentReading(BaseModel):
+    temperature_c: Optional[float]
+    temperature_f: Optional[float]
+    humidity: Optional[float]
+    pin: int
+    sensor: str = "DHT11"
+    healthy: bool
+    message: str
 
 class ShutdownResponse(BaseModel):
     success: bool
@@ -123,6 +142,98 @@ def current_stage_position() -> StagePosition:
         z=axis_positions["z"],
         is_moving=any(axis_is_moving.values()),
     )
+
+
+def setup_dht11():
+    """Initialize the DHT11 temperature/humidity sensor if its library is present."""
+    global dht11_device
+
+    if adafruit_dht is None or board is None:
+        logger.warning("DHT11 support unavailable: install adafruit-circuitpython-dht")
+        return
+
+    board_pin_name = f"D{DHT11_PIN}"
+    board_pin = getattr(board, board_pin_name, None)
+    if board_pin is None:
+        logger.warning("DHT11 GPIO%s is not available as board.%s", DHT11_PIN, board_pin_name)
+        return
+
+    try:
+        dht11_device = adafruit_dht.DHT11(board_pin, use_pulseio=False)
+        logger.info("DHT11 initialized on GPIO%s", DHT11_PIN)
+    except Exception as e:
+        dht11_device = None
+        logger.error("Failed to initialize DHT11 on GPIO%s: %s", DHT11_PIN, e)
+
+
+def cleanup_dht11():
+    """Release DHT11 resources."""
+    global dht11_device
+
+    if dht11_device is not None:
+        try:
+            dht11_device.exit()
+        except Exception as e:
+            logger.warning("DHT11 cleanup failed: %s", e)
+        finally:
+            dht11_device = None
+
+
+def read_dht11() -> EnvironmentReading:
+    """Read temperature and humidity from the DHT11 sensor."""
+    if dht11_device is None:
+        return EnvironmentReading(
+            temperature_c=None,
+            temperature_f=None,
+            humidity=None,
+            pin=DHT11_PIN,
+            healthy=False,
+            message="DHT11 is not initialized",
+        )
+
+    with dht11_lock:
+        try:
+            temperature_c = dht11_device.temperature
+            humidity = dht11_device.humidity
+
+            if temperature_c is None or humidity is None:
+                return EnvironmentReading(
+                    temperature_c=None,
+                    temperature_f=None,
+                    humidity=None,
+                    pin=DHT11_PIN,
+                    healthy=False,
+                    message="DHT11 did not return a reading",
+                )
+
+            rounded_temperature_c = round(float(temperature_c), 1)
+            return EnvironmentReading(
+                temperature_c=rounded_temperature_c,
+                temperature_f=round((rounded_temperature_c * 9 / 5) + 32, 1),
+                humidity=round(float(humidity), 1),
+                pin=DHT11_PIN,
+                healthy=True,
+                message="OK",
+            )
+        except RuntimeError as e:
+            return EnvironmentReading(
+                temperature_c=None,
+                temperature_f=None,
+                humidity=None,
+                pin=DHT11_PIN,
+                healthy=False,
+                message=str(e),
+            )
+        except Exception as e:
+            logger.error("DHT11 read failed: %s", e)
+            return EnvironmentReading(
+                temperature_c=None,
+                temperature_f=None,
+                humidity=None,
+                pin=DHT11_PIN,
+                healthy=False,
+                message=f"DHT11 read failed: {e}",
+            )
 
 
 def run_axis_move(axis: str, target_position: int):
@@ -317,6 +428,7 @@ def cleanup_gpio():
 async def startup_event():
     """Initialize GPIO on server startup"""
     setup_gpio()
+    setup_dht11()
     # Start threads
     monitor_thread = threading.Thread(target=monitor_switch_sensor, daemon=True)
     monitor_thread.start()
@@ -327,6 +439,7 @@ async def startup_event():
 @app.on_event("shutdown")
 async def shutdown_event():
     """Clean up GPIO on server shutdown"""
+    cleanup_dht11()
     cleanup_gpio()
 
 
@@ -347,6 +460,7 @@ async def root():
             "POST /scan/start": "Start scanning mode",
             "POST /scan/stop": "Stop scanning mode",
             "GET /closet/state": "Get current closet open/closed state",
+            "GET /environment": "Get DHT11 temperature and humidity",
             "GET /position": "Get current stage position",
             "POST /move": "Move X/Y/Z axes",
             "POST /home": "Reset tracked X/Y/Z position to zero",
@@ -371,6 +485,12 @@ async def get_closet_state(user: dict = Depends(verify_jwt)):
         pass
 
     return ClosetState(is_open=drawer_is_open, pin=SWITCH_SENSOR_PIN)
+
+
+@app.get("/environment", response_model=EnvironmentReading)
+async def get_environment(user: dict = Depends(verify_jwt)):
+    """Get current temperature and humidity from the DHT11 sensor."""
+    return read_dht11()
 
 
 @app.get("/position", response_model=StagePosition)

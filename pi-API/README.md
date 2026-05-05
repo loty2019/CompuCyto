@@ -6,13 +6,20 @@ FastAPI server to control Incucyte with Raspberry Pi 5 via HTTP endpoints.
 
 1. Install dependencies:
 ```bash
-pip install --break-system-packages fastapi uvicorn lgpio
+python3 -m pip install --break-system-packages fastapi uvicorn lgpio adafruit-circuitpython-dht
 ```
 
 Or use the requirements file:
 ```bash
-pip install --break-system-packages -r requirements.txt
+python3 -m pip install --break-system-packages -r pi-API/requirements.txt
 ```
+
+Raspberry Pi OS may show `externally-managed-environment` if the
+`--break-system-packages` flag is omitted. That is expected on newer Pi OS
+images when installing into the system Python.
+
+If the DHT11 data wire is not on GPIO24, set `DHT11_PIN=<gpio_number>` in
+`pi-API/.env`.
 
 ## To start the FastAPI server, run:
 ```bash
