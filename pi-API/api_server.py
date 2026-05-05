@@ -18,9 +18,11 @@ from typing import Optional, Union
 try:
     import adafruit_dht
     import board
-except ImportError:
+    dht11_import_error = None
+except ImportError as e:
     adafruit_dht = None
     board = None
+    dht11_import_error = e
 
 from config import settings
 from auth import verify_jwt
@@ -149,7 +151,10 @@ def setup_dht11():
     global dht11_device
 
     if adafruit_dht is None or board is None:
-        logger.warning("DHT11 support unavailable: install adafruit-circuitpython-dht")
+        logger.warning(
+            "DHT11 support unavailable: install adafruit-circuitpython-dht (%s)",
+            dht11_import_error,
+        )
         return
 
     board_pin_name = f"D{DHT11_PIN}"
@@ -490,7 +495,19 @@ async def get_closet_state(user: dict = Depends(verify_jwt)):
 @app.get("/environment", response_model=EnvironmentReading)
 async def get_environment(user: dict = Depends(verify_jwt)):
     """Get current temperature and humidity from the DHT11 sensor."""
-    return read_dht11()
+    reading = read_dht11()
+    if reading.healthy:
+        logger.info(
+            "DHT11 reading: %.1f C / %.1f F, %.1f%% humidity on GPIO%s",
+            reading.temperature_c,
+            reading.temperature_f,
+            reading.humidity,
+            reading.pin,
+        )
+    else:
+        logger.warning("DHT11 reading unavailable on GPIO%s: %s", reading.pin, reading.message)
+
+    return reading
 
 
 @app.get("/position", response_model=StagePosition)
