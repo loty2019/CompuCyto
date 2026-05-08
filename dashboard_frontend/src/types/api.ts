@@ -26,6 +26,16 @@ export interface Position {
   is_moving?: boolean;
 }
 
+export interface LimitSensorState {
+  axis: "x" | "y" | "z";
+  pin: number;
+  active: boolean;
+  raw_state: number | null;
+  homed: boolean;
+}
+
+export type LimitSensors = Record<"x" | "y" | "z", LimitSensorState>;
+
 export interface CameraSettings {
   exposure: number;
   exposureMin: number;
@@ -85,6 +95,7 @@ export interface MoveResponse {
   status: string;
   target_position: Position;
   targetPosition?: Position;
+  limit_sensors?: LimitSensors;
 }
 
 export interface User {

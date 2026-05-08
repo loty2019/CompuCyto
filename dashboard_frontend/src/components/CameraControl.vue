@@ -230,6 +230,38 @@
               </div>
             </div>
           </div>
+
+          <div class="rounded-xl border border-white/80 bg-white/85 p-2 shadow-sm">
+            <div class="mb-2 flex items-center justify-between gap-2">
+              <span class="text-[11px] font-black uppercase text-slate-700">Environment</span>
+              <span
+                :class="[
+                  'flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold',
+                  environment.healthy
+                    ? 'border-teal-200 bg-teal-50 text-teal-700'
+                    : 'border-slate-200 bg-slate-50 text-slate-500',
+                ]"
+              >
+                <span
+                  :class="[
+                    'h-1.5 w-1.5 rounded-full',
+                    environment.healthy ? 'bg-teal-500' : 'bg-slate-400',
+                  ]"
+                ></span>
+                {{ environment.healthy ? "Online" : "Unknown" }}
+              </span>
+            </div>
+            <div class="grid grid-cols-2 gap-1.5">
+              <div class="rounded-lg border border-slate-200 bg-white p-2 shadow-sm">
+                <div class="text-[10px] font-bold uppercase text-slate-500">Temp</div>
+                <div class="mt-1 text-sm font-black text-slate-900">{{ temperatureLabel }}</div>
+              </div>
+              <div class="rounded-lg border border-slate-200 bg-white p-2 shadow-sm">
+                <div class="text-[10px] font-bold uppercase text-slate-500">Humidity</div>
+                <div class="mt-1 text-sm font-black text-slate-900">{{ humidityLabel }}</div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -475,6 +507,17 @@ const feedError = ref("");
 let websocket: WebSocket | null = null;
 let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
 const isConnecting = ref(false);
+let environmentPollTimer: ReturnType<typeof setInterval> | null = null;
+
+const environment = ref<{
+  temperature_c: number | null;
+  humidity: number | null;
+  healthy: boolean;
+}>({
+  temperature_c: null,
+  humidity: null,
+  healthy: false,
+});
 
 // Video recording state
 const isRecording = ref(false);
@@ -491,6 +534,20 @@ const cameraActionDisabled = computed(
   () => camera.isCapturing.value || isClosetOpen.value,
 );
 const focusDisabled = computed(() => stage.isMoving.value || isClosetOpen.value);
+const temperatureLabel = computed(() => {
+  if (environment.value.temperature_c === null) {
+    return "Unknown";
+  }
+
+  return `${environment.value.temperature_c.toFixed(1)} C`;
+});
+const humidityLabel = computed(() => {
+  if (environment.value.humidity === null) {
+    return "Unknown";
+  }
+
+  return `${environment.value.humidity.toFixed(1)}%`;
+});
 
 // Watch for light status changes and log them
 watch(
@@ -505,6 +562,8 @@ watch(
 
 onMounted(async () => {
   await loadCameraSettings();
+  await fetchEnvironment();
+  environmentPollTimer = setInterval(fetchEnvironment, 5000);
 
   // Auto-start the feed
   //startFeed();
@@ -518,7 +577,27 @@ onUnmounted(() => {
   if (updateTimer) {
     clearTimeout(updateTimer);
   }
+  if (environmentPollTimer) {
+    clearInterval(environmentPollTimer);
+  }
 });
+
+async function fetchEnvironment() {
+  try {
+    const response = await piAPI.getEnvironment();
+    environment.value = {
+      temperature_c: response.temperature_c,
+      humidity: response.humidity,
+      healthy: response.healthy,
+    };
+  } catch {
+    environment.value = {
+      temperature_c: null,
+      humidity: null,
+      healthy: false,
+    };
+  }
+}
 
 async function loadCameraSettings() {
   try {

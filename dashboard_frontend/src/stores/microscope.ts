@@ -3,6 +3,7 @@ import { ref, computed } from "vue";
 import type {
   SystemStatus,
   Position,
+  LimitSensors,
   CameraSettings,
   Image,
   Job,
@@ -46,7 +47,7 @@ export const useMicroscopeStore = defineStore("microscope", () => {
     autoExposure: false,
     autoExposureSupported: false,
     connected: false,
-    streaming: false
+    streaming: false,
   });
 
   const images = ref<Image[]>([]);
@@ -59,6 +60,7 @@ export const useMicroscopeStore = defineStore("microscope", () => {
     brightness: 100,
   });
   const closetStatus = ref<"open" | "closed" | "unknown">("unknown");
+  const limitSensors = ref<LimitSensors | null>(null);
 
   // Computed
   const isSystemHealthy = computed(
@@ -66,13 +68,13 @@ export const useMicroscopeStore = defineStore("microscope", () => {
       systemStatus.value.camera === "connected" &&
       systemStatus.value.stage === "connected" &&
       systemStatus.value.database === "connected" &&
-      systemStatus.value.raspberryPi === "connected"
+      systemStatus.value.raspberryPi === "connected",
   );
 
   const activeJobs = computed(() =>
     jobs.value.filter(
-      (job) => job.status === "running" || job.status === "pending"
-    )
+      (job) => job.status === "running" || job.status === "pending",
+    ),
   );
 
   const recentImages = computed(() => images.value.slice(0, 20));
@@ -132,7 +134,7 @@ export const useMicroscopeStore = defineStore("microscope", () => {
 
   function removeSavedPosition(positionId: number) {
     savedPositions.value = savedPositions.value.filter(
-      (p) => p.id !== positionId
+      (p) => p.id !== positionId,
     );
   }
 
@@ -164,6 +166,10 @@ export const useMicroscopeStore = defineStore("microscope", () => {
     closetStatus.value = status;
   }
 
+  function updateLimitSensors(sensors: LimitSensors) {
+    limitSensors.value = sensors;
+  }
+
   return {
     // State
     systemStatus,
@@ -176,6 +182,7 @@ export const useMicroscopeStore = defineStore("microscope", () => {
     logs,
     lightStatus,
     closetStatus,
+    limitSensors,
 
     // Computed
     isSystemHealthy,
@@ -201,5 +208,6 @@ export const useMicroscopeStore = defineStore("microscope", () => {
     clearLogs,
     updateLightStatus,
     updateClosetStatus,
+    updateLimitSensors,
   };
 });

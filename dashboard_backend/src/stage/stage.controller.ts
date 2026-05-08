@@ -93,12 +93,7 @@ export class StageController {
     },
   })
   async move(@Body() moveDto: MoveDto) {
-    return this.stageService.move(
-      moveDto.x,
-      moveDto.y,
-      moveDto.z,
-      moveDto.relative,
-    );
+    return this.stageService.move(moveDto.x, moveDto.y, moveDto.z, moveDto.relative);
   }
 
   /**
@@ -133,6 +128,19 @@ export class StageController {
   })
   async getPosition() {
     return this.stageService.getPosition();
+  }
+
+  @Get('limits')
+  @ApiOperation({
+    summary: 'Get home sensor states',
+    description: 'Query Raspberry Pi for X, Y, and Z optical home/limit sensor states.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Home sensor states retrieved successfully',
+  })
+  async getLimits() {
+    return this.stageService.getLimits();
   }
 
   /**

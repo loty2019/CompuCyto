@@ -2,6 +2,7 @@ import {
   Injectable,
   ServiceUnavailableException,
   Logger,
+  HttpException,
 } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '../config/config.service';
@@ -62,35 +63,9 @@ export class StageService {
     relative: boolean = false,
   ): Promise<any> {
     try {
-      if (relative) {
-        const { data } = await firstValueFrom(
-          this.httpService
-            .post(
-              `${this.baseUrl}/move`,
-              { x, y, z, relative: true },
-              { timeout: this.timeout },
-            )
-            .pipe(
-              catchError((error: AxiosError) => {
-                this.logger.error(`Stage move failed: ${error.message}`);
-                throw new ServiceUnavailableException(
-                  'Stage controller unavailable',
-                );
-              }),
-            ),
-        );
-
-        return {
-          status: 'moving',
-          targetPosition: data.target_position,
-          target_position: data.target_position,
-          ...data,
-        };
-      }
-
       return this.moveWithCurrentPosition(x, y, z, relative);
     } catch (error) {
-      if (error instanceof ServiceUnavailableException) {
+      if (error instanceof HttpException) {
         throw error;
       }
       this.logger.error(`Stage move error: ${error.message}`);
@@ -135,9 +110,7 @@ export class StageService {
           .pipe(
             catchError((error: AxiosError) => {
               this.logger.error(`Stage move failed: ${error.message}`);
-              throw new ServiceUnavailableException(
-                'Stage controller unavailable',
-              );
+              throw this.toStageControllerException(error);
             }),
           ),
       );
@@ -196,6 +169,18 @@ export class StageService {
     return error?.response?.status === 404;
   }
 
+  private toStageControllerException(error: AxiosError): HttpException {
+    const status = error.response?.status;
+    const data = error.response?.data as any;
+    const detail = data?.detail || data?.message;
+
+    if (status && status >= 400 && status < 500) {
+      return new HttpException(detail || 'Stage command rejected', status);
+    }
+
+    return new ServiceUnavailableException('Stage controller unavailable');
+  }
+
   /**
    * Home all axes
    *
@@ -210,18 +195,19 @@ export class StageService {
       // POST request to initiate homing sequence
       const { data } = await firstValueFrom(
         this.httpService
-          .post(`${this.baseUrl}/home`, {}, { timeout: this.timeout })
+          .post(`${this.baseUrl}/home`, {}, { timeout: Math.max(this.timeout, 120000) })
           .pipe(
             catchError((error: AxiosError) => {
               this.logger.error(`Stage home failed: ${error.message}`);
-              throw new ServiceUnavailableException(
-                'Stage controller unavailable',
-              );
+              throw this.toStageControllerException(error);
             }),
           ),
       );
       return data;
     } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
       this.logger.error(`Stage home error: ${error.message}`);
       throw new ServiceUnavailableException('Stage controller unavailable');
     }
@@ -240,20 +226,33 @@ export class StageService {
     try {
       // POST request to emergency stop all motors
       const { data } = await firstValueFrom(
-        this.httpService
-          .post(`${this.baseUrl}/stop`, {}, { timeout: this.timeout })
-          .pipe(
-            catchError((error: AxiosError) => {
-              this.logger.error(`Stage stop failed: ${error.message}`);
-              throw new ServiceUnavailableException(
-                'Stage controller unavailable',
-              );
-            }),
-          ),
+        this.httpService.post(`${this.baseUrl}/stop`, {}, { timeout: this.timeout }).pipe(
+          catchError((error: AxiosError) => {
+            this.logger.error(`Stage stop failed: ${error.message}`);
+            throw this.toStageControllerException(error);
+          }),
+        ),
       );
       return data;
     } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
       this.logger.error(`Stage stop error: ${error.message}`);
+      throw new ServiceUnavailableException('Stage controller unavailable');
+    }
+  }
+
+  async getLimits(): Promise<any> {
+    try {
+      const { data } = await firstValueFrom(
+        this.httpService.get(`${this.baseUrl}/limits`, {
+          timeout: this.timeout,
+        }),
+      );
+      return data;
+    } catch (error) {
+      this.logger.error(`Get limits error: ${error.message}`);
       throw new ServiceUnavailableException('Stage controller unavailable');
     }
   }

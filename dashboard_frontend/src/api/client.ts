@@ -8,6 +8,7 @@ import type {
   CaptureResponse,
   MoveRequest,
   MoveResponse,
+  LimitSensors,
   ImageListResponse,
   Image,
   JobCreate,
@@ -347,12 +348,25 @@ export const controlAPI = {
     return data;
   },
 
-  async homeStage(): Promise<{ status: string; message: string }> {
+  async getLimitSensors(): Promise<LimitSensors> {
+    const { data } = await apiClient.get<LimitSensors>("/api/v1/stage/limits");
+    return data;
+  },
+
+  async homeStage(): Promise<{
+    status: string;
+    message: string;
+    limit_sensors?: LimitSensors;
+  }> {
     const { data } = await apiClient.post("/api/v1/stage/home");
     return data;
   },
 
-  async emergencyStop(): Promise<{ status: string; message: string }> {
+  async emergencyStop(): Promise<{
+    status: string;
+    message: string;
+    limit_sensors?: LimitSensors;
+  }> {
     const { data } = await apiClient.post("/api/v1/stage/stop");
     return data;
   },

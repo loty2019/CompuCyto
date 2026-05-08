@@ -1,8 +1,14 @@
 <template>
-  <div class="stage-panel overflow-hidden rounded-lg border border-slate-200/80 bg-white p-2 shadow-md">
+  <div
+    class="stage-panel overflow-hidden rounded-lg border border-slate-200/80 bg-white p-2 shadow-md"
+  >
     <div class="mb-1.5 flex items-center justify-between gap-2">
-      <h2 class="text-sm font-black uppercase tracking-wide text-slate-950">Stage</h2>
-      <span class="rounded-full border border-slate-300 bg-slate-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-600">
+      <h2 class="text-sm font-black uppercase tracking-wide text-slate-950">
+        Stage
+      </h2>
+      <span
+        class="rounded-full border border-slate-300 bg-slate-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-600"
+      >
         Relative
       </span>
     </div>
@@ -14,7 +20,22 @@
       Lid open - stage locked
     </div>
 
-    <div class="mb-1.5 grid grid-cols-3 gap-1 rounded-md border border-slate-200 bg-slate-50 p-1 shadow-inner">
+    <div class="mb-1.5 grid grid-cols-3 gap-1">
+      <div
+        v-for="axis in sensorAxes"
+        :key="axis"
+        class="sensor-chip"
+        :class="sensorClass(axis)"
+        :title="sensorTitle(axis)"
+      >
+        <span>{{ axis.toUpperCase() }}</span>
+        <span>{{ sensorLabel(axis) }}</span>
+      </div>
+    </div>
+
+    <div
+      class="mb-1.5 grid grid-cols-3 gap-1 rounded-md border border-slate-200 bg-slate-50 p-1 shadow-inner"
+    >
       <div class="position-chip">
         <span class="position-axis">X</span>
         <span class="position-value">{{ store.position.x.toFixed(1) }}</span>
@@ -33,7 +54,9 @@
       <div class="mb-1.5">
         <div class="mb-1 flex items-center justify-between gap-2">
           <span class="section-label">Speed</span>
-          <span class="text-[10px] font-bold text-slate-500">{{ xyMultiplier }}x</span>
+          <span class="text-[10px] font-bold text-slate-500"
+            >{{ xyMultiplier }}x</span
+          >
         </div>
         <div class="multiplier-grid">
           <button
@@ -58,7 +81,11 @@
           "
           :disabled="movementDisabled"
           class="stage-button stage-button-primary"
-          :class="movementDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'"
+          :class="
+            movementDisabled
+              ? 'cursor-not-allowed opacity-60'
+              : 'cursor-pointer'
+          "
           :style="getButtonStyle('arrowup')"
           title="Move up"
         >
@@ -73,7 +100,11 @@
           "
           :disabled="movementDisabled"
           class="stage-button stage-button-primary"
-          :class="movementDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'"
+          :class="
+            movementDisabled
+              ? 'cursor-not-allowed opacity-60'
+              : 'cursor-pointer'
+          "
           :style="getButtonStyle('arrowleft')"
           title="Move left"
         >
@@ -86,7 +117,11 @@
           "
           :disabled="movementDisabled"
           class="stage-button stage-button-home"
-          :class="movementDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'"
+          :class="
+            movementDisabled
+              ? 'cursor-not-allowed opacity-60'
+              : 'cursor-pointer'
+          "
           :style="getButtonStyle('home')"
         >
           <span>Home</span>
@@ -98,7 +133,11 @@
           "
           :disabled="movementDisabled"
           class="stage-button stage-button-primary"
-          :class="movementDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'"
+          :class="
+            movementDisabled
+              ? 'cursor-not-allowed opacity-60'
+              : 'cursor-pointer'
+          "
           :style="getButtonStyle('arrowright')"
           title="Move right"
         >
@@ -113,7 +152,11 @@
           "
           :disabled="movementDisabled"
           class="stage-button stage-button-primary outline-none"
-          :class="movementDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'"
+          :class="
+            movementDisabled
+              ? 'cursor-not-allowed opacity-60'
+              : 'cursor-pointer'
+          "
           :style="getButtonStyle('arrowdown')"
           title="Move down"
         >
@@ -151,8 +194,9 @@ const pressedKeys = ref<Set<string>>(new Set());
 const clickedButtons = ref<Set<string>>(new Set());
 const isClosetOpen = computed(() => store.closetStatus === "open");
 const movementDisabled = computed(
-  () => stage.isMoving.value || isClosetOpen.value,
+  () => stage.isMoving.value || store.position.is_moving || isClosetOpen.value,
 );
+const sensorAxes = ["x", "y", "z"] as const;
 
 let intervalId: number | null = null;
 
@@ -188,6 +232,27 @@ async function homeStage() {
   }
 
   await stage.home();
+  await stage.updatePosition();
+}
+
+function sensorLabel(axis: "x" | "y" | "z") {
+  const sensor = store.limitSensors?.[axis];
+  if (!sensor) return "Unknown";
+  return sensor.active ? "Limit" : sensor.homed ? "Homed" : "Clear";
+}
+
+function sensorTitle(axis: "x" | "y" | "z") {
+  const sensor = store.limitSensors?.[axis];
+  if (!sensor) return `${axis.toUpperCase()} home sensor: unknown`;
+  return `${axis.toUpperCase()} home sensor GPIO${sensor.pin}: raw ${sensor.raw_state ?? "?"}`;
+}
+
+function sensorClass(axis: "x" | "y" | "z") {
+  const sensor = store.limitSensors?.[axis];
+  if (!sensor) return "sensor-chip-unknown";
+  if (sensor.active) return "sensor-chip-active";
+  if (sensor.homed) return "sensor-chip-homed";
+  return "sensor-chip-clear";
 }
 
 function moveAxis(axis: "x" | "y", direction: 1 | -1) {
@@ -267,7 +332,11 @@ function getButtonStyle(buttonId: string): string {
 <style scoped>
 .stage-panel {
   background:
-    radial-gradient(circle at top left, rgba(148, 163, 184, 0.16), transparent 34%),
+    radial-gradient(
+      circle at top left,
+      rgba(148, 163, 184, 0.16),
+      transparent 34%
+    ),
     linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
 }
 
@@ -285,6 +354,26 @@ function getButtonStyle(buttonId: string): string {
 
 .section-label {
   @apply text-[10px] font-bold uppercase tracking-wide text-slate-500;
+}
+
+.sensor-chip {
+  @apply flex h-6 items-center justify-between rounded border px-1.5 text-[9px] font-black uppercase tracking-wide;
+}
+
+.sensor-chip-active {
+  @apply border-red-300 bg-red-50 text-red-700;
+}
+
+.sensor-chip-homed {
+  @apply border-teal-300 bg-teal-50 text-teal-700;
+}
+
+.sensor-chip-clear {
+  @apply border-slate-200 bg-white text-slate-500;
+}
+
+.sensor-chip-unknown {
+  @apply border-slate-200 bg-slate-100 text-slate-400;
 }
 
 .stage-button {
