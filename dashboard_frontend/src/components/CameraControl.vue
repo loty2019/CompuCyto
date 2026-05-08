@@ -475,7 +475,7 @@ import { ref, onMounted, onUnmounted, computed, watch } from "vue";
 import { useMicroscopeStore } from "@/stores/microscope";
 import { useCamera } from "@/composables/useCamera";
 import { useStage } from "@/composables/useStage";
-import { piAPI } from "@/api/client";
+import { getActiveProfileHeaders, piAPI } from "@/api/client";
 
 const store = useMicroscopeStore();
 const camera = useCamera();
@@ -971,12 +971,11 @@ async function startRecording() {
   try {
     store.addLog("Starting video recording...", "info");
 
-    const token = localStorage.getItem("access_token");
     const response = await fetch("/api/v1/camera/video/start", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
+        ...getActiveProfileHeaders(),
       },
       body: JSON.stringify({
         duration: 30,
@@ -1022,12 +1021,11 @@ async function stopRecording() {
 
     store.addLog("Stopping video recording...", "info");
 
-    const token = localStorage.getItem("access_token");
     const response = await fetch("/api/v1/camera/video/stop", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
+        ...getActiveProfileHeaders(),
       },
     });
 

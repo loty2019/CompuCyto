@@ -19,7 +19,7 @@
             </div>
           </div>
           <span class="hidden text-sm text-slate-500 sm:inline">
-            Welcome, <strong>{{ authStore.currentUser?.username }}</strong>
+            Profile: <strong>{{ authStore.currentUser?.username }}</strong>
           </span>
         </div>
 
@@ -32,7 +32,7 @@
             @click="handleLogout"
             class="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 transition-all hover:-translate-y-0.5 hover:border-red-300 hover:bg-red-50 hover:text-red-700 hover:shadow-sm"
           >
-            Logout
+            Switch Profile
           </button>
         </div>
       </div>

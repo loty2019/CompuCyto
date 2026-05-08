@@ -1,11 +1,4 @@
-import {
-  Controller,
-  Post,
-  Body,
-  Get,
-  UseGuards,
-  Request,
-} from '@nestjs/common';
+import { Controller, Post, Body, Get, UseGuards, Request } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
@@ -17,6 +10,7 @@ import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { UsersService } from '../users/users.service';
 
 /**
  * Authentication Controller
@@ -29,7 +23,37 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard';
 @ApiTags('Auth')
 @Controller('api/v1/auth')
 export class AuthController {
-  constructor(private authService: AuthService) {}
+  constructor(
+    private authService: AuthService,
+    private usersService: UsersService,
+  ) {}
+
+  private async localProfile(name = 'Operator') {
+    const username = name.trim() || 'Operator';
+    const existing = await this.usersService.findByUsername(username);
+    const user =
+      existing ||
+      (await this.usersService.create(
+        `${username.toLowerCase().replace(/[^a-z0-9]+/g, '.')}@cytocore.local`,
+        username,
+        'local-profile',
+      ));
+
+    return {
+      user: {
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        role: user.role,
+        profile: {
+          id: user.id,
+          userId: user.id,
+          fullName: user.fullName || user.username,
+          preferences: user.preferences || {},
+        },
+      },
+    };
+  }
 
   /**
    * Register a new user
@@ -95,7 +119,7 @@ export class AuthController {
     },
   })
   async register(@Body() registerDto: RegisterDto) {
-    return this.authService.register(registerDto);
+    return this.localProfile(registerDto.username || 'Local Profile');
   }
 
   /**
@@ -146,7 +170,8 @@ export class AuthController {
     },
   })
   async login(@Body() loginDto: LoginDto) {
-    return this.authService.login(loginDto);
+    const name = loginDto.email?.split('@')[0] || 'Local Profile';
+    return this.localProfile(name);
   }
 
   /**

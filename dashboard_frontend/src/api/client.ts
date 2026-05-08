@@ -31,36 +31,6 @@ declare global {
   }
 }
 
-// Auth types
-export interface LoginRequest {
-  email: string;
-  password: string;
-}
-
-export interface RegisterRequest {
-  email: string;
-  username: string;
-  password: string;
-}
-
-export interface AuthResponse {
-  access_token: string;
-  user: {
-    id: number;
-    email: string;
-    username: string;
-    role: string;
-    profile?: {
-      id: number;
-      userId: number;
-      fullName?: string;
-      bio?: string;
-      avatarUrl?: string;
-      preferences?: Record<string, any>;
-    };
-  };
-}
-
 // Use root so that calls to '/api/v1/...' are proxied by Vite to the backend
 const API_BASE_URL = import.meta.env.VITE_API_URL || "/";
 
@@ -97,20 +67,34 @@ const piClient = axios.create({
   },
 });
 
-// Add request interceptor to include JWT token and log requests
+export const getActiveProfileHeaders = (): Record<string, string> => {
+  const storedUser = localStorage.getItem("user");
+
+  if (!storedUser) {
+    return {};
+  }
+
+  try {
+    const user = JSON.parse(storedUser);
+
+    return {
+      "X-Profile-Id": String(user.id || 1),
+      "X-Profile-Name": String(user.username || "Operator"),
+    };
+  } catch {
+    return {};
+  }
+};
+
+// Add request interceptor to log requests
 apiClient.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("access_token");
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
+    Object.assign(config.headers, getActiveProfileHeaders());
 
-    // Log API request
     const method = config.method?.toUpperCase() || "REQUEST";
     const url = config.url || "";
     const logMessage = `${method} ${url}`;
 
-    // Add to console log (will be picked up by microscope store)
     if (window.__logToConsole) {
       window.__logToConsole(logMessage, "info");
     }
@@ -153,15 +137,6 @@ apiClient.interceptors.response.use(
       window.__logToConsole(logMessage, "error");
     }
 
-    if (error.response?.status === 401) {
-      // Clear auth data on unauthorized
-      localStorage.removeItem("access_token");
-      localStorage.removeItem("user");
-      // Redirect to login if not already there
-      if (window.location.pathname !== "/login") {
-        window.location.href = "/login";
-      }
-    }
     return Promise.reject(error);
   },
 );
@@ -169,10 +144,7 @@ apiClient.interceptors.response.use(
 // Add same interceptors for Python client (direct camera access)
 pythonClient.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("access_token");
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
+    Object.assign(config.headers, getActiveProfileHeaders());
 
     const method = config.method?.toUpperCase() || "REQUEST";
     const url = config.url || "";
@@ -216,14 +188,6 @@ pythonClient.interceptors.response.use(
       window.__logToConsole(logMessage, "error");
     }
 
-    // Handle 401 from Python service same as main API
-    if (error.response?.status === 401) {
-      localStorage.removeItem("access_token");
-      localStorage.removeItem("user");
-      if (window.location.pathname !== "/login") {
-        window.location.href = "/login";
-      }
-    }
     return Promise.reject(error);
   },
 );
@@ -231,10 +195,7 @@ pythonClient.interceptors.response.use(
 // Add interceptors for Pi-API client (GPIO control)
 piClient.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("access_token");
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
+    Object.assign(config.headers, getActiveProfileHeaders());
 
     const method = config.method?.toUpperCase() || "REQUEST";
     const url = config.url || "";
@@ -278,42 +239,9 @@ piClient.interceptors.response.use(
       window.__logToConsole(logMessage, "error");
     }
 
-    if (error.response?.status === 401) {
-      localStorage.removeItem("access_token");
-      localStorage.removeItem("user");
-      if (window.location.pathname !== "/login") {
-        window.location.href = "/login";
-      }
-    }
     return Promise.reject(error);
   },
 );
-
-// Auth endpoints
-export const authAPI = {
-  async login(credentials: LoginRequest): Promise<AuthResponse> {
-    const { data } = await apiClient.post<AuthResponse>(
-      "/api/v1/auth/login",
-      credentials,
-    );
-    return data;
-  },
-
-  async register(userData: RegisterRequest): Promise<AuthResponse> {
-    const { data } = await apiClient.post<AuthResponse>(
-      "/api/v1/auth/register",
-      userData,
-    );
-    return data;
-  },
-
-  async getProfile(): Promise<AuthResponse["user"]> {
-    const { data } = await apiClient.get<AuthResponse["user"]>(
-      "/api/v1/auth/profile",
-    );
-    return data;
-  },
-};
 
 // Control endpoints
 export const controlAPI = {

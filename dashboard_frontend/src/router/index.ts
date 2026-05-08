@@ -31,16 +31,18 @@ const router = createRouter({
 // Navigation guard to check authentication
 router.beforeEach((to, _from, next) => {
   const authStore = useAuthStore()
+  if (!authStore.initialized) {
+    authStore.initializeAuth()
+  }
+
   const requiresAuth = to.meta.requiresAuth
 
   if (requiresAuth && !authStore.isAuthenticated) {
-    // Redirect to login page if route requires auth and user is not authenticated
     next({
       path: '/login',
       query: { redirect: to.fullPath }
     })
   } else if (!requiresAuth && authStore.isAuthenticated && (to.name === 'login' || to.name === 'register')) {
-    // Redirect to home if user is authenticated and trying to access login/register
     next({ path: '/' })
   } else {
     next()
