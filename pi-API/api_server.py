@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import lgpio
 import uvicorn
+import asyncio
 import logging
 import subprocess
 import threading
@@ -66,14 +67,16 @@ LIMIT_SENSOR_PINS = {
     "z": settings.limit_z_pin,
 }
 
-STEP_PULSE_SECONDS = 0.005
-STEP_LOW_SECONDS = 0.005
-DIRECTION_SETTLE_SECONDS = 0.02
+STEP_PULSE_SECONDS = settings.step_pulse_seconds
+STEP_LOW_SECONDS = settings.step_low_seconds
+DIRECTION_SETTLE_SECONDS = settings.direction_settle_seconds
 DIRECTION_POSITIVE = 1
 DIRECTION_NEGATIVE = 0
 LIMIT_SENSOR_ACTIVE_STATE = 1 if settings.limit_sensor_active_state else 0
-HOMING_FAST_STEP_SECONDS = STEP_PULSE_SECONDS
-HOMING_SLOW_STEP_SECONDS = max(settings.homing_settle_seconds, 0.001)
+LIMIT_POLL_SECONDS = max(settings.limit_poll_seconds, 0.0005)
+LIMIT_DEBOUNCE_SECONDS = max(settings.limit_debounce_seconds, LIMIT_POLL_SECONDS)
+HOMING_FAST_STEP_SECONDS = settings.homing_fast_step_seconds
+HOMING_SLOW_STEP_SECONDS = settings.homing_slow_step_seconds
 HOMING_MAX_STEPS = settings.homing_max_steps
 HOMING_BACKOFF_STEPS = settings.homing_backoff_steps
 
@@ -91,6 +94,8 @@ axis_move_direction = {"x": 0, "y": 0, "z": 0}
 axis_stop_events = {axis: threading.Event() for axis in MOTOR_AXES}
 axis_motion_locks = {axis: threading.Lock() for axis in MOTOR_AXES}
 limit_sensor_states = {axis: False for axis in MOTOR_AXES}
+limit_sensor_raw_states = {axis: None for axis in MOTOR_AXES}
+limit_sensor_changed_at = {axis: time.monotonic() for axis in MOTOR_AXES}
 limit_sensor_lock = threading.Lock()
 dht11_device = None
 dht11_lock = threading.Lock()
@@ -171,19 +176,10 @@ def current_stage_position() -> StagePosition:
 
 
 def read_limit_sensor(axis: str) -> LimitSensorState:
-    """Read one optical home/limit sensor."""
-    raw_state = None
-    active = False
-
-    if h is not None:
-        try:
-            raw_state = lgpio.gpio_read(h, LIMIT_SENSOR_PINS[axis])
-            active = raw_state == LIMIT_SENSOR_ACTIVE_STATE
-        except Exception as e:
-            logger.error("Failed to read %s limit sensor: %s", axis.upper(), e)
-
+    """Return the latest cached optical home/limit sensor state."""
     with limit_sensor_lock:
-        limit_sensor_states[axis] = active
+        active = limit_sensor_states[axis]
+        raw_state = limit_sensor_raw_states[axis]
 
     return LimitSensorState(
         axis=axis,
@@ -198,14 +194,43 @@ def read_limit_sensors() -> Dict[str, LimitSensorState]:
     return {axis: read_limit_sensor(axis) for axis in MOTOR_AXES}
 
 
-def debounced_limit_active(axis: str, samples: int = 3, delay_seconds: float = 0.002) -> bool:
-    """Require several identical active reads before treating a limit as hit."""
-    active_reads = 0
-    for _ in range(samples):
-        if read_limit_sensor(axis).active:
-            active_reads += 1
-        time.sleep(delay_seconds)
-    return active_reads == samples
+def update_limit_sensor_cache(axis: str) -> None:
+    """Poll one sensor once and update the cached active/raw state."""
+    if h is None:
+        return
+
+    try:
+        raw_state = lgpio.gpio_read(h, LIMIT_SENSOR_PINS[axis])
+        active = raw_state == LIMIT_SENSOR_ACTIVE_STATE
+    except Exception as e:
+        logger.error("Failed to read %s limit sensor: %s", axis.upper(), e)
+        return
+
+    now = time.monotonic()
+    with limit_sensor_lock:
+        if active != limit_sensor_states[axis]:
+            limit_sensor_changed_at[axis] = now
+        limit_sensor_raw_states[axis] = raw_state
+        limit_sensor_states[axis] = active
+
+
+def refresh_limit_sensors() -> None:
+    for axis in MOTOR_AXES:
+        update_limit_sensor_cache(axis)
+
+
+def limit_active(axis: str) -> bool:
+    with limit_sensor_lock:
+        return limit_sensor_states[axis]
+
+
+def limit_stably_active(axis: str) -> bool:
+    """Use the cached monitor state; no GPIO reads or sleeps in the motion path."""
+    with limit_sensor_lock:
+        return (
+            limit_sensor_states[axis]
+            and time.monotonic() - limit_sensor_changed_at[axis] >= LIMIT_DEBOUNCE_SECONDS
+        )
 
 
 def request_stage_stop():
@@ -221,15 +246,19 @@ def request_stage_stop():
                 logger.warning("Failed to drop step pin during stop: %s", e)
 
 
-def pulse_axis(axis: str, direction: int, step_delay: float) -> None:
+def set_axis_direction(axis: str, direction: int) -> None:
     pins = MOTOR_AXES[axis]
     axis_move_direction[axis] = 1 if direction == DIRECTION_POSITIVE else -1
     lgpio.gpio_write(h, pins["direction"], direction)
     time.sleep(DIRECTION_SETTLE_SECONDS)
+
+
+def pulse_axis(axis: str, pulse_seconds: float, low_seconds: Optional[float] = None) -> None:
+    pins = MOTOR_AXES[axis]
     lgpio.gpio_write(h, pins["step"], 1)
-    time.sleep(step_delay)
+    time.sleep(pulse_seconds)
     lgpio.gpio_write(h, pins["step"], 0)
-    time.sleep(step_delay)
+    time.sleep(low_seconds if low_seconds is not None else pulse_seconds)
 
 
 def setup_dht11():
@@ -338,18 +367,16 @@ def run_axis_move(axis: str, target_position: int):
 
         direction = DIRECTION_POSITIVE if delta > 0 else DIRECTION_NEGATIVE
         step_increment = 1 if delta > 0 else -1
-        axis_move_direction[axis] = step_increment
-        lgpio.gpio_write(h, pins["direction"], direction)
-        time.sleep(DIRECTION_SETTLE_SECONDS)
+        set_axis_direction(axis, direction)
 
-        if step_increment < 0 and read_limit_sensor(axis).active:
+        if step_increment < 0 and limit_active(axis):
             axis_positions[axis] = 0
             axis_is_homed[axis] = True
             logger.warning("%s negative move blocked: home sensor is already active", axis.upper())
             return
 
         for _ in range(abs(delta)):
-            if step_increment < 0 and debounced_limit_active(axis):
+            if step_increment < 0 and limit_stably_active(axis):
                 axis_positions[axis] = 0
                 axis_is_homed[axis] = True
                 axis_stop_events[axis].set()
@@ -364,10 +391,7 @@ def run_axis_move(axis: str, target_position: int):
                 )
                 break
 
-            lgpio.gpio_write(h, pins["step"], 1)
-            time.sleep(STEP_PULSE_SECONDS)
-            lgpio.gpio_write(h, pins["step"], 0)
-            time.sleep(STEP_LOW_SECONDS)
+            pulse_axis(axis, STEP_PULSE_SECONDS, STEP_LOW_SECONDS)
             axis_positions[axis] += step_increment
     except Exception as e:
         logger.error("%s movement failed: %s", axis.upper(), e)
@@ -420,15 +444,16 @@ def run_axis_homing(axis: str) -> None:
         axis_is_homed[axis] = False
 
     try:
-        if not read_limit_sensor(axis).active:
+        if not limit_active(axis):
+            set_axis_direction(axis, DIRECTION_NEGATIVE)
             for _ in range(HOMING_MAX_STEPS):
                 if axis_stop_events[axis].is_set():
                     raise RuntimeError(f"{axis.upper()} homing stopped")
 
-                pulse_axis(axis, DIRECTION_NEGATIVE, HOMING_FAST_STEP_SECONDS)
+                pulse_axis(axis, HOMING_FAST_STEP_SECONDS)
                 axis_positions[axis] -= 1
 
-                if debounced_limit_active(axis):
+                if limit_stably_active(axis):
                     break
             else:
                 raise RuntimeError(
@@ -437,18 +462,20 @@ def run_axis_homing(axis: str) -> None:
 
         axis_positions[axis] = 0
 
+        set_axis_direction(axis, DIRECTION_POSITIVE)
         for _ in range(HOMING_BACKOFF_STEPS):
             if axis_stop_events[axis].is_set():
                 raise RuntimeError(f"{axis.upper()} homing stopped during backoff")
-            pulse_axis(axis, DIRECTION_POSITIVE, HOMING_SLOW_STEP_SECONDS)
+            pulse_axis(axis, HOMING_SLOW_STEP_SECONDS)
             axis_positions[axis] += 1
 
-        for _ in range(HOMING_BACKOFF_STEPS * 2):
+        set_axis_direction(axis, DIRECTION_NEGATIVE)
+        for _ in range(max(HOMING_BACKOFF_STEPS * 3, 1)):
             if axis_stop_events[axis].is_set():
                 raise RuntimeError(f"{axis.upper()} homing stopped during final approach")
-            pulse_axis(axis, DIRECTION_NEGATIVE, HOMING_SLOW_STEP_SECONDS)
+            pulse_axis(axis, HOMING_SLOW_STEP_SECONDS)
             axis_positions[axis] -= 1
-            if debounced_limit_active(axis):
+            if limit_stably_active(axis):
                 axis_positions[axis] = 0
                 axis_is_homed[axis] = True
                 logger.info("%s axis homed on GPIO%s", axis.upper(), LIMIT_SENSOR_PINS[axis])
@@ -499,16 +526,17 @@ def monitor_limit_sensors():
         try:
             if h is not None:
                 for axis in MOTOR_AXES:
-                    sensor = read_limit_sensor(axis)
-                    if sensor.active != last_states[axis]:
-                        state_label = "ACTIVE" if sensor.active else "clear"
-                        print(f"{axis.upper()} home sensor GPIO{sensor.pin}: {state_label}")
-                        last_states[axis] = sensor.active
+                    update_limit_sensor_cache(axis)
+                    active = limit_active(axis)
+                    if active != last_states[axis]:
+                        state_label = "ACTIVE" if active else "clear"
+                        print(f"{axis.upper()} home sensor GPIO{LIMIT_SENSOR_PINS[axis]}: {state_label}")
+                        last_states[axis] = active
 
-                    if sensor.active and axis_is_moving[axis] and axis_move_direction[axis] < 0:
+                    if limit_stably_active(axis) and axis_is_moving[axis] and axis_move_direction[axis] < 0:
                         # The motion thread performs the precise axis zeroing. This is a backup stop path.
                         axis_stop_events[axis].set()
-            time.sleep(0.02)
+            time.sleep(LIMIT_POLL_SECONDS)
         except Exception as e:
             print(f"Error reading home sensors: {e}")
             time.sleep(1)
@@ -588,6 +616,7 @@ def setup_gpio():
         )
         for pin in LIMIT_SENSOR_PINS.values():
             lgpio.gpio_claim_input(h, pin, limit_pull_flag)
+        refresh_limit_sensors()
         
         # Ensure Lamps/flr are OFF at startup (inverted logic: 1=off)
         # PSU use normal logic (1=on, 0=off)
@@ -788,7 +817,7 @@ async def home_stage():
         raise HTTPException(status_code=409, detail="Stop movement before homing")
 
     try:
-        run_homing_sequence(["z", "x", "y"])
+        await asyncio.to_thread(run_homing_sequence, ["z", "x", "y"])
     except RuntimeError as e:
         request_stage_stop()
         logger.error("Stage homing failed: %s", e)

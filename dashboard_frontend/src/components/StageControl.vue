@@ -53,21 +53,25 @@
     <div class="rounded-lg border border-slate-200 bg-slate-50 p-1.5">
       <div class="mb-1.5">
         <div class="mb-1 flex items-center justify-between gap-2">
-          <span class="section-label">Speed</span>
+          <span class="section-label">Jog</span>
           <span class="text-[10px] font-bold text-slate-500"
-            >{{ xyMultiplier }}x</span
+            >{{ activeJogProfile.steps }} steps</span
           >
         </div>
         <div class="multiplier-grid">
           <button
-            v-for="option in xyMultipliers"
-            :key="`xy-${option}`"
-            @click="xyMultiplier = option"
+            v-for="profile in jogProfiles"
+            :key="profile.id"
+            @click="selectedJogProfileId = profile.id"
             class="multiplier-button"
-            :class="xyMultiplier === option ? 'multiplier-button-active' : ''"
+            :class="
+              selectedJogProfileId === profile.id
+                ? 'multiplier-button-active'
+                : ''
+            "
             type="button"
           >
-            {{ option }}x
+            {{ profile.label }}
           </button>
         </div>
       </div>
@@ -166,6 +170,39 @@
       </div>
     </div>
 
+    <div class="mt-1.5 grid grid-cols-2 gap-1.5">
+      <button
+        @click="
+          handleButtonClick('zdown');
+          moveAxis('z', -1);
+        "
+        :disabled="movementDisabled"
+        class="stage-button stage-button-secondary"
+        :class="
+          movementDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
+        "
+        :style="getButtonStyle('zdown')"
+        title="Move Z down"
+      >
+        Z-
+      </button>
+      <button
+        @click="
+          handleButtonClick('zup');
+          moveAxis('z', 1);
+        "
+        :disabled="movementDisabled"
+        class="stage-button stage-button-secondary"
+        :class="
+          movementDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
+        "
+        :style="getButtonStyle('zup')"
+        title="Move Z up"
+      >
+        Z+
+      </button>
+    </div>
+
     <div class="mt-1.5">
       <button
         @click="stage.stop()"
@@ -187,9 +224,19 @@ import { useStage } from "@/composables/useStage";
 const store = useMicroscopeStore();
 const stage = useStage();
 
-const baseXYStep = 100;
-const xyMultipliers = [0.1, 0.5, 1, 2, 5, 10];
-const xyMultiplier = ref(1);
+const jogProfiles = [
+  { id: "fine", label: "Fine", steps: 25 },
+  { id: "small", label: "Small", steps: 100 },
+  { id: "medium", label: "Med", steps: 500 },
+  { id: "large", label: "Large", steps: 2000 },
+  { id: "travel", label: "Travel", steps: 5000 },
+] as const;
+const selectedJogProfileId = ref<(typeof jogProfiles)[number]["id"]>("medium");
+const activeJogProfile = computed(
+  () =>
+    jogProfiles.find((profile) => profile.id === selectedJogProfileId.value) ??
+    jogProfiles[2],
+);
 const pressedKeys = ref<Set<string>>(new Set());
 const clickedButtons = ref<Set<string>>(new Set());
 const isClosetOpen = computed(() => store.closetStatus === "open");
@@ -255,12 +302,14 @@ function sensorClass(axis: "x" | "y" | "z") {
   return "sensor-chip-clear";
 }
 
-function moveAxis(axis: "x" | "y", direction: 1 | -1) {
-  const steps = Math.round(baseXYStep * xyMultiplier.value) * direction;
+function moveAxis(axis: "x" | "y" | "z", direction: 1 | -1) {
+  const steps = activeJogProfile.value.steps * direction;
   if (axis === "x") {
     move(steps, 0, 0);
-  } else {
+  } else if (axis === "y") {
     move(0, steps, 0);
+  } else {
+    move(0, 0, steps);
   }
 }
 
@@ -272,7 +321,16 @@ function handleKeyDown(event: KeyboardEvent) {
 
   const key = event.key.toLowerCase();
 
-  if (["arrowup", "arrowdown", "arrowleft", "arrowright"].includes(key)) {
+  if (
+    [
+      "arrowup",
+      "arrowdown",
+      "arrowleft",
+      "arrowright",
+      "pageup",
+      "pagedown",
+    ].includes(key)
+  ) {
     event.preventDefault();
   }
 
@@ -298,6 +356,12 @@ function handleKeyDown(event: KeyboardEvent) {
       break;
     case "arrowright":
       moveAxis("y", 1);
+      break;
+    case "pageup":
+      moveAxis("z", 1);
+      break;
+    case "pagedown":
+      moveAxis("z", -1);
       break;
   }
 }
@@ -386,6 +450,10 @@ function getButtonStyle(buttonId: string): string {
 
 .stage-button-home {
   @apply border border-blue-700 bg-blue-700 text-white shadow-blue-300/40 hover:bg-blue-800;
+}
+
+.stage-button-secondary {
+  @apply border border-slate-300 bg-white text-slate-700 shadow-slate-200/60 hover:border-slate-500 hover:text-slate-950;
 }
 
 .stage-button-symbol {

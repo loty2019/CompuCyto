@@ -195,7 +195,7 @@ export class StageService {
       // POST request to initiate homing sequence
       const { data } = await firstValueFrom(
         this.httpService
-          .post(`${this.baseUrl}/home`, {}, { timeout: Math.max(this.timeout, 120000) })
+          .post(`${this.baseUrl}/home`, {}, { timeout: Math.max(this.timeout, 240000) })
           .pipe(
             catchError((error: AxiosError) => {
               this.logger.error(`Stage home failed: ${error.message}`);
