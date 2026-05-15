@@ -27,9 +27,9 @@ class Settings(BaseSettings):
     homing_slow_step_seconds: float = 0.0015
     homing_max_steps: int = 50000
     homing_backoff_steps: int = 300
-    max_x_position: int = 10000
-    max_y_position: int = 10000
-    max_z_position: int = 5000
+    max_x_position: int = 100000
+    max_y_position: int = 100000
+    max_z_position: int = 10000
 
 
 settings = Settings()

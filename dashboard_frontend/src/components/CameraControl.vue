@@ -500,6 +500,10 @@ import { useMicroscopeStore } from "@/stores/microscope";
 import { useCamera } from "@/composables/useCamera";
 import { useStage } from "@/composables/useStage";
 import { getActiveProfileHeaders, piAPI } from "@/api/client";
+import {
+  CAMERA_FEED_ROTATION_DEGREES,
+  STAGE_AXIS_MAX,
+} from "@/config/stage";
 
 const store = useMicroscopeStore();
 const camera = useCamera();
@@ -518,11 +522,10 @@ const gammaMax = ref(4.0);
 const gammaSupported = ref(true); // Will be updated from camera
 const autoExposure = ref(false);
 const autoExposureSupported = ref(true); // Will be updated from camera
-const baseZStep = 25;
-const zMultipliers = [0.5, 1, 2, 4];
-const zMultiplier = ref(1);
-const zMaxPosition = 5000;
-const cameraFeedRotationDegrees = 0;
+const baseZStep = 100;
+const zMultipliers = [1, 2, 5, 10];
+const zMultiplier = ref(2);
+const zMaxPosition = STAGE_AXIS_MAX.z;
 
 // Debounce timer for live updates
 let updateTimer: ReturnType<typeof setTimeout> | null = null;
@@ -574,7 +577,7 @@ const zRemainingSteps = computed(() =>
   Math.max(zMaxPosition - Math.round(clampedZPosition.value), 0),
 );
 const cameraFeedStyle = computed(() => ({
-  transform: `rotate(${cameraFeedRotationDegrees}deg)`,
+  transform: `rotate(${CAMERA_FEED_ROTATION_DEGREES}deg)`,
 }));
 const temperatureLabel = computed(() => {
   if (environment.value.temperature_c === null) {

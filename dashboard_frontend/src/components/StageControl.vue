@@ -84,10 +84,10 @@
             handleButtonClick('arrowup');
             moveAxis('y', 1);
           "
-          :disabled="xyMovementDisabled"
+          :disabled="movementButtonDisabled('y', 1)"
           class="stage-button stage-button-primary"
           :class="
-            xyMovementDisabled
+            movementButtonDisabled('y', 1)
               ? 'cursor-not-allowed opacity-60'
               : 'cursor-pointer'
           "
@@ -101,12 +101,12 @@
         <button
           @click="
             handleButtonClick('arrowleft');
-            moveAxis('x', -1);
+            moveAxis('x', 1);
           "
-          :disabled="xyMovementDisabled"
+          :disabled="movementButtonDisabled('x', 1)"
           class="stage-button stage-button-primary"
           :class="
-            xyMovementDisabled
+            movementButtonDisabled('x', 1)
               ? 'cursor-not-allowed opacity-60'
               : 'cursor-pointer'
           "
@@ -134,12 +134,12 @@
         <button
           @click="
             handleButtonClick('arrowright');
-            moveAxis('x', 1);
+            moveAxis('x', -1);
           "
-          :disabled="xyMovementDisabled"
+          :disabled="movementButtonDisabled('x', -1)"
           class="stage-button stage-button-primary"
           :class="
-            xyMovementDisabled
+            movementButtonDisabled('x', -1)
               ? 'cursor-not-allowed opacity-60'
               : 'cursor-pointer'
           "
@@ -155,10 +155,10 @@
             handleButtonClick('arrowdown');
             moveAxis('y', -1);
           "
-          :disabled="xyMovementDisabled"
+          :disabled="movementButtonDisabled('y', -1)"
           class="stage-button stage-button-primary outline-none"
           :class="
-            xyMovementDisabled
+            movementButtonDisabled('y', -1)
               ? 'cursor-not-allowed opacity-60'
               : 'cursor-pointer'
           "
@@ -297,12 +297,26 @@ function homeChipClass(axis: "x" | "y" | "z") {
 }
 
 function moveAxis(axis: "x" | "y", direction: 1 | -1) {
+  if (movementButtonDisabled(axis, direction)) {
+    return;
+  }
+
   const steps = activeJogProfile.value.steps * direction;
   if (axis === "x") {
     move(steps, 0);
   } else {
     move(0, steps);
   }
+}
+
+function movementButtonDisabled(axis: "x" | "y", direction: 1 | -1) {
+  if (xyMovementDisabled.value) {
+    return true;
+  }
+
+  const currentPosition = axis === "x" ? store.position.x : store.position.y;
+  const requestedSteps = activeJogProfile.value.steps * direction;
+  return currentPosition + requestedSteps < 0;
 }
 
 function handleKeyDown(event: KeyboardEvent) {
@@ -335,10 +349,10 @@ function handleKeyDown(event: KeyboardEvent) {
       moveAxis("y", -1);
       break;
     case "arrowleft":
-      moveAxis("x", -1);
+      moveAxis("x", 1);
       break;
     case "arrowright":
-      moveAxis("x", 1);
+      moveAxis("x", -1);
       break;
   }
 }
