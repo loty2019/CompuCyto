@@ -74,6 +74,7 @@
           :src="feedUrl"
           alt="Live camera feed"
           class="w-full h-full object-cover block"
+          :style="cameraFeedStyle"
           @error="handleFeedError"
           @load="handleFeedLoad"
         />
@@ -191,84 +192,56 @@
               </div>
 
               <div class="zoom-control rounded-lg border border-slate-200 bg-white p-2 shadow-sm">
-                <div class="mb-2 flex items-start justify-between gap-2">
+                <div class="mb-1.5 flex items-center justify-between gap-2">
                   <div>
                     <label class="text-xs font-black uppercase text-slate-700">Zoom</label>
-                    <div class="mt-0.5 text-[10px] font-bold text-slate-500">
-                      Z axis focus travel
-                    </div>
                   </div>
-                  <div class="text-right">
-                    <div class="font-mono text-sm font-black text-slate-950">
-                      {{ store.position.z.toFixed(0) }}
-                    </div>
-                    <div class="text-[10px] font-bold uppercase text-slate-500">
-                      / {{ zMaxPosition }}
-                    </div>
-                  </div>
+                  <span class="font-mono text-[11px] font-black text-slate-700">
+                    {{ store.position.z.toFixed(0) }} / {{ zMaxPosition }}
+                  </span>
                 </div>
 
-                <div class="grid grid-cols-[minmax(0,1fr)_34px] gap-2">
-                  <div class="space-y-2">
-                    <div class="grid grid-cols-2 gap-1.5">
-                      <button
-                        @click="moveFocus(1)"
-                        :disabled="focusDisabled"
-                        class="zoom-step-button"
-                        :class="focusDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'"
-                        title="Zoom up"
-                      >
-                        <span class="text-base leading-none">&uarr;</span>
-                        <span>Up</span>
-                      </button>
-                      <button
-                        @click="moveFocus(-1)"
-                        :disabled="focusDisabled"
-                        class="zoom-step-button"
-                        :class="focusDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'"
-                        title="Zoom down"
-                      >
-                        <span class="text-base leading-none">&darr;</span>
-                        <span>Down</span>
-                      </button>
-                    </div>
-
-                    <div class="grid grid-cols-4 gap-1">
-                      <button
-                        v-for="option in zMultipliers"
-                        :key="`z-${option}`"
-                        @click="zMultiplier = option"
-                        class="zoom-increment-button"
-                        :class="zMultiplier === option ? 'zoom-increment-button-active' : ''"
-                        type="button"
-                      >
-                        {{ zStepLabel(option) }}
-                      </button>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-1.5">
-                      <div class="zoom-readout">
-                        <span>To max</span>
-                        <strong>{{ zRemainingSteps }}</strong>
-                      </div>
-                      <div class="zoom-readout">
-                        <span>From zero</span>
-                        <strong>{{ zDistanceFromZero }}</strong>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div
-                    class="zoom-travel"
-                    :title="`Z ${store.position.z.toFixed(0)} of ${zMaxPosition} steps`"
+                <div class="grid grid-cols-[34px_minmax(0,1fr)_34px] items-center gap-2">
+                  <button
+                    @click="moveFocus(-1)"
+                    :disabled="focusDisabled"
+                    class="zoom-arrow-button"
+                    :class="focusDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'"
+                    title="Zoom down"
                   >
-                    <div class="zoom-travel-label zoom-travel-label-top">Max</div>
+                    &darr;
+                  </button>
+                  <div
+                    class="zoom-slider-track"
+                    :title="`${zRemainingSteps} steps left to max`"
+                  >
                     <div
-                      class="zoom-travel-fill"
-                      :style="{ height: `${zTravelPercent}%` }"
+                      class="zoom-slider-fill"
+                      :style="{ width: `${zTravelPercent}%` }"
                     ></div>
-                    <div class="zoom-travel-label zoom-travel-label-bottom">0</div>
                   </div>
+                  <button
+                    @click="moveFocus(1)"
+                    :disabled="focusDisabled"
+                    class="zoom-arrow-button"
+                    :class="focusDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'"
+                    title="Zoom up"
+                  >
+                    &uarr;
+                  </button>
+                </div>
+
+                <div class="mt-1.5 grid grid-cols-4 gap-1">
+                  <button
+                    v-for="option in zMultipliers"
+                    :key="`z-${option}`"
+                    @click="zMultiplier = option"
+                    class="zoom-increment-button"
+                    :class="zMultiplier === option ? 'zoom-increment-button-active' : ''"
+                    type="button"
+                  >
+                    {{ zStepLabel(option) }}
+                  </button>
                 </div>
               </div>
             </div>
@@ -407,28 +380,16 @@
   @apply border border-red-400 bg-red-600 text-white shadow-red-200/70 hover:bg-red-700 hover:shadow-lg;
 }
 
-.zoom-travel {
-  @apply relative h-[118px] overflow-hidden rounded-md border border-slate-300 bg-slate-100 shadow-inner;
+.zoom-arrow-button {
+  @apply flex h-8 w-8 items-center justify-center rounded-md border border-slate-700 bg-slate-800 text-base font-black leading-none text-white shadow-sm transition-all hover:-translate-y-0.5 hover:bg-slate-700 hover:shadow-md active:translate-y-0;
 }
 
-.zoom-travel-fill {
-  @apply absolute bottom-0 left-0 right-0 bg-blue-600 transition-all;
+.zoom-slider-track {
+  @apply relative h-3 overflow-hidden rounded-full border border-slate-300 bg-slate-100 shadow-inner;
 }
 
-.zoom-travel-label {
-  @apply absolute left-0 right-0 z-10 text-center text-[8px] font-black uppercase leading-4 text-slate-700;
-}
-
-.zoom-travel-label-top {
-  @apply top-0 bg-white/80;
-}
-
-.zoom-travel-label-bottom {
-  @apply bottom-0 bg-white/80;
-}
-
-.zoom-step-button {
-  @apply flex min-h-[38px] items-center justify-center gap-1 rounded-md border border-slate-700 bg-slate-800 px-2 py-1 text-xs font-black uppercase text-white shadow-sm transition-all hover:-translate-y-0.5 hover:bg-slate-700 hover:shadow-md active:translate-y-0;
+.zoom-slider-fill {
+  @apply absolute bottom-0 left-0 top-0 bg-blue-600 transition-all;
 }
 
 .zoom-increment-button {
@@ -437,18 +398,6 @@
 
 .zoom-increment-button-active {
   @apply border-blue-700 bg-blue-700 text-white hover:border-blue-700 hover:text-white;
-}
-
-.zoom-readout {
-  @apply rounded-md border border-slate-200 bg-slate-50 px-1.5 py-1;
-}
-
-.zoom-readout span {
-  @apply block text-[8px] font-black uppercase text-slate-500;
-}
-
-.zoom-readout strong {
-  @apply block font-mono text-[11px] font-black text-slate-900;
 }
 
 .action-button-icon {
@@ -573,6 +522,7 @@ const baseZStep = 25;
 const zMultipliers = [0.5, 1, 2, 4];
 const zMultiplier = ref(1);
 const zMaxPosition = 5000;
+const cameraFeedRotationDegrees = 0;
 
 // Debounce timer for live updates
 let updateTimer: ReturnType<typeof setTimeout> | null = null;
@@ -623,7 +573,9 @@ const zTravelPercent = computed(() =>
 const zRemainingSteps = computed(() =>
   Math.max(zMaxPosition - Math.round(clampedZPosition.value), 0),
 );
-const zDistanceFromZero = computed(() => Math.round(clampedZPosition.value));
+const cameraFeedStyle = computed(() => ({
+  transform: `rotate(${cameraFeedRotationDegrees}deg)`,
+}));
 const temperatureLabel = computed(() => {
   if (environment.value.temperature_c === null) {
     return "Unknown";

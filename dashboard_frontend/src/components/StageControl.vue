@@ -26,13 +26,6 @@
     >
       Home required before movement
     </div>
-    <div
-      v-else
-      class="mb-1.5 rounded-md border border-teal-300 bg-teal-50 px-2 py-1 text-[10px] font-black uppercase tracking-wide text-teal-700"
-    >
-      Homing complete
-    </div>
-
     <div class="mb-1.5 grid grid-cols-3 gap-1">
       <div
         v-for="axis in homeAxes"
@@ -89,7 +82,7 @@
         <button
           @click="
             handleButtonClick('arrowup');
-            moveAxis('x', 1);
+            moveAxis('y', 1);
           "
           :disabled="xyMovementDisabled"
           class="stage-button stage-button-primary"
@@ -108,7 +101,7 @@
         <button
           @click="
             handleButtonClick('arrowleft');
-            moveAxis('y', -1);
+            moveAxis('x', -1);
           "
           :disabled="xyMovementDisabled"
           class="stage-button stage-button-primary"
@@ -141,7 +134,7 @@
         <button
           @click="
             handleButtonClick('arrowright');
-            moveAxis('y', 1);
+            moveAxis('x', 1);
           "
           :disabled="xyMovementDisabled"
           class="stage-button stage-button-primary"
@@ -160,7 +153,7 @@
         <button
           @click="
             handleButtonClick('arrowdown');
-            moveAxis('x', -1);
+            moveAxis('y', -1);
           "
           :disabled="xyMovementDisabled"
           class="stage-button stage-button-primary outline-none"
@@ -336,16 +329,16 @@ function handleKeyDown(event: KeyboardEvent) {
 
   switch (key) {
     case "arrowup":
-      moveAxis("x", 1);
+      moveAxis("y", 1);
       break;
     case "arrowdown":
-      moveAxis("x", -1);
-      break;
-    case "arrowleft":
       moveAxis("y", -1);
       break;
+    case "arrowleft":
+      moveAxis("x", -1);
+      break;
     case "arrowright":
-      moveAxis("y", 1);
+      moveAxis("x", 1);
       break;
   }
 }
