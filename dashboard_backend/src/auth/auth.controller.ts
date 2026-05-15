@@ -11,6 +11,7 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { UsersService } from '../users/users.service';
+import { User } from '../users/entities/user.entity';
 
 /**
  * Authentication Controller
@@ -37,18 +38,43 @@ export class AuthController {
     );
 
     return {
-      user: {
+      user: this.serializeProfile(user),
+    };
+  }
+
+  private serializeProfile(user: User) {
+    const preferences = user.preferences || {};
+
+    return {
+      id: user.id,
+      email: user.email,
+      username: user.username,
+      role: user.role,
+      avatarIcon: preferences.avatarIcon || 'microscope',
+      profile: {
         id: user.id,
-        email: user.email,
-        username: user.username,
-        role: user.role,
-        profile: {
-          id: user.id,
-          userId: user.id,
-          fullName: user.fullName || user.username,
-          preferences: user.preferences || {},
-        },
+        userId: user.id,
+        fullName: user.fullName || user.username,
+        labRole: user.labRole,
+        preferences,
       },
+    };
+  }
+
+  @Get('profiles')
+  @ApiOperation({
+    summary: 'List local operator profiles',
+    description: 'Returns saved local operator profiles from the database.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Profiles retrieved successfully',
+  })
+  async getProfiles() {
+    const profiles = await this.usersService.findLocalProfiles();
+
+    return {
+      profiles: profiles.map((profile) => this.serializeProfile(profile)),
     };
   }
 

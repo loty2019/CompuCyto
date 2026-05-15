@@ -32,11 +32,22 @@ const oldSeedProfileEmails = new Set([
   "guest@cytocore.local",
 ]);
 
-const parseProfiles = (): UserProfile[] => {
+const normalizeProfile = (profile: any, index = 0): UserProfile => ({
+  id: profile.id || index + 1,
+  email: profile.email || `operator${index + 1}@cytocore.local`,
+  username: profile.username || `Operator ${index + 1}`,
+  role: profile.role || "operator",
+  avatarIcon:
+    profile.avatarIcon ||
+    profile.profile?.preferences?.avatarIcon ||
+    profileIcons[index % profileIcons.length],
+  profile: profile.profile,
+});
+
+const parseLegacyProfiles = (): UserProfile[] => {
   const storedProfiles = localStorage.getItem(PROFILE_STORAGE_KEY);
 
   if (!storedProfiles) {
-    localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify([]));
     return [];
   }
 
@@ -56,15 +67,7 @@ const parseProfiles = (): UserProfile[] => {
         (profile) =>
           !oldSeedProfileEmails.has(String(profile.email || "").toLowerCase()),
       )
-      .map((profile, index) => ({
-        id: profile.id || index + 1,
-        email: profile.email || `operator${index + 1}@cytocore.local`,
-        username: profile.username || `Operator ${index + 1}`,
-        role: profile.role || "operator",
-        avatarIcon:
-          profile.avatarIcon || profileIcons[index % profileIcons.length],
-        profile: profile.profile,
-      }));
+      .map(normalizeProfile);
 
     if (migratedProfiles.length !== parsed.length) {
       localStorage.setItem(
@@ -89,49 +92,61 @@ const parseProfiles = (): UserProfile[] => {
   }
 };
 
+const loadProfilesFromBackend = async (): Promise<UserProfile[]> => {
+  const response = await fetch("/api/v1/auth/profiles");
+
+  if (!response.ok) {
+    throw new Error("Could not load profiles from database");
+  }
+
+  const data = await response.json();
+
+  if (!Array.isArray(data.profiles)) {
+    return [];
+  }
+
+  return data.profiles.map(normalizeProfile);
+};
+
 const syncProfileWithBackend = async (
   profile: UserProfile,
 ): Promise<UserProfile> => {
-  try {
-    const response = await fetch("/api/v1/auth/register", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        email: profile.email,
-        username: profile.username,
-        password: "local-profile",
-        avatarIcon: profile.avatarIcon,
-      }),
-    });
+  const response = await fetch("/api/v1/auth/register", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      email: profile.email,
+      username: profile.username,
+      password: "local-profile",
+      avatarIcon: profile.avatarIcon,
+    }),
+  });
 
-    if (!response.ok) {
-      return profile;
-    }
-
-    const data = await response.json();
-    const backendUser = data.user;
-
-    if (!backendUser?.id) {
-      return profile;
-    }
-
-    return {
-      ...profile,
-      id: backendUser.id,
-      email: backendUser.email || profile.email,
-      username: backendUser.username || profile.username,
-      profile: {
-        ...profile.profile,
-        id: backendUser.id,
-        userId: backendUser.id,
-        fullName: backendUser.profile?.fullName || profile.username,
-      },
-    };
-  } catch {
-    return profile;
+  if (!response.ok) {
+    throw new Error("Could not save profile to database");
   }
+
+  const data = await response.json();
+  const backendUser = data.user;
+
+  if (!backendUser?.id) {
+    throw new Error("Profile response did not include a database id");
+  }
+
+  return {
+    ...profile,
+    id: backendUser.id,
+    email: backendUser.email || profile.email,
+    username: backendUser.username || profile.username,
+    profile: {
+      ...profile.profile,
+      id: backendUser.id,
+      userId: backendUser.id,
+      fullName: backendUser.profile?.fullName || profile.username,
+    },
+  };
 };
 
 export const useAuthStore = defineStore("auth", () => {
@@ -142,10 +157,6 @@ export const useAuthStore = defineStore("auth", () => {
 
   const isAuthenticated = computed(() => !!user.value);
   const currentUser = computed(() => user.value);
-
-  const persistProfiles = () => {
-    localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(profiles.value));
-  };
 
   const setActiveProfile = (profile: UserProfile) => {
     user.value = profile;
@@ -159,19 +170,49 @@ export const useAuthStore = defineStore("auth", () => {
     }
   };
 
-  const initializeAuth = () => {
-    profiles.value = parseProfiles();
+  const refreshProfiles = async () => {
+    profiles.value = await loadProfilesFromBackend();
+    return profiles.value;
+  };
 
-    const activeProfileId = Number(localStorage.getItem(ACTIVE_PROFILE_KEY));
-    const activeProfile = profiles.value.find(
-      (profile) => profile.id === activeProfileId,
-    );
+  const initializeAuth = async () => {
+    try {
+      const activeProfileId = Number(localStorage.getItem(ACTIVE_PROFILE_KEY));
+      const legacyProfiles = parseLegacyProfiles();
+      const legacyActiveProfile = legacyProfiles.find(
+        (profile) => profile.id === activeProfileId,
+      );
 
-    if (activeProfile) {
-      setActiveProfile(activeProfile);
+      for (const profile of legacyProfiles) {
+        await syncProfileWithBackend(profile);
+      }
+
+      await refreshProfiles();
+      localStorage.removeItem(PROFILE_STORAGE_KEY);
+      const activeProfile =
+        profiles.value.find((profile) => profile.id === activeProfileId) ||
+        profiles.value.find(
+          (profile) =>
+            profile.email.toLowerCase() ===
+              legacyActiveProfile?.email.toLowerCase() ||
+            profile.username.toLowerCase() ===
+              legacyActiveProfile?.username.toLowerCase(),
+        );
+
+      if (activeProfile) {
+        setActiveProfile(activeProfile);
+      } else if (activeProfileId) {
+        localStorage.removeItem(ACTIVE_PROFILE_KEY);
+        localStorage.removeItem("user");
+      }
+    } catch {
+      profiles.value = [];
+      user.value = null;
+      token.value = null;
+      localStorage.removeItem("user");
+    } finally {
+      initialized.value = true;
     }
-
-    initialized.value = true;
   };
 
   const selectProfile = async (profileId: number) => {
@@ -181,13 +222,18 @@ export const useAuthStore = defineStore("auth", () => {
       return { success: false, error: "Profile not found" };
     }
 
-    const syncedProfile = await syncProfileWithBackend(profile);
-    profiles.value = profiles.value.map((item) =>
-      item.id === profile.id ? syncedProfile : item,
-    );
-    persistProfiles();
-    setActiveProfile(syncedProfile);
-    return { success: true };
+    try {
+      const syncedProfile = await syncProfileWithBackend(profile);
+      await refreshProfiles();
+      const freshProfile =
+        profiles.value.find((item) => item.id === syncedProfile.id) ||
+        syncedProfile;
+
+      setActiveProfile(freshProfile);
+      return { success: true };
+    } catch {
+      return { success: false, error: "Could not load profiles from database" };
+    }
   };
 
   const createProfile = async (
@@ -227,12 +273,19 @@ export const useAuthStore = defineStore("auth", () => {
       },
     };
 
-    const syncedProfile = await syncProfileWithBackend(profile);
-    profiles.value = [...profiles.value, syncedProfile];
-    persistProfiles();
-    setActiveProfile(syncedProfile);
+    try {
+      const syncedProfile = await syncProfileWithBackend(profile);
+      await refreshProfiles();
+      const freshProfile =
+        profiles.value.find((item) => item.id === syncedProfile.id) ||
+        syncedProfile;
 
-    return { success: true };
+      setActiveProfile(freshProfile);
+
+      return { success: true };
+    } catch {
+      return { success: false, error: "Could not save profile to database" };
+    }
   };
 
   const login = async (profileIdOrName: number | string) => {
@@ -280,6 +333,7 @@ export const useAuthStore = defineStore("auth", () => {
     currentUser,
     profileIcons,
     initializeAuth,
+    refreshProfiles,
     selectProfile,
     createProfile,
     login,

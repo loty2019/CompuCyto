@@ -19,7 +19,26 @@ Raspberry Pi OS may show `externally-managed-environment` if the
 images when installing into the system Python.
 
 If the DHT11 data wire is not on GPIO24, set `DHT11_PIN=<gpio_number>` in
-`pi-API/.env`.
+`pi-API/.env`. This value uses BCM GPIO numbering, not physical header pin
+numbering. The default `DHT11_PIN=24` is physical header pin 18.
+
+Wire DHT11 modules to the Pi using 3.3V:
+
+- DHT11 VCC/+ -> Pi 3.3V, physical pin 1 or 17
+- DHT11 DATA/S/OUT -> Pi BCM GPIO24, physical pin 18 by default
+- DHT11 GND/- -> Pi GND, for example physical pin 6
+
+Do not power common DHT11 modules from Pi 5V unless the module documentation
+proves the data output is level-shifted to 3.3V. Many modules pull DATA up to
+VCC, and Raspberry Pi GPIO pins are not 5V tolerant.
+
+Optional DHT11 tuning values:
+
+```bash
+DHT11_PIN=24
+DHT11_READ_ATTEMPTS=3
+DHT11_RETRY_SECONDS=1.2
+```
 
 ## To start the FastAPI server, run:
 ```bash

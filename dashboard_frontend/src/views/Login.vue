@@ -160,7 +160,7 @@
 </template>
 
 <script setup lang="ts">
-import { defineComponent, h, nextTick, ref, watch } from 'vue'
+import { defineComponent, h, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
@@ -230,9 +230,13 @@ const ScienceIcon = defineComponent({
   },
 })
 
-if (!authStore.initialized) {
-  authStore.initializeAuth()
-}
+onMounted(async () => {
+  if (!authStore.initialized) {
+    await authStore.initializeAuth()
+  } else {
+    await authStore.refreshProfiles()
+  }
+})
 
 watch(showProfileForm, async (isOpen) => {
   if (isOpen) {

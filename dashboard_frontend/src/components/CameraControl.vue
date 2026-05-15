@@ -80,9 +80,43 @@
         />
         </div>
         <div class="space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-2 shadow-inner">
+          <IlluminationControl />
+
+          <div class="rounded-xl border border-white/80 bg-white/85 p-2 shadow-sm">
+            <div class="mb-2 flex items-center justify-between gap-2">
+              <span class="text-[11px] font-black uppercase text-slate-700">Environment</span>
+              <span
+                :class="[
+                  'flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold',
+                  environment.healthy
+                    ? 'border-teal-200 bg-teal-50 text-teal-700'
+                    : 'border-slate-200 bg-slate-50 text-slate-500',
+                ]"
+              >
+                <span
+                  :class="[
+                    'h-1.5 w-1.5 rounded-full',
+                    environment.healthy ? 'bg-teal-500' : 'bg-slate-400',
+                  ]"
+                ></span>
+                {{ environment.healthy ? "Online" : "Unknown" }}
+              </span>
+            </div>
+            <div class="grid grid-cols-2 gap-1.5">
+              <div class="rounded-lg border border-slate-200 bg-white p-2 shadow-sm">
+                <div class="text-[10px] font-bold uppercase text-slate-500">Temp</div>
+                <div class="mt-1 text-sm font-black text-slate-900">{{ temperatureLabel }}</div>
+              </div>
+              <div class="rounded-lg border border-slate-200 bg-white p-2 shadow-sm">
+                <div class="text-[10px] font-bold uppercase text-slate-500">Humidity</div>
+                <div class="mt-1 text-sm font-black text-slate-900">{{ humidityLabel }}</div>
+              </div>
+            </div>
+          </div>
+
           <div class="rounded-xl border border-white/80 bg-white/85 p-2 shadow-sm">
             <div class="mb-2 flex items-center justify-between">
-              <span class="text-[11px] font-black uppercase text-slate-700">Camera Tuning</span>
+              <span class="text-[11px] font-black uppercase text-slate-700">Camera Controls</span>
               <span class="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-bold text-slate-600">Controls</span>
             </div>
             <div class="space-y-1.5">
@@ -133,13 +167,13 @@
                 </div>
               </div>
 
-              <div class="rounded-lg border border-slate-200 bg-white p-2 shadow-sm">
+              <div
+                v-if="!autoExposure"
+                class="rounded-lg border border-slate-200 bg-white p-2 shadow-sm"
+              >
                 <div class="flex justify-between items-center mb-1">
                   <label class="text-xs font-semibold text-gray-700">
                     Exposure
-                    <span v-if="autoExposure" class="text-xs text-blue-600 ml-1">
-                      Auto
-                    </span>
                   </label>
                   <span
                     class="text-xs font-mono text-gray-900 bg-gray-100 px-2 py-0.5 rounded"
@@ -162,14 +196,12 @@
                 </div>
               </div>
 
-              <div class="rounded-lg border border-slate-200 bg-white p-2 shadow-sm">
+              <div
+                v-if="!autoExposure"
+                class="rounded-lg border border-slate-200 bg-white p-2 shadow-sm"
+              >
                 <div class="flex justify-between items-center mb-1">
-                  <label class="text-xs font-semibold text-gray-700">
-                    Gain
-                    <span v-if="autoExposure" class="text-xs text-blue-600 ml-1">
-                      Locked
-                    </span>
-                  </label>
+                  <label class="text-xs font-semibold text-gray-700">Gain</label>
                   <span
                     class="text-xs font-mono text-gray-900 bg-gray-100 px-2 py-0.5 rounded"
                     >{{ gain.toFixed(2) }}x</span
@@ -243,38 +275,6 @@
                     {{ zStepLabel(option) }}
                   </button>
                 </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="rounded-xl border border-white/80 bg-white/85 p-2 shadow-sm">
-            <div class="mb-2 flex items-center justify-between gap-2">
-              <span class="text-[11px] font-black uppercase text-slate-700">Environment</span>
-              <span
-                :class="[
-                  'flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold',
-                  environment.healthy
-                    ? 'border-teal-200 bg-teal-50 text-teal-700'
-                    : 'border-slate-200 bg-slate-50 text-slate-500',
-                ]"
-              >
-                <span
-                  :class="[
-                    'h-1.5 w-1.5 rounded-full',
-                    environment.healthy ? 'bg-teal-500' : 'bg-slate-400',
-                  ]"
-                ></span>
-                {{ environment.healthy ? "Online" : "Unknown" }}
-              </span>
-            </div>
-            <div class="grid grid-cols-2 gap-1.5">
-              <div class="rounded-lg border border-slate-200 bg-white p-2 shadow-sm">
-                <div class="text-[10px] font-bold uppercase text-slate-500">Temp</div>
-                <div class="mt-1 text-sm font-black text-slate-900">{{ temperatureLabel }}</div>
-              </div>
-              <div class="rounded-lg border border-slate-200 bg-white p-2 shadow-sm">
-                <div class="text-[10px] font-bold uppercase text-slate-500">Humidity</div>
-                <div class="mt-1 text-sm font-black text-slate-900">{{ humidityLabel }}</div>
               </div>
             </div>
           </div>
@@ -500,6 +500,7 @@ import { useMicroscopeStore } from "@/stores/microscope";
 import { useCamera } from "@/composables/useCamera";
 import { useStage } from "@/composables/useStage";
 import { getActiveProfileHeaders, piAPI } from "@/api/client";
+import IlluminationControl from "@/components/IlluminationControl.vue";
 import {
   CAMERA_FEED_ROTATION_DEGREES,
   STAGE_AXIS_MAX,

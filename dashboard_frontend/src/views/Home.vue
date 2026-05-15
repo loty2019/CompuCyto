@@ -7,7 +7,6 @@
       </div>
 
       <aside class="flex min-w-0 flex-col gap-2 xl:sticky xl:top-20 xl:self-start">
-        <IlluminationControl />
         <div id="stage"><StageControl /></div>
         <div id="map"><MicroscopeMap compact /></div>
       </aside>
@@ -28,7 +27,6 @@ import { useMicroscopeStore } from "@/stores/microscope";
 import { controlAPI } from "@/api/client";
 import { useWebSocket } from "@/composables/useWebSocket";
 import CameraControl from "@/components/CameraControl.vue";
-import IlluminationControl from "@/components/IlluminationControl.vue";
 import MicroscopeMap from "@/components/MicroscopeMap.vue";
 import StageControl from "@/components/StageControl.vue";
 import JobManager from "@/components/JobManager.vue";

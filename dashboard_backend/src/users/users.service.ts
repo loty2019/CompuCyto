@@ -1,6 +1,6 @@
 import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { ILike, Repository } from 'typeorm';
 import { User } from './entities/user.entity';
 
 const localProfileEmail = (username: string): string =>
@@ -28,6 +28,13 @@ export class UsersService {
   async findByUsername(username: string): Promise<User | null> {
     return this.usersRepository.findOne({
       where: { username },
+    });
+  }
+
+  async findLocalProfiles(): Promise<User[]> {
+    return this.usersRepository.find({
+      where: { email: ILike('%@cytocore.local') },
+      order: { username: 'ASC' },
     });
   }
 

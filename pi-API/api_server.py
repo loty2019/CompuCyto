@@ -50,6 +50,9 @@ LED_FLR_PIN = 12  # GPIO12 - LED FLR (gray cable)
 SWITCH_SENSOR_PIN = 17  # GPIO17 - Switch sensor
 FRONT_PANEL_LED_PIN = 20  # GPIO20 - Front Panel LED
 DHT11_PIN = settings.dht11_pin  # GPIO pin number for DHT11 data wire
+DHT11_READ_ATTEMPTS = max(settings.dht11_read_attempts, 1)
+DHT11_RETRY_SECONDS = max(settings.dht11_retry_seconds, 1.0)
+DHT11_MIN_READ_SECONDS = 1.0
 
 # Motor GPIO assignments
 # DM542 common-ground wiring:
@@ -107,6 +110,8 @@ limit_sensor_pending_since = {axis: time.monotonic() for axis in MOTOR_AXES}
 limit_sensor_lock = threading.Lock()
 dht11_device = None
 dht11_lock = threading.Lock()
+dht11_last_read_at = 0.0
+dht11_last_reading = None
 
 # Pydantic models
 class LEDState(BaseModel):
@@ -293,7 +298,7 @@ def setup_dht11():
 
     try:
         dht11_device = adafruit_dht.DHT11(board_pin, use_pulseio=False)
-        logger.info("DHT11 initialized on GPIO%s", DHT11_PIN)
+        logger.info("DHT11 initialized on GPIO%s (BCM numbering, physical header pin 18)", DHT11_PIN)
     except Exception as e:
         dht11_device = None
         logger.error("Failed to initialize DHT11 on GPIO%s: %s", DHT11_PIN, e)
@@ -314,6 +319,8 @@ def cleanup_dht11():
 
 def read_dht11() -> EnvironmentReading:
     """Read temperature and humidity from the DHT11 sensor."""
+    global dht11_last_read_at, dht11_last_reading
+
     if dht11_device is None:
         return EnvironmentReading(
             temperature_c=None,
@@ -325,48 +332,75 @@ def read_dht11() -> EnvironmentReading:
         )
 
     with dht11_lock:
-        try:
-            temperature_c = dht11_device.temperature
-            humidity = dht11_device.humidity
+        now = time.monotonic()
+        if dht11_last_reading is not None and now - dht11_last_read_at < DHT11_MIN_READ_SECONDS:
+            return dht11_last_reading
 
-            if temperature_c is None or humidity is None:
-                return EnvironmentReading(
+        last_error = None
+        for attempt in range(1, DHT11_READ_ATTEMPTS + 1):
+            try:
+                temperature_c = dht11_device.temperature
+                humidity = dht11_device.humidity
+
+                if temperature_c is None or humidity is None:
+                    last_error = "DHT11 did not return a reading"
+                    if attempt < DHT11_READ_ATTEMPTS:
+                        time.sleep(DHT11_RETRY_SECONDS)
+                    continue
+
+                rounded_temperature_c = round(float(temperature_c), 1)
+                dht11_last_reading = EnvironmentReading(
+                    temperature_c=rounded_temperature_c,
+                    temperature_f=round((rounded_temperature_c * 9 / 5) + 32, 1),
+                    humidity=round(float(humidity), 1),
+                    pin=DHT11_PIN,
+                    healthy=True,
+                    message="OK",
+                )
+                dht11_last_read_at = time.monotonic()
+                return dht11_last_reading
+            except RuntimeError as e:
+                last_error = str(e)
+                if attempt < DHT11_READ_ATTEMPTS:
+                    time.sleep(DHT11_RETRY_SECONDS)
+            except Exception as e:
+                logger.error("DHT11 read failed: %s", e)
+                dht11_last_reading = EnvironmentReading(
                     temperature_c=None,
                     temperature_f=None,
                     humidity=None,
                     pin=DHT11_PIN,
                     healthy=False,
-                    message="DHT11 did not return a reading",
+                    message=f"DHT11 read failed: {e}",
                 )
+                dht11_last_read_at = time.monotonic()
+                return dht11_last_reading
 
-            rounded_temperature_c = round(float(temperature_c), 1)
-            return EnvironmentReading(
-                temperature_c=rounded_temperature_c,
-                temperature_f=round((rounded_temperature_c * 9 / 5) + 32, 1),
-                humidity=round(float(humidity), 1),
-                pin=DHT11_PIN,
-                healthy=True,
-                message="OK",
-            )
-        except RuntimeError as e:
-            return EnvironmentReading(
-                temperature_c=None,
-                temperature_f=None,
-                humidity=None,
-                pin=DHT11_PIN,
-                healthy=False,
-                message=str(e),
-            )
-        except Exception as e:
-            logger.error("DHT11 read failed: %s", e)
-            return EnvironmentReading(
-                temperature_c=None,
-                temperature_f=None,
-                humidity=None,
-                pin=DHT11_PIN,
-                healthy=False,
-                message=f"DHT11 read failed: {e}",
-            )
+        dht11_last_reading = EnvironmentReading(
+            temperature_c=None,
+            temperature_f=None,
+            humidity=None,
+            pin=DHT11_PIN,
+            healthy=False,
+            message=(
+                f"{last_error}. Check DHT11 VCC is 3.3V, GND is Pi GND, "
+                f"DATA is BCM GPIO{DHT11_PIN}, and the .env DHT11_PIN value uses BCM numbering."
+            ),
+        )
+        dht11_last_read_at = time.monotonic()
+        return dht11_last_reading
+
+
+@app.get("/environment/diagnostics", response_model=EnvironmentReading)
+async def get_environment_diagnostics(user: dict = Depends(verify_jwt)):
+    """Force a fresh DHT11 read and return the detailed status message."""
+    global dht11_last_read_at
+
+    dht11_last_read_at = 0.0
+    reading = read_dht11()
+    if not reading.healthy:
+        logger.warning("DHT11 diagnostic failed on GPIO%s: %s", reading.pin, reading.message)
+    return reading
 
 
 def run_axis_move(axis: str, target_position: int):
