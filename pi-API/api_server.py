@@ -82,6 +82,7 @@ HOMING_FAST_STEP_SECONDS = settings.homing_fast_step_seconds
 HOMING_SLOW_STEP_SECONDS = settings.homing_slow_step_seconds
 HOMING_MAX_STEPS = settings.homing_max_steps
 HOMING_BACKOFF_STEPS = settings.homing_backoff_steps
+Z_HOME_FOCUS_POSITION = settings.z_home_focus_position
 AXIS_MAX_POSITIONS = {
     "x": settings.max_x_position,
     "y": settings.max_y_position,
@@ -486,6 +487,24 @@ def start_axis_move(axis: str, target_position: int):
     motion_thread.start()
 
 
+def run_axis_move_synchronously(axis: str, target_position: int):
+    """Run one validated axis move and wait until it finishes."""
+    if h is None:
+        raise HTTPException(status_code=503, detail="GPIO is not initialized")
+    validate_axis_target(axis, target_position)
+
+    with axis_motion_locks[axis]:
+        if axis_is_moving[axis]:
+            raise HTTPException(
+                status_code=409,
+                detail=f"{axis.upper()} axis is already moving",
+            )
+        axis_stop_events[axis].clear()
+        axis_is_moving[axis] = True
+
+    run_axis_move(axis, target_position)
+
+
 def validate_axis_target(axis: str, target_position: int) -> None:
     """Reject unsafe moves before any axis thread is started."""
     if not axis_is_homed[axis]:
@@ -561,6 +580,10 @@ def run_homing_sequence(axes: List[str]) -> None:
     """Home axes serially."""
     for axis in axes:
         run_axis_homing(axis)
+
+    if "z" in axes and Z_HOME_FOCUS_POSITION > 0:
+        logger.info("Moving Z to post-home focus position %s", Z_HOME_FOCUS_POSITION)
+        run_axis_move_synchronously("z", Z_HOME_FOCUS_POSITION)
 
 
 def monitor_switch_sensor():
@@ -908,7 +931,7 @@ async def home_stage():
         status="homed",
         position=current_stage_position(),
         limit_sensors=read_limit_sensors(),
-        message="Stage homed at zero on optical sensors",
+        message=f"Stage homed at zero on optical sensors; Z parked at {Z_HOME_FOCUS_POSITION}",
     )
 
 

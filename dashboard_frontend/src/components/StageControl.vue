@@ -56,7 +56,7 @@
         <div class="mb-1 flex items-center justify-between gap-2">
           <span class="section-label">Jog</span>
           <span class="text-[10px] font-bold text-slate-500"
-            >{{ activeJogProfile.steps }} steps</span
+            >{{ activeJogProfile.label }}</span
           >
         </div>
         <div class="multiplier-grid">
@@ -80,10 +80,7 @@
       <div class="grid grid-cols-3 gap-1.5">
         <div></div>
         <button
-          @click="
-            handleButtonClick('arrowup');
-            moveAxis('y', 1);
-          "
+          @pointerdown.prevent="pressMoveButton('arrowup', 'y', 1)"
           :disabled="movementButtonDisabled('y', 1)"
           class="stage-button stage-button-primary"
           :class="
@@ -99,10 +96,7 @@
         <div></div>
 
         <button
-          @click="
-            handleButtonClick('arrowleft');
-            moveAxis('x', 1);
-          "
+          @pointerdown.prevent="pressMoveButton('arrowleft', 'x', 1)"
           :disabled="movementButtonDisabled('x', 1)"
           class="stage-button stage-button-primary"
           :class="
@@ -132,10 +126,7 @@
           <span>{{ homingInProgress ? "Homing" : "Home" }}</span>
         </button>
         <button
-          @click="
-            handleButtonClick('arrowright');
-            moveAxis('x', -1);
-          "
+          @pointerdown.prevent="pressMoveButton('arrowright', 'x', -1)"
           :disabled="movementButtonDisabled('x', -1)"
           class="stage-button stage-button-primary"
           :class="
@@ -151,10 +142,7 @@
 
         <div></div>
         <button
-          @click="
-            handleButtonClick('arrowdown');
-            moveAxis('y', -1);
-          "
+          @pointerdown.prevent="pressMoveButton('arrowdown', 'y', -1)"
           :disabled="movementButtonDisabled('y', -1)"
           class="stage-button stage-button-primary outline-none"
           :class="
@@ -193,10 +181,10 @@ const store = useMicroscopeStore();
 const stage = useStage();
 
 const jogProfiles = [
-  { id: "fine", label: "Fine", steps: 25 },
-  { id: "small", label: "Small", steps: 100 },
-  { id: "medium", label: "Med", steps: 500 },
-  { id: "large", label: "Large", steps: 2000 },
+  { id: "finer", label: "Finer", steps: 25 },
+  { id: "fine", label: "Fine", steps: 100 },
+  { id: "medium", label: "Medium", steps: 500 },
+  { id: "bigger", label: "Bigger", steps: 2000 },
   { id: "travel", label: "Travel", steps: 5000 },
 ] as const;
 const selectedJogProfileId = ref<(typeof jogProfiles)[number]["id"]>("medium");
@@ -266,11 +254,11 @@ async function homeStage() {
 
   homingInProgress.value = true;
   try {
-    store.addLog("Homing stage X, Y, then Z...", "info");
+    store.addLog("Homing stage X, Y, then Z; parking Z near focus...", "info");
     await stage.home();
     await stage.updatePosition();
     await stage.updateLimitSensors();
-    store.addLog("Homing successful: X, Y, and Z are at 0", "success");
+    store.addLog("Homing successful: X/Y are at 0 and Z is near focus", "success");
   } finally {
     homingInProgress.value = false;
   }
@@ -307,6 +295,11 @@ function moveAxis(axis: "x" | "y", direction: 1 | -1) {
   } else {
     move(0, steps);
   }
+}
+
+function pressMoveButton(buttonId: string, axis: "x" | "y", direction: 1 | -1) {
+  handleButtonClick(buttonId);
+  moveAxis(axis, direction);
 }
 
 function movementButtonDisabled(axis: "x" | "y", direction: 1 | -1) {

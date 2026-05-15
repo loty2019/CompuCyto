@@ -48,7 +48,7 @@ export class StageController {
     **IMPORTANT**: All positions are validated against configured safety limits:
     - X axis: 0 to MAX_X_POSITION (default: 8500 steps)
     - Y axis: 0 to MAX_Y_POSITION (default: 12000 steps)
-    - Z axis: 0 to MAX_Z_POSITION (default: 15000 steps)
+    - Z axis: 0 to MAX_Z_POSITION (default: 13200 steps)
     
     Set relative=true for incremental movement from current position.
     Omit axes that should not move (null or undefined).`,
@@ -146,21 +146,20 @@ export class StageController {
   /**
    * Home all stage axes
    *
-   * Moves stage to home position (0, 0, 0).
-   * This is the calibration reference point.
+   * Homes the stage to its calibration reference, then parks Z near focus.
    *
    * @route POST /api/v1/stage/home
    * @protected Requires JWT authentication
    */
   @Post('home')
   @ApiOperation({
-    summary: 'Home stage to origin',
-    description: `Move stage to home position (0, 0, 0).
+    summary: 'Home stage and park Z near focus',
+    description: `Move stage axes to their optical home sensors, then park Z near the configured focus position.
     
     This triggers hardware homing sequence:
     1. Stage moves to limit switches
-    2. Position counters reset to zero
-    3. Stage returns to safe home position
+    2. Position counters reset to zero at the sensors
+    3. Z moves up to the configured post-home focus position
     
     **WARNING**: Stage will move rapidly during homing. Ensure workspace is clear.`,
   })

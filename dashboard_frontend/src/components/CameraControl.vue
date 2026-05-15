@@ -229,13 +229,13 @@
                     <label class="text-xs font-black uppercase text-slate-700">Zoom</label>
                   </div>
                   <span class="font-mono text-[11px] font-black text-slate-700">
-                    {{ store.position.z.toFixed(0) }} / {{ zMaxPosition }}
+                    {{ zTravelPercent }}%
                   </span>
                 </div>
 
                 <div class="grid grid-cols-[34px_minmax(0,1fr)_34px] items-center gap-2">
                   <button
-                    @click="moveFocus(-1)"
+                    @pointerdown.prevent="moveFocus(-1)"
                     :disabled="focusDisabled"
                     class="zoom-arrow-button"
                     :class="focusDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'"
@@ -245,7 +245,7 @@
                   </button>
                   <div
                     class="zoom-slider-track"
-                    :title="`${zRemainingSteps} steps left to max`"
+                    :title="`${zRemainingPercent}% to max`"
                   >
                     <div
                       class="zoom-slider-fill"
@@ -253,7 +253,7 @@
                     ></div>
                   </div>
                   <button
-                    @click="moveFocus(1)"
+                    @pointerdown.prevent="moveFocus(1)"
                     :disabled="focusDisabled"
                     class="zoom-arrow-button"
                     :class="focusDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'"
@@ -265,14 +265,14 @@
 
                 <div class="mt-1.5 grid grid-cols-4 gap-1">
                   <button
-                    v-for="option in zMultipliers"
-                    :key="`z-${option}`"
-                    @click="zMultiplier = option"
+                    v-for="option in zStepOptions"
+                    :key="option.id"
+                    @click="zMultiplier = option.multiplier"
                     class="zoom-increment-button"
-                    :class="zMultiplier === option ? 'zoom-increment-button-active' : ''"
+                    :class="zMultiplier === option.multiplier ? 'zoom-increment-button-active' : ''"
                     type="button"
                   >
-                    {{ zStepLabel(option) }}
+                    {{ option.label }}
                   </button>
                 </div>
               </div>
@@ -524,7 +524,12 @@ const gammaSupported = ref(true); // Will be updated from camera
 const autoExposure = ref(false);
 const autoExposureSupported = ref(true); // Will be updated from camera
 const baseZStep = 100;
-const zMultipliers = [1, 2, 5, 10];
+const zStepOptions = [
+  { id: "finer", label: "Finer", multiplier: 1 },
+  { id: "fine", label: "Fine", multiplier: 2 },
+  { id: "medium", label: "Medium", multiplier: 5 },
+  { id: "bigger", label: "Bigger", multiplier: 10 },
+] as const;
 const zMultiplier = ref(2);
 const zMaxPosition = STAGE_AXIS_MAX.z;
 
@@ -573,9 +578,7 @@ const clampedZPosition = computed(() =>
 const zTravelPercent = computed(() =>
   Math.round((clampedZPosition.value / zMaxPosition) * 100),
 );
-const zRemainingSteps = computed(() =>
-  Math.max(zMaxPosition - Math.round(clampedZPosition.value), 0),
-);
+const zRemainingPercent = computed(() => Math.max(100 - zTravelPercent.value, 0));
 const cameraFeedStyle = computed(() => ({
   transform: `rotate(${CAMERA_FEED_ROTATION_DEGREES}deg)`,
 }));
@@ -831,10 +834,6 @@ async function moveFocus(direction: 1 | -1) {
   const steps = Math.max(1, Math.round(baseZStep * zMultiplier.value));
   await stage.move(0, 0, steps * direction, true);
   setTimeout(stage.updatePosition, 500);
-}
-
-function zStepLabel(multiplier: number) {
-  return `${Math.max(1, Math.round(baseZStep * multiplier))}`;
 }
 
 async function capture() {

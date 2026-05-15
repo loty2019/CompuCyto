@@ -1246,7 +1246,7 @@ const LIMITS = {
   Y_MIN: 0,
   Y_MAX: 12000,
   Z_MIN: 0,
-  Z_MAX: 15000,
+  Z_MAX: 13200,
 };
 ```
 
@@ -1298,7 +1298,7 @@ THUMBNAILS_PATH=./thumbnails
 # Safety Limits (steps)
 MAX_X_POSITION=8500
 MAX_Y_POSITION=12000
-MAX_Z_POSITION=15000
+MAX_Z_POSITION=13200
 MIN_X_POSITION=0
 MIN_Y_POSITION=0
 MIN_Z_POSITION=0
@@ -1347,7 +1347,7 @@ Create global exception filter:
 ### Position Validation Errors
 
 - Return HTTP 400 Bad Request
-- Include specific error message: "X position 15000 exceeds maximum 10000"
+- Include specific error message: "Z position 14000 exceeds maximum 13200"
 - Do NOT call Raspberry Pi
 
 ---
