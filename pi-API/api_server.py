@@ -72,8 +72,6 @@ LIMIT_SENSOR_PINS = {
 
 STEP_PULSE_SECONDS = settings.step_pulse_seconds
 STEP_LOW_SECONDS = settings.step_low_seconds
-STEP_START_LOW_SECONDS = max(settings.step_start_low_seconds, STEP_LOW_SECONDS)
-STEP_ACCELERATION_STEPS = max(settings.step_acceleration_steps, 0)
 DIRECTION_SETTLE_SECONDS = settings.direction_settle_seconds
 DIRECTION_POSITIVE = 1
 DIRECTION_NEGATIVE = 0
@@ -294,22 +292,6 @@ def sleep_precise(seconds: float) -> None:
             time.sleep(0)
 
 
-def ramped_step_low_seconds(step_index: int, total_steps: int) -> float:
-    """Return a low-time ramp for acceleration/deceleration without changing step count."""
-    if STEP_ACCELERATION_STEPS <= 0 or STEP_START_LOW_SECONDS <= STEP_LOW_SECONDS:
-        return STEP_LOW_SECONDS
-
-    ramp_steps = min(STEP_ACCELERATION_STEPS, max(total_steps // 2, 1))
-    distance_from_end = min(step_index, total_steps - step_index - 1)
-    if distance_from_end >= ramp_steps:
-        return STEP_LOW_SECONDS
-
-    progress = distance_from_end / ramp_steps
-    return STEP_START_LOW_SECONDS - (
-        (STEP_START_LOW_SECONDS - STEP_LOW_SECONDS) * progress
-    )
-
-
 def setup_dht11():
     """Initialize the DHT11 temperature/humidity sensor if its library is present."""
     global dht11_device
@@ -453,8 +435,7 @@ def run_axis_move(axis: str, target_position: int):
             logger.warning("%s negative move blocked: home sensor is already active", axis.upper())
             return
 
-        total_steps = abs(delta)
-        for step_index in range(total_steps):
+        for _ in range(abs(delta)):
             if step_increment < 0 and limit_stably_active(axis):
                 axis_positions[axis] = 0
                 axis_is_homed[axis] = True
@@ -470,7 +451,7 @@ def run_axis_move(axis: str, target_position: int):
                 )
                 break
 
-            pulse_axis(axis, STEP_PULSE_SECONDS, ramped_step_low_seconds(step_index, total_steps))
+            pulse_axis(axis, STEP_PULSE_SECONDS, STEP_LOW_SECONDS)
             axis_positions[axis] += step_increment
     except Exception as e:
         logger.error("%s movement failed: %s", axis.upper(), e)
