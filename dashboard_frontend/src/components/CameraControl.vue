@@ -190,61 +190,84 @@
                 </div>
               </div>
 
-              <div class="rounded-lg border border-slate-200 bg-white p-2 shadow-sm">
-                <div class="mb-1.5 flex items-center justify-between gap-2">
-                  <label class="text-xs font-semibold text-gray-700">Zoom</label>
-                  <span class="text-[10px] font-bold text-slate-500">
-                    Z {{ store.position.z.toFixed(0) }} / {{ zMaxPosition }}
-                  </span>
-                </div>
-                <div class="mb-1.5 grid grid-cols-4 gap-1">
-                  <button
-                    v-for="option in zMultipliers"
-                    :key="`z-${option}`"
-                    @click="zMultiplier = option"
-                    class="focus-multiplier-button"
-                    :class="zMultiplier === option ? 'focus-multiplier-button-active' : ''"
-                    type="button"
-                  >
-                    {{ option }}x
-                  </button>
-                </div>
-                <div class="grid grid-cols-[28px_minmax(0,1fr)] gap-2">
-                  <div
-                    class="zoom-travel"
-                    :title="`Z ${store.position.z.toFixed(0)} of ${zMaxPosition} steps`"
-                  >
-                    <div
-                      class="zoom-travel-fill"
-                      :style="{ height: `${zTravelPercent}%` }"
-                    ></div>
-                    <div class="zoom-travel-zero">0</div>
+              <div class="zoom-control rounded-lg border border-slate-200 bg-white p-2 shadow-sm">
+                <div class="mb-2 flex items-start justify-between gap-2">
+                  <div>
+                    <label class="text-xs font-black uppercase text-slate-700">Zoom</label>
+                    <div class="mt-0.5 text-[10px] font-bold text-slate-500">
+                      Z axis focus travel
+                    </div>
                   </div>
-                  <div class="space-y-1.5">
+                  <div class="text-right">
+                    <div class="font-mono text-sm font-black text-slate-950">
+                      {{ store.position.z.toFixed(0) }}
+                    </div>
+                    <div class="text-[10px] font-bold uppercase text-slate-500">
+                      / {{ zMaxPosition }}
+                    </div>
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-[minmax(0,1fr)_34px] gap-2">
+                  <div class="space-y-2">
                     <div class="grid grid-cols-2 gap-1.5">
                       <button
                         @click="moveFocus(1)"
                         :disabled="focusDisabled"
-                        class="focus-button"
+                        class="zoom-step-button"
                         :class="focusDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'"
                         title="Zoom up"
                       >
-                        +
+                        <span class="text-base leading-none">&uarr;</span>
+                        <span>Up</span>
                       </button>
                       <button
                         @click="moveFocus(-1)"
                         :disabled="focusDisabled"
-                        class="focus-button"
+                        class="zoom-step-button"
                         :class="focusDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'"
                         title="Zoom down"
                       >
-                        -
+                        <span class="text-base leading-none">&darr;</span>
+                        <span>Down</span>
                       </button>
                     </div>
-                    <div class="grid grid-cols-2 gap-1.5 text-[10px] font-bold uppercase text-slate-500">
-                      <span>{{ zRemainingSteps }} left</span>
-                      <span class="text-right">{{ zDistanceFromZero }} from 0</span>
+
+                    <div class="grid grid-cols-4 gap-1">
+                      <button
+                        v-for="option in zMultipliers"
+                        :key="`z-${option}`"
+                        @click="zMultiplier = option"
+                        class="zoom-increment-button"
+                        :class="zMultiplier === option ? 'zoom-increment-button-active' : ''"
+                        type="button"
+                      >
+                        {{ zStepLabel(option) }}
+                      </button>
                     </div>
+
+                    <div class="grid grid-cols-2 gap-1.5">
+                      <div class="zoom-readout">
+                        <span>To max</span>
+                        <strong>{{ zRemainingSteps }}</strong>
+                      </div>
+                      <div class="zoom-readout">
+                        <span>From zero</span>
+                        <strong>{{ zDistanceFromZero }}</strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div
+                    class="zoom-travel"
+                    :title="`Z ${store.position.z.toFixed(0)} of ${zMaxPosition} steps`"
+                  >
+                    <div class="zoom-travel-label zoom-travel-label-top">Max</div>
+                    <div
+                      class="zoom-travel-fill"
+                      :style="{ height: `${zTravelPercent}%` }"
+                    ></div>
+                    <div class="zoom-travel-label zoom-travel-label-bottom">0</div>
                   </div>
                 </div>
               </div>
@@ -384,28 +407,48 @@
   @apply border border-red-400 bg-red-600 text-white shadow-red-200/70 hover:bg-red-700 hover:shadow-lg;
 }
 
-.focus-button {
-  @apply flex min-h-[30px] items-center justify-center rounded-md border border-slate-700 bg-slate-800 px-2 py-1 text-sm font-black text-white shadow-sm transition-all hover:-translate-y-0.5 hover:bg-slate-700 hover:shadow-md active:translate-y-0;
-}
-
-.focus-multiplier-button {
-  @apply h-6 rounded border border-slate-300 bg-white px-1 text-[9px] font-bold text-slate-600 transition-colors hover:border-slate-500 hover:text-slate-900;
-}
-
-.focus-multiplier-button-active {
-  @apply border-slate-800 bg-slate-800 text-white hover:border-slate-800 hover:text-white;
-}
-
 .zoom-travel {
-  @apply relative h-[74px] overflow-hidden rounded-md border border-slate-300 bg-slate-100 shadow-inner;
+  @apply relative h-[118px] overflow-hidden rounded-md border border-slate-300 bg-slate-100 shadow-inner;
 }
 
 .zoom-travel-fill {
   @apply absolute bottom-0 left-0 right-0 bg-blue-600 transition-all;
 }
 
-.zoom-travel-zero {
-  @apply absolute bottom-0 left-0 right-0 bg-white/70 text-center text-[9px] font-black leading-4 text-slate-700;
+.zoom-travel-label {
+  @apply absolute left-0 right-0 z-10 text-center text-[8px] font-black uppercase leading-4 text-slate-700;
+}
+
+.zoom-travel-label-top {
+  @apply top-0 bg-white/80;
+}
+
+.zoom-travel-label-bottom {
+  @apply bottom-0 bg-white/80;
+}
+
+.zoom-step-button {
+  @apply flex min-h-[38px] items-center justify-center gap-1 rounded-md border border-slate-700 bg-slate-800 px-2 py-1 text-xs font-black uppercase text-white shadow-sm transition-all hover:-translate-y-0.5 hover:bg-slate-700 hover:shadow-md active:translate-y-0;
+}
+
+.zoom-increment-button {
+  @apply h-7 rounded border border-slate-300 bg-white px-1 text-[9px] font-bold text-slate-600 transition-colors hover:border-slate-500 hover:text-slate-900;
+}
+
+.zoom-increment-button-active {
+  @apply border-blue-700 bg-blue-700 text-white hover:border-blue-700 hover:text-white;
+}
+
+.zoom-readout {
+  @apply rounded-md border border-slate-200 bg-slate-50 px-1.5 py-1;
+}
+
+.zoom-readout span {
+  @apply block text-[8px] font-black uppercase text-slate-500;
+}
+
+.zoom-readout strong {
+  @apply block font-mono text-[11px] font-black text-slate-900;
 }
 
 .action-button-icon {
@@ -837,6 +880,10 @@ async function moveFocus(direction: 1 | -1) {
   const steps = Math.max(1, Math.round(baseZStep * zMultiplier.value));
   await stage.move(0, 0, steps * direction, true);
   setTimeout(stage.updatePosition, 500);
+}
+
+function zStepLabel(multiplier: number) {
+  return `${Math.max(1, Math.round(baseZStep * multiplier))}`;
 }
 
 async function capture() {

@@ -94,6 +94,7 @@ drawer_is_open = False
 is_scanning = False
 axis_positions = {"x": 0, "y": 0, "z": 0}
 axis_is_moving = {"x": False, "y": False, "z": False}
+axis_is_homing = {"x": False, "y": False, "z": False}
 axis_is_homed = {"x": False, "y": False, "z": False}
 axis_move_direction = {"x": 0, "y": 0, "z": 0}
 axis_stop_events = {axis: threading.Event() for axis in MOTOR_AXES}
@@ -471,22 +472,31 @@ def run_axis_homing(axis: str) -> None:
             raise HTTPException(status_code=409, detail=f"{axis.upper()} axis is already moving")
         axis_stop_events[axis].clear()
         axis_is_moving[axis] = True
+        axis_is_homing[axis] = True
         axis_is_homed[axis] = False
 
     try:
+        logger.info("%s axis homing started", axis.upper())
         set_axis_direction(axis, DIRECTION_NEGATIVE)
         for _ in range(HOMING_MAX_STEPS):
-            if axis_stop_events[axis].is_set():
-                raise RuntimeError(f"{axis.upper()} homing stopped")
-
+            update_limit_sensor_cache(axis)
             if limit_stably_active(axis):
                 axis_positions[axis] = 0
                 axis_is_homed[axis] = True
                 logger.info("%s axis homed on GPIO%s", axis.upper(), LIMIT_SENSOR_PINS[axis])
                 return
 
+            if axis_stop_events[axis].is_set():
+                raise RuntimeError(f"{axis.upper()} homing stopped")
+
             pulse_axis(axis, HOMING_FAST_STEP_SECONDS)
             axis_positions[axis] -= 1
+            update_limit_sensor_cache(axis)
+            if limit_stably_active(axis):
+                axis_positions[axis] = 0
+                axis_is_homed[axis] = True
+                logger.info("%s axis homed on GPIO%s", axis.upper(), LIMIT_SENSOR_PINS[axis])
+                return
 
         raise RuntimeError(
             f"{axis.upper()} home sensor was not reached within {HOMING_MAX_STEPS} steps"
@@ -495,6 +505,7 @@ def run_axis_homing(axis: str) -> None:
         lgpio.gpio_write(h, pins["step"], 0)
         with axis_motion_locks[axis]:
             axis_is_moving[axis] = False
+            axis_is_homing[axis] = False
             axis_move_direction[axis] = 0
             axis_stop_events[axis].clear()
 
@@ -547,7 +558,12 @@ def monitor_limit_sensors():
                         )
                         last_states[axis] = active
 
-                    if limit_stably_active(axis) and axis_is_moving[axis] and axis_move_direction[axis] < 0:
+                    if (
+                        limit_stably_active(axis)
+                        and axis_is_moving[axis]
+                        and not axis_is_homing[axis]
+                        and axis_move_direction[axis] < 0
+                    ):
                         # The motion thread performs the precise axis zeroing. This is a backup stop path.
                         axis_stop_events[axis].set()
             time.sleep(LIMIT_POLL_SECONDS)
@@ -834,7 +850,7 @@ async def home_stage():
         raise HTTPException(status_code=409, detail="Stop movement before homing")
 
     try:
-        await asyncio.to_thread(run_homing_sequence, ["z", "x", "y"])
+        await asyncio.to_thread(run_homing_sequence, ["x", "y", "z"])
     except RuntimeError as e:
         request_stage_stop()
         logger.error("Stage homing failed: %s", e)

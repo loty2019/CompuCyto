@@ -26,6 +26,24 @@
     >
       Home required before movement
     </div>
+    <div
+      v-else
+      class="mb-1.5 rounded-md border border-teal-300 bg-teal-50 px-2 py-1 text-[10px] font-black uppercase tracking-wide text-teal-700"
+    >
+      Homing complete
+    </div>
+
+    <div class="mb-1.5 grid grid-cols-3 gap-1">
+      <div
+        v-for="axis in homeAxes"
+        :key="axis"
+        class="home-chip"
+        :class="homeChipClass(axis)"
+      >
+        <span>{{ axis.toUpperCase() }}</span>
+        <span>{{ homeChipLabel(axis) }}</span>
+      </div>
+    </div>
 
     <div
       class="mb-1.5 grid grid-cols-2 gap-1 rounded-md border border-slate-200 bg-slate-50 p-1 shadow-inner"
@@ -118,7 +136,7 @@
           "
           :style="getButtonStyle('home')"
         >
-          <span>Home</span>
+          <span>{{ homingInProgress ? "Homing" : "Home" }}</span>
         </button>
         <button
           @click="
@@ -196,6 +214,7 @@ const activeJogProfile = computed(
 );
 const pressedKeys = ref<Set<string>>(new Set());
 const clickedButtons = ref<Set<string>>(new Set());
+const homingInProgress = ref(false);
 const isClosetOpen = computed(() => store.closetStatus === "open");
 const stageReady = computed(
   () =>
@@ -204,9 +223,14 @@ const stageReady = computed(
     !!store.limitSensors?.z.homed,
 );
 const homeDisabled = computed(
-  () => stage.isMoving.value || store.position.is_moving || isClosetOpen.value,
+  () =>
+    homingInProgress.value ||
+    stage.isMoving.value ||
+    store.position.is_moving ||
+    isClosetOpen.value,
 );
 const xyMovementDisabled = computed(() => homeDisabled.value || !stageReady.value);
+const homeAxes = ["x", "y", "z"] as const;
 
 let intervalId: number | null = null;
 
@@ -247,9 +271,36 @@ async function homeStage() {
     return;
   }
 
-  await stage.home();
-  await stage.updatePosition();
-  await stage.updateLimitSensors();
+  homingInProgress.value = true;
+  try {
+    store.addLog("Homing stage X, Y, then Z...", "info");
+    await stage.home();
+    await stage.updatePosition();
+    await stage.updateLimitSensors();
+    store.addLog("Homing successful: X, Y, and Z are at 0", "success");
+  } finally {
+    homingInProgress.value = false;
+  }
+}
+
+function homeChipLabel(axis: "x" | "y" | "z") {
+  if (homingInProgress.value && !store.limitSensors?.[axis]?.homed) {
+    return "Wait";
+  }
+
+  return store.limitSensors?.[axis]?.homed ? "Homed" : "Needed";
+}
+
+function homeChipClass(axis: "x" | "y" | "z") {
+  if (store.limitSensors?.[axis]?.homed) {
+    return "home-chip-ready";
+  }
+
+  if (homingInProgress.value) {
+    return "home-chip-busy";
+  }
+
+  return "home-chip-needed";
 }
 
 function moveAxis(axis: "x" | "y", direction: 1 | -1) {
@@ -353,6 +404,23 @@ function getButtonStyle(buttonId: string): string {
   @apply text-[10px] font-bold uppercase tracking-wide text-slate-500;
 }
 
+.home-chip {
+  @apply flex h-6 items-center justify-between rounded border px-1.5 text-[9px] font-black uppercase tracking-wide;
+}
+
+.home-chip-ready {
+  @apply border-teal-300 bg-teal-50 text-teal-700;
+}
+
+.home-chip-needed {
+  @apply border-amber-300 bg-amber-50 text-amber-700;
+}
+
+.home-chip-busy {
+  @apply border-blue-300 bg-blue-50 text-blue-700;
+  animation: home-chip-pulse 0.85s ease-in-out infinite;
+}
+
 .stage-button {
   @apply flex min-h-[34px] items-center justify-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-bold shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md active:translate-y-0;
 }
@@ -383,5 +451,15 @@ function getButtonStyle(buttonId: string): string {
 
 .multiplier-grid {
   @apply grid grid-cols-3 gap-1;
+}
+
+@keyframes home-chip-pulse {
+  0%,
+  100% {
+    opacity: 0.72;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 </style>
