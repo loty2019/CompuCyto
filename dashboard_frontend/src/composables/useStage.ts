@@ -75,10 +75,17 @@ export function useStage() {
     try {
       const position = await controlAPI.getPosition();
       store.updatePosition(position);
+    } catch (error: any) {
+      console.error("Failed to update position:", error);
+    }
+  }
+
+  async function updateLimitSensors() {
+    try {
       const sensors = await controlAPI.getLimitSensors();
       store.updateLimitSensors(sensors);
     } catch (error: any) {
-      console.error("Failed to update position:", error);
+      console.error("Failed to update home sensors:", error);
     }
   }
 
@@ -88,5 +95,6 @@ export function useStage() {
     home,
     stop,
     updatePosition,
+    updateLimitSensors,
   };
 }

@@ -192,8 +192,10 @@
 
               <div class="rounded-lg border border-slate-200 bg-white p-2 shadow-sm">
                 <div class="mb-1.5 flex items-center justify-between gap-2">
-                  <label class="text-xs font-semibold text-gray-700">Focus</label>
-                  <span class="text-[10px] font-bold text-slate-500">{{ zMultiplier }}x</span>
+                  <label class="text-xs font-semibold text-gray-700">Zoom</label>
+                  <span class="text-[10px] font-bold text-slate-500">
+                    Z {{ store.position.z.toFixed(0) }} / {{ zMaxPosition }}
+                  </span>
                 </div>
                 <div class="mb-1.5 grid grid-cols-4 gap-1">
                   <button
@@ -207,25 +209,43 @@
                     {{ option }}x
                   </button>
                 </div>
-                <div class="grid grid-cols-2 gap-1.5">
-                  <button
-                    @click="moveFocus(1)"
-                    :disabled="focusDisabled"
-                    class="focus-button"
-                    :class="focusDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'"
-                    title="Focus up"
+                <div class="grid grid-cols-[28px_minmax(0,1fr)] gap-2">
+                  <div
+                    class="zoom-travel"
+                    :title="`Z ${store.position.z.toFixed(0)} of ${zMaxPosition} steps`"
                   >
-                    +
-                  </button>
-                  <button
-                    @click="moveFocus(-1)"
-                    :disabled="focusDisabled"
-                    class="focus-button"
-                    :class="focusDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'"
-                    title="Focus down"
-                  >
-                    -
-                  </button>
+                    <div
+                      class="zoom-travel-fill"
+                      :style="{ height: `${zTravelPercent}%` }"
+                    ></div>
+                    <div class="zoom-travel-zero">0</div>
+                  </div>
+                  <div class="space-y-1.5">
+                    <div class="grid grid-cols-2 gap-1.5">
+                      <button
+                        @click="moveFocus(1)"
+                        :disabled="focusDisabled"
+                        class="focus-button"
+                        :class="focusDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'"
+                        title="Zoom up"
+                      >
+                        +
+                      </button>
+                      <button
+                        @click="moveFocus(-1)"
+                        :disabled="focusDisabled"
+                        class="focus-button"
+                        :class="focusDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'"
+                        title="Zoom down"
+                      >
+                        -
+                      </button>
+                    </div>
+                    <div class="grid grid-cols-2 gap-1.5 text-[10px] font-bold uppercase text-slate-500">
+                      <span>{{ zRemainingSteps }} left</span>
+                      <span class="text-right">{{ zDistanceFromZero }} from 0</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -376,6 +396,18 @@
   @apply border-slate-800 bg-slate-800 text-white hover:border-slate-800 hover:text-white;
 }
 
+.zoom-travel {
+  @apply relative h-[74px] overflow-hidden rounded-md border border-slate-300 bg-slate-100 shadow-inner;
+}
+
+.zoom-travel-fill {
+  @apply absolute bottom-0 left-0 right-0 bg-blue-600 transition-all;
+}
+
+.zoom-travel-zero {
+  @apply absolute bottom-0 left-0 right-0 bg-white/70 text-center text-[9px] font-black leading-4 text-slate-700;
+}
+
 .action-button-icon {
   @apply relative inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md;
   background: rgba(255, 255, 255, 0.18);
@@ -497,6 +529,7 @@ const autoExposureSupported = ref(true); // Will be updated from camera
 const baseZStep = 25;
 const zMultipliers = [0.5, 1, 2, 4];
 const zMultiplier = ref(1);
+const zMaxPosition = 5000;
 
 // Debounce timer for live updates
 let updateTimer: ReturnType<typeof setTimeout> | null = null;
@@ -508,6 +541,7 @@ let websocket: WebSocket | null = null;
 let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
 const isConnecting = ref(false);
 let environmentPollTimer: ReturnType<typeof setInterval> | null = null;
+let stagePollTimer: ReturnType<typeof setInterval> | null = null;
 
 const environment = ref<{
   temperature_c: number | null;
@@ -533,7 +567,20 @@ const isClosetOpen = computed(() => store.closetStatus === "open");
 const cameraActionDisabled = computed(
   () => camera.isCapturing.value || isClosetOpen.value,
 );
-const focusDisabled = computed(() => stage.isMoving.value || isClosetOpen.value);
+const zIsHomed = computed(() => !!store.limitSensors?.z.homed);
+const focusDisabled = computed(
+  () => stage.isMoving.value || isClosetOpen.value || !zIsHomed.value,
+);
+const clampedZPosition = computed(() =>
+  Math.min(Math.max(store.position.z, 0), zMaxPosition),
+);
+const zTravelPercent = computed(() =>
+  Math.round((clampedZPosition.value / zMaxPosition) * 100),
+);
+const zRemainingSteps = computed(() =>
+  Math.max(zMaxPosition - Math.round(clampedZPosition.value), 0),
+);
+const zDistanceFromZero = computed(() => Math.round(clampedZPosition.value));
 const temperatureLabel = computed(() => {
   if (environment.value.temperature_c === null) {
     return "Unknown";
@@ -563,7 +610,10 @@ watch(
 onMounted(async () => {
   await loadCameraSettings();
   await fetchEnvironment();
+  await stage.updatePosition();
+  await stage.updateLimitSensors();
   environmentPollTimer = setInterval(fetchEnvironment, 5000);
+  stagePollTimer = setInterval(stage.updatePosition, 2000);
 
   // Auto-start the feed
   //startFeed();
@@ -579,6 +629,9 @@ onUnmounted(() => {
   }
   if (environmentPollTimer) {
     clearInterval(environmentPollTimer);
+  }
+  if (stagePollTimer) {
+    clearInterval(stagePollTimer);
   }
 });
 
@@ -772,7 +825,12 @@ async function updateSettingsToCamera(settings: {
 
 async function moveFocus(direction: 1 | -1) {
   if (isClosetOpen.value) {
-    store.addLog("Focus movement blocked: lid is open", "warning");
+    store.addLog("Zoom movement blocked: lid is open", "warning");
+    return;
+  }
+
+  if (!zIsHomed.value) {
+    store.addLog("Home stage before zoom movement", "warning");
     return;
   }
 

@@ -20,21 +20,15 @@
       Lid open - stage locked
     </div>
 
-    <div class="mb-1.5 grid grid-cols-3 gap-1">
-      <div
-        v-for="axis in sensorAxes"
-        :key="axis"
-        class="sensor-chip"
-        :class="sensorClass(axis)"
-        :title="sensorTitle(axis)"
-      >
-        <span>{{ axis.toUpperCase() }}</span>
-        <span>{{ sensorLabel(axis) }}</span>
-      </div>
+    <div
+      v-if="!stageReady"
+      class="mb-1.5 rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-[10px] font-black uppercase tracking-wide text-amber-700"
+    >
+      Home required before movement
     </div>
 
     <div
-      class="mb-1.5 grid grid-cols-3 gap-1 rounded-md border border-slate-200 bg-slate-50 p-1 shadow-inner"
+      class="mb-1.5 grid grid-cols-2 gap-1 rounded-md border border-slate-200 bg-slate-50 p-1 shadow-inner"
     >
       <div class="position-chip">
         <span class="position-axis">X</span>
@@ -43,10 +37,6 @@
       <div class="position-chip">
         <span class="position-axis">Y</span>
         <span class="position-value">{{ store.position.y.toFixed(1) }}</span>
-      </div>
-      <div class="position-chip">
-        <span class="position-axis">Z</span>
-        <span class="position-value">{{ store.position.z.toFixed(1) }}</span>
       </div>
     </div>
 
@@ -83,10 +73,10 @@
             handleButtonClick('arrowup');
             moveAxis('x', 1);
           "
-          :disabled="movementDisabled"
+          :disabled="xyMovementDisabled"
           class="stage-button stage-button-primary"
           :class="
-            movementDisabled
+            xyMovementDisabled
               ? 'cursor-not-allowed opacity-60'
               : 'cursor-pointer'
           "
@@ -102,10 +92,10 @@
             handleButtonClick('arrowleft');
             moveAxis('y', -1);
           "
-          :disabled="movementDisabled"
+          :disabled="xyMovementDisabled"
           class="stage-button stage-button-primary"
           :class="
-            movementDisabled
+            xyMovementDisabled
               ? 'cursor-not-allowed opacity-60'
               : 'cursor-pointer'
           "
@@ -119,10 +109,10 @@
             handleButtonClick('home');
             homeStage();
           "
-          :disabled="movementDisabled"
+          :disabled="homeDisabled"
           class="stage-button stage-button-home"
           :class="
-            movementDisabled
+            homeDisabled
               ? 'cursor-not-allowed opacity-60'
               : 'cursor-pointer'
           "
@@ -135,10 +125,10 @@
             handleButtonClick('arrowright');
             moveAxis('y', 1);
           "
-          :disabled="movementDisabled"
+          :disabled="xyMovementDisabled"
           class="stage-button stage-button-primary"
           :class="
-            movementDisabled
+            xyMovementDisabled
               ? 'cursor-not-allowed opacity-60'
               : 'cursor-pointer'
           "
@@ -154,10 +144,10 @@
             handleButtonClick('arrowdown');
             moveAxis('x', -1);
           "
-          :disabled="movementDisabled"
+          :disabled="xyMovementDisabled"
           class="stage-button stage-button-primary outline-none"
           :class="
-            movementDisabled
+            xyMovementDisabled
               ? 'cursor-not-allowed opacity-60'
               : 'cursor-pointer'
           "
@@ -168,39 +158,6 @@
         </button>
         <div></div>
       </div>
-    </div>
-
-    <div class="mt-1.5 grid grid-cols-2 gap-1.5">
-      <button
-        @click="
-          handleButtonClick('zdown');
-          moveAxis('z', -1);
-        "
-        :disabled="movementDisabled"
-        class="stage-button stage-button-secondary"
-        :class="
-          movementDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
-        "
-        :style="getButtonStyle('zdown')"
-        title="Move Z down"
-      >
-        Z-
-      </button>
-      <button
-        @click="
-          handleButtonClick('zup');
-          moveAxis('z', 1);
-        "
-        :disabled="movementDisabled"
-        class="stage-button stage-button-secondary"
-        :class="
-          movementDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
-        "
-        :style="getButtonStyle('zup')"
-        title="Move Z up"
-      >
-        Z+
-      </button>
     </div>
 
     <div class="mt-1.5">
@@ -240,16 +197,23 @@ const activeJogProfile = computed(
 const pressedKeys = ref<Set<string>>(new Set());
 const clickedButtons = ref<Set<string>>(new Set());
 const isClosetOpen = computed(() => store.closetStatus === "open");
-const movementDisabled = computed(
+const stageReady = computed(
+  () =>
+    !!store.limitSensors?.x.homed &&
+    !!store.limitSensors?.y.homed &&
+    !!store.limitSensors?.z.homed,
+);
+const homeDisabled = computed(
   () => stage.isMoving.value || store.position.is_moving || isClosetOpen.value,
 );
-const sensorAxes = ["x", "y", "z"] as const;
+const xyMovementDisabled = computed(() => homeDisabled.value || !stageReady.value);
 
 let intervalId: number | null = null;
 
 onMounted(() => {
   intervalId = window.setInterval(stage.updatePosition, 2000);
   stage.updatePosition();
+  stage.updateLimitSensors();
 
   window.addEventListener("keydown", handleKeyDown);
   window.addEventListener("keyup", handleKeyUp);
@@ -262,13 +226,18 @@ onUnmounted(() => {
   window.removeEventListener("keyup", handleKeyUp);
 });
 
-async function move(x: number, y: number, z: number) {
+async function move(x: number, y: number) {
   if (isClosetOpen.value) {
     store.addLog("Stage movement blocked: lid is open", "warning");
     return;
   }
 
-  await stage.move(x, y, z, true);
+  if (!stageReady.value) {
+    store.addLog("Home stage before movement", "warning");
+    return;
+  }
+
+  await stage.move(x, y, undefined, true);
   setTimeout(stage.updatePosition, 500);
 }
 
@@ -280,36 +249,15 @@ async function homeStage() {
 
   await stage.home();
   await stage.updatePosition();
+  await stage.updateLimitSensors();
 }
 
-function sensorLabel(axis: "x" | "y" | "z") {
-  const sensor = store.limitSensors?.[axis];
-  if (!sensor) return "Unknown";
-  return sensor.active ? "Limit" : sensor.homed ? "Homed" : "Clear";
-}
-
-function sensorTitle(axis: "x" | "y" | "z") {
-  const sensor = store.limitSensors?.[axis];
-  if (!sensor) return `${axis.toUpperCase()} home sensor: unknown`;
-  return `${axis.toUpperCase()} home sensor GPIO${sensor.pin}: raw ${sensor.raw_state ?? "?"}`;
-}
-
-function sensorClass(axis: "x" | "y" | "z") {
-  const sensor = store.limitSensors?.[axis];
-  if (!sensor) return "sensor-chip-unknown";
-  if (sensor.active) return "sensor-chip-active";
-  if (sensor.homed) return "sensor-chip-homed";
-  return "sensor-chip-clear";
-}
-
-function moveAxis(axis: "x" | "y" | "z", direction: 1 | -1) {
+function moveAxis(axis: "x" | "y", direction: 1 | -1) {
   const steps = activeJogProfile.value.steps * direction;
   if (axis === "x") {
-    move(steps, 0, 0);
-  } else if (axis === "y") {
-    move(0, steps, 0);
+    move(steps, 0);
   } else {
-    move(0, 0, steps);
+    move(0, steps);
   }
 }
 
@@ -321,16 +269,7 @@ function handleKeyDown(event: KeyboardEvent) {
 
   const key = event.key.toLowerCase();
 
-  if (
-    [
-      "arrowup",
-      "arrowdown",
-      "arrowleft",
-      "arrowright",
-      "pageup",
-      "pagedown",
-    ].includes(key)
-  ) {
+  if (["arrowup", "arrowdown", "arrowleft", "arrowright"].includes(key)) {
     event.preventDefault();
   }
 
@@ -340,7 +279,7 @@ function handleKeyDown(event: KeyboardEvent) {
 
   pressedKeys.value.add(key);
 
-  if (movementDisabled.value) {
+  if (xyMovementDisabled.value) {
     return;
   }
 
@@ -356,12 +295,6 @@ function handleKeyDown(event: KeyboardEvent) {
       break;
     case "arrowright":
       moveAxis("y", 1);
-      break;
-    case "pageup":
-      moveAxis("z", 1);
-      break;
-    case "pagedown":
-      moveAxis("z", -1);
       break;
   }
 }
@@ -418,26 +351,6 @@ function getButtonStyle(buttonId: string): string {
 
 .section-label {
   @apply text-[10px] font-bold uppercase tracking-wide text-slate-500;
-}
-
-.sensor-chip {
-  @apply flex h-6 items-center justify-between rounded border px-1.5 text-[9px] font-black uppercase tracking-wide;
-}
-
-.sensor-chip-active {
-  @apply border-red-300 bg-red-50 text-red-700;
-}
-
-.sensor-chip-homed {
-  @apply border-teal-300 bg-teal-50 text-teal-700;
-}
-
-.sensor-chip-clear {
-  @apply border-slate-200 bg-white text-slate-500;
-}
-
-.sensor-chip-unknown {
-  @apply border-slate-200 bg-slate-100 text-slate-400;
 }
 
 .stage-button {

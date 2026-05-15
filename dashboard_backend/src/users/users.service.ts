@@ -1,11 +1,10 @@
-import {
-  Injectable,
-  ConflictException,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './entities/user.entity';
+
+const localProfileEmail = (username: string): string =>
+  `${username.toLowerCase().replace(/[^a-z0-9]+/g, '.')}@cytocore.local`;
 
 @Injectable()
 export class UsersService {
@@ -32,11 +31,7 @@ export class UsersService {
     });
   }
 
-  async create(
-    email: string,
-    username: string,
-    password: string,
-  ): Promise<User> {
+  async create(email: string, username: string, password: string): Promise<User> {
     // Check if user already exists
     const existingEmail = await this.findByEmail(email);
     if (existingEmail) {
@@ -59,6 +54,49 @@ export class UsersService {
     return await this.usersRepository.save(user);
   }
 
+  async findOrCreateLocalProfile(
+    username: string,
+    email?: string,
+    avatarIcon?: string,
+  ): Promise<User> {
+    const safeUsername = username.trim() || 'Operator';
+    const safeEmail = email?.trim() || localProfileEmail(safeUsername);
+
+    let user =
+      (await this.findByUsername(safeUsername)) || (await this.findByEmail(safeEmail));
+
+    const preferences = {
+      ...(user?.preferences || {}),
+      ...(avatarIcon ? { avatarIcon } : {}),
+    };
+
+    if (user) {
+      let changed = false;
+
+      if (!user.fullName) {
+        user.fullName = safeUsername;
+        changed = true;
+      }
+
+      if (avatarIcon && user.preferences?.avatarIcon !== avatarIcon) {
+        user.preferences = preferences;
+        changed = true;
+      }
+
+      return changed ? this.usersRepository.save(user) : user;
+    }
+
+    user = this.usersRepository.create({
+      email: safeEmail,
+      username: safeUsername,
+      password: 'local-profile',
+      fullName: safeUsername,
+      preferences,
+    });
+
+    return this.usersRepository.save(user);
+  }
+
   async updateProfile(
     userId: number,
     updates: {
@@ -76,8 +114,7 @@ export class UsersService {
     // Update user fields
     if (updates.fullName !== undefined) user.fullName = updates.fullName;
     if (updates.labRole !== undefined) user.labRole = updates.labRole;
-    if (updates.preferences !== undefined)
-      user.preferences = updates.preferences;
+    if (updates.preferences !== undefined) user.preferences = updates.preferences;
 
     return this.usersRepository.save(user);
   }

@@ -5,9 +5,10 @@ import { CameraService } from './camera.service';
 import { CameraController } from './camera.controller';
 import { Image } from '../images/entities/image.entity';
 import { Video } from '../videos/entities/video.entity';
+import { UsersModule } from '../users/users.module';
 
 @Module({
-  imports: [HttpModule, TypeOrmModule.forFeature([Image, Video])],
+  imports: [HttpModule, TypeOrmModule.forFeature([Image, Video]), UsersModule],
   providers: [CameraService],
   controllers: [CameraController],
   exports: [CameraService],

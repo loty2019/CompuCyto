@@ -19,12 +19,6 @@
       :value="closetLabel"
       :alert="store.closetStatus === 'open'"
     />
-    <StatusPill
-      label="Home"
-      :connected="homeSensorsConnected"
-      :value="homeSensorsLabel"
-      :alert="homeSensorActive"
-    />
     <div
       :class="[
         'rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-wide',
@@ -58,23 +52,6 @@ const closetLabel = computed(() => {
   }
 
   return store.closetStatus === "open" ? "Open" : "Closed";
-});
-
-const homeSensorsConnected = computed(() => store.limitSensors !== null);
-const homeSensorActive = computed(() =>
-  Object.values(store.limitSensors ?? {}).some((sensor) => sensor.active),
-);
-const homeSensorsLabel = computed(() => {
-  if (!store.limitSensors) {
-    return "Unknown";
-  }
-
-  return (["x", "y", "z"] as const)
-    .map(
-      (axis) =>
-        `${axis.toUpperCase()}${store.limitSensors?.[axis].active ? "*" : ""}`,
-    )
-    .join(" ");
 });
 
 const StatusPill = defineComponent({

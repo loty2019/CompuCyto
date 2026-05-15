@@ -22,11 +22,14 @@ class Settings(BaseSettings):
     step_low_seconds: float = 0.0005
     direction_settle_seconds: float = 0.003
     limit_poll_seconds: float = 0.001
-    limit_debounce_seconds: float = 0.003
+    limit_debounce_seconds: float = 0.015
     homing_fast_step_seconds: float = 0.0005
     homing_slow_step_seconds: float = 0.0015
     homing_max_steps: int = 50000
     homing_backoff_steps: int = 300
+    max_x_position: int = 10000
+    max_y_position: int = 10000
+    max_z_position: int = 5000
 
 
 settings = Settings()

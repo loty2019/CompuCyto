@@ -28,16 +28,13 @@ export class AuthController {
     private usersService: UsersService,
   ) {}
 
-  private async localProfile(name = 'Operator') {
+  private async localProfile(name = 'Operator', email?: string, avatarIcon?: string) {
     const username = name.trim() || 'Operator';
-    const existing = await this.usersService.findByUsername(username);
-    const user =
-      existing ||
-      (await this.usersService.create(
-        `${username.toLowerCase().replace(/[^a-z0-9]+/g, '.')}@cytocore.local`,
-        username,
-        'local-profile',
-      ));
+    const user = await this.usersService.findOrCreateLocalProfile(
+      username,
+      email,
+      avatarIcon,
+    );
 
     return {
       user: {
@@ -119,7 +116,11 @@ export class AuthController {
     },
   })
   async register(@Body() registerDto: RegisterDto) {
-    return this.localProfile(registerDto.username || 'Local Profile');
+    return this.localProfile(
+      registerDto.username || 'Local Profile',
+      registerDto.email,
+      registerDto.avatarIcon,
+    );
   }
 
   /**

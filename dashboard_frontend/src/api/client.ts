@@ -80,6 +80,8 @@ export const getActiveProfileHeaders = (): Record<string, string> => {
     return {
       "X-Profile-Id": String(user.id || 1),
       "X-Profile-Name": String(user.username || "Operator"),
+      "X-Profile-Email": String(user.email || ""),
+      "X-Profile-Icon": String(user.avatarIcon || "microscope"),
     };
   } catch {
     return {};

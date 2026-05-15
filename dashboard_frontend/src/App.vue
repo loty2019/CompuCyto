@@ -19,7 +19,7 @@
             </div>
           </div>
           <span class="hidden text-sm text-slate-500 sm:inline">
-            Profile: <strong>{{ authStore.currentUser?.username }}</strong>
+            Hi, <strong>{{ authStore.currentUser?.username }}</strong>
           </span>
         </div>
 

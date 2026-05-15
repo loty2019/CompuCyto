@@ -1,4 +1,11 @@
-import { IsEmail, IsString, MinLength, MaxLength } from 'class-validator';
+import {
+  IsEmail,
+  IsIn,
+  IsOptional,
+  IsString,
+  MinLength,
+  MaxLength,
+} from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 /**
@@ -58,4 +65,15 @@ export class RegisterDto {
   @MinLength(6)
   @MaxLength(100)
   password: string;
+
+  @ApiProperty({
+    description: 'Local profile icon',
+    example: 'microscope',
+    required: false,
+    enum: ['microscope', 'slide', 'cells', 'flask'],
+  })
+  @IsOptional()
+  @IsString()
+  @IsIn(['microscope', 'slide', 'cells', 'flask'])
+  avatarIcon?: string;
 }
