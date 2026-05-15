@@ -23,8 +23,8 @@ class Settings(BaseSettings):
     step_pulse_seconds: float = 0.0010
     step_low_seconds: float = 0.0010
     direction_settle_seconds: float = 0.005
-    limit_poll_seconds: float = 0.001
-    limit_debounce_seconds: float = 0.015
+    limit_poll_seconds: float = 0.01
+    limit_debounce_seconds: float = 0.03
     homing_fast_step_seconds: float = 0.0015
     homing_slow_step_seconds: float = 0.0025
     homing_max_steps: int = 50000
