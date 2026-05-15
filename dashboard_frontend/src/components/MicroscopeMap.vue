@@ -184,10 +184,10 @@ const store = useMicroscopeStore();
 const maxX = STAGE_AXIS_MAX.x;
 const maxY = STAGE_AXIS_MAX.y;
 
-const stageLeft = 54;
 const stageTop = 24;
-const stageWidth = 184;
 const stageHeight = 280;
+const stageWidth = stageHeight * (maxX / maxY);
+const stageLeft = (300 - stageWidth) / 2;
 const stageRight = stageLeft + stageWidth;
 const stageBottom = stageTop + stageHeight;
 

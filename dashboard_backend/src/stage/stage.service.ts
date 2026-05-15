@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '../config/config.service';
-import { PositionValidator, Position } from './validators/position-validator';
+import { Position } from './validators/position-validator';
 import { catchError, firstValueFrom } from 'rxjs';
 import { AxiosError } from 'axios';
 
@@ -14,11 +14,10 @@ import { AxiosError } from 'axios';
  * Stage Service
  *
  * HTTP client proxy to the Raspberry Pi motor controller running on port 5000.
- * Handles motor movement with critical safety validation before forwarding commands.
+ * Handles motor movement by forwarding commands to the Raspberry Pi controller.
  *
- * IMPORTANT: This service validates all position requests against safety limits
- * before sending commands to the hardware controller. This prevents damage to
- * the microscope stage and attached equipment.
+ * IMPORTANT: The Raspberry Pi controller owns the live in-memory position,
+ * homed state, and final safety validation before GPIO movement.
  *
  * @class StageService
  */
@@ -32,7 +31,6 @@ export class StageService {
   constructor(
     private httpService: HttpService,
     private configService: ConfigService,
-    private positionValidator: PositionValidator,
   ) {
     // Load configuration from environment variables
     this.baseUrl = this.configService.raspberryPiUrl;
@@ -42,11 +40,10 @@ export class StageService {
   /**
    * Move stage to position
    *
-   * Validates position against safety limits, then forwards command to Raspberry Pi.
-   * Supports both absolute and relative movements.
+   * Forwards an absolute or relative move command to the Raspberry Pi.
    *
-   * SAFETY: Position is validated BEFORE sending to hardware. Invalid positions
-   * will throw BadRequestException and command will NOT be sent.
+   * SAFETY: The Pi validates homed state, position bounds, and limit sensors
+   * before/while executing GPIO movement.
    *
    * @param x - Optional X position (omit to keep current)
    * @param y - Optional Y position (omit to keep current)
@@ -63,48 +60,11 @@ export class StageService {
     relative: boolean = false,
   ): Promise<any> {
     try {
-      return this.moveWithCurrentPosition(x, y, z, relative);
-    } catch (error) {
-      if (error instanceof HttpException) {
-        throw error;
-      }
-      this.logger.error(`Stage move error: ${error.message}`);
-      throw error;
-    }
-  }
-
-  private async moveWithCurrentPosition(
-    x?: number,
-    y?: number,
-    z?: number,
-    relative: boolean = false,
-  ): Promise<any> {
-    try {
-      // STEP 1: Get current position from Raspberry Pi
-      const currentPosition = await this.fetchPositionFromController();
-
-      // STEP 2: Calculate target position (handles absolute vs relative)
-      const targetPosition = this.positionValidator.calculateTargetPosition(
-        currentPosition,
-        { x, y, z },
-        relative,
-      );
-
-      // STEP 3: Validate against safety limits (throws BadRequestException if invalid)
-      this.positionValidator.validatePosition(targetPosition);
-
-      // STEP 4: Send validated move command to Raspberry Pi
-      // Always send as absolute position to avoid compounding errors
       const { data } = await firstValueFrom(
         this.httpService
           .post(
             `${this.baseUrl}/move`,
-            {
-              x: targetPosition.x,
-              y: targetPosition.y,
-              z: targetPosition.z,
-              relative: false, // Always absolute after validation
-            },
+            { x, y, z, relative },
             { timeout: this.timeout },
           )
           .pipe(
@@ -115,16 +75,12 @@ export class StageService {
           ),
       );
 
-      return {
-        status: 'moving',
-        targetPosition,
-        target_position: targetPosition,
-        ...data,
-      };
+      return data;
     } catch (error) {
-      if (error instanceof ServiceUnavailableException) {
+      if (error instanceof HttpException) {
         throw error;
       }
+      this.logger.error(`Stage move error: ${error.message}`);
       throw error;
     }
   }

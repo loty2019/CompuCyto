@@ -213,28 +213,28 @@ export class ConfigService {
   /**
    * Maximum X axis position in motor steps
    * SAFETY LIMIT: Prevents stage from moving beyond physical bounds
-   * @default 10000
+   * @default 8500
    */
   get maxXPosition(): number {
-    return this.configService.get<number>('MAX_X_POSITION', 10000);
+    return this.configService.get<number>('MAX_X_POSITION', 8500);
   }
 
   /**
    * Maximum Y axis position in motor steps
    * SAFETY LIMIT: Prevents stage from moving beyond physical bounds
-   * @default 10000
+   * @default 12000
    */
   get maxYPosition(): number {
-    return this.configService.get<number>('MAX_Y_POSITION', 10000);
+    return this.configService.get<number>('MAX_Y_POSITION', 12000);
   }
 
   /**
    * Maximum Z axis position in motor steps
    * SAFETY LIMIT: Prevents stage from moving beyond physical bounds
-   * @default 5000
+   * @default 10000
    */
   get maxZPosition(): number {
-    return this.configService.get<number>('MAX_Z_POSITION', 5000);
+    return this.configService.get<number>('MAX_Z_POSITION', 10000);
   }
 
   /**
