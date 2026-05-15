@@ -72,6 +72,8 @@ LIMIT_SENSOR_PINS = {
 
 STEP_PULSE_SECONDS = settings.step_pulse_seconds
 STEP_LOW_SECONDS = settings.step_low_seconds
+STEP_START_LOW_SECONDS = max(settings.step_start_low_seconds, STEP_LOW_SECONDS)
+STEP_ACCELERATION_STEPS = max(settings.step_acceleration_steps, 0)
 DIRECTION_SETTLE_SECONDS = settings.direction_settle_seconds
 DIRECTION_POSITIVE = 1
 DIRECTION_NEGATIVE = 0
@@ -274,9 +276,38 @@ def set_axis_direction(axis: str, direction: int) -> None:
 def pulse_axis(axis: str, pulse_seconds: float, low_seconds: Optional[float] = None) -> None:
     pins = MOTOR_AXES[axis]
     lgpio.gpio_write(h, pins["step"], 1)
-    time.sleep(pulse_seconds)
+    sleep_precise(pulse_seconds)
     lgpio.gpio_write(h, pins["step"], 0)
-    time.sleep(low_seconds if low_seconds is not None else pulse_seconds)
+    sleep_precise(low_seconds if low_seconds is not None else pulse_seconds)
+
+
+def sleep_precise(seconds: float) -> None:
+    """Sleep with less jitter for short GPIO pulse timing."""
+    deadline = time.perf_counter() + seconds
+    while True:
+        remaining = deadline - time.perf_counter()
+        if remaining <= 0:
+            return
+        if remaining > 0.001:
+            time.sleep(remaining - 0.0005)
+        else:
+            time.sleep(0)
+
+
+def ramped_step_low_seconds(step_index: int, total_steps: int) -> float:
+    """Return a low-time ramp for acceleration/deceleration without changing step count."""
+    if STEP_ACCELERATION_STEPS <= 0 or STEP_START_LOW_SECONDS <= STEP_LOW_SECONDS:
+        return STEP_LOW_SECONDS
+
+    ramp_steps = min(STEP_ACCELERATION_STEPS, max(total_steps // 2, 1))
+    distance_from_end = min(step_index, total_steps - step_index - 1)
+    if distance_from_end >= ramp_steps:
+        return STEP_LOW_SECONDS
+
+    progress = distance_from_end / ramp_steps
+    return STEP_START_LOW_SECONDS - (
+        (STEP_START_LOW_SECONDS - STEP_LOW_SECONDS) * progress
+    )
 
 
 def setup_dht11():
@@ -422,7 +453,8 @@ def run_axis_move(axis: str, target_position: int):
             logger.warning("%s negative move blocked: home sensor is already active", axis.upper())
             return
 
-        for _ in range(abs(delta)):
+        total_steps = abs(delta)
+        for step_index in range(total_steps):
             if step_increment < 0 and limit_stably_active(axis):
                 axis_positions[axis] = 0
                 axis_is_homed[axis] = True
@@ -438,7 +470,7 @@ def run_axis_move(axis: str, target_position: int):
                 )
                 break
 
-            pulse_axis(axis, STEP_PULSE_SECONDS, STEP_LOW_SECONDS)
+            pulse_axis(axis, STEP_PULSE_SECONDS, ramped_step_low_seconds(step_index, total_steps))
             axis_positions[axis] += step_increment
     except Exception as e:
         logger.error("%s movement failed: %s", axis.upper(), e)

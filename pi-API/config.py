@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     limit_sensor_pull: str = "up"
     step_pulse_seconds: float = 0.0010
     step_low_seconds: float = 0.0010
+    step_start_low_seconds: float = 0.0040
+    step_acceleration_steps: int = 400
     direction_settle_seconds: float = 0.005
     limit_poll_seconds: float = 0.01
     limit_debounce_seconds: float = 0.03
