@@ -20,8 +20,8 @@ class Settings(BaseSettings):
     limit_z_pin: int = 4
     limit_sensor_active_state: int = 0
     limit_sensor_pull: str = "up"
-    step_pulse_seconds: float = 0.0005
-    step_low_seconds: float = 0.0005
+    step_pulse_seconds: float = 0.0010
+    step_low_seconds: float = 0.0010
     direction_settle_seconds: float = 0.003
     limit_poll_seconds: float = 0.001
     limit_debounce_seconds: float = 0.015
@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     homing_slow_step_seconds: float = 0.0015
     homing_max_steps: int = 50000
     homing_backoff_steps: int = 300
-    max_x_position: int = 100000
+    max_x_position: int = 8500
     max_y_position: int = 100000
     max_z_position: int = 10000
 
