@@ -1242,11 +1242,11 @@ Hardcode or load from configuration:
 ```typescript
 const LIMITS = {
   X_MIN: 0,
-  X_MAX: 10000,
+  X_MAX: 8500,
   Y_MIN: 0,
-  Y_MAX: 10000,
+  Y_MAX: 12000,
   Z_MIN: 0,
-  Z_MAX: 10000,
+  Z_MAX: 15000,
 };
 ```
 
@@ -1298,7 +1298,7 @@ THUMBNAILS_PATH=./thumbnails
 # Safety Limits (steps)
 MAX_X_POSITION=8500
 MAX_Y_POSITION=12000
-MAX_Z_POSITION=10000
+MAX_Z_POSITION=15000
 MIN_X_POSITION=0
 MIN_Y_POSITION=0
 MIN_Z_POSITION=0

@@ -231,10 +231,10 @@ export class ConfigService {
   /**
    * Maximum Z axis position in motor steps
    * SAFETY LIMIT: Prevents stage from moving beyond physical bounds
-   * @default 10000
+   * @default 15000
    */
   get maxZPosition(): number {
-    return this.configService.get<number>('MAX_Z_POSITION', 10000);
+    return this.configService.get<number>('MAX_Z_POSITION', 15000);
   }
 
   /**

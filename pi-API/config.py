@@ -31,7 +31,7 @@ class Settings(BaseSettings):
     homing_backoff_steps: int = 300
     max_x_position: int = 8500
     max_y_position: int = 12000
-    max_z_position: int = 10000
+    max_z_position: int = 15000
 
 
 settings = Settings()

@@ -2,6 +2,8 @@ import { ref } from "vue";
 import { controlAPI } from "@/api/client";
 import { useMicroscopeStore } from "@/stores/microscope";
 
+const isMoving = ref(false);
+
 function stageErrorMessage(error: any) {
   return (
     error.response?.data?.message ||
@@ -12,7 +14,6 @@ function stageErrorMessage(error: any) {
 
 export function useStage() {
   const store = useMicroscopeStore();
-  const isMoving = ref(false);
 
   async function move(x?: number, y?: number, z?: number, relative = false) {
     isMoving.value = true;
@@ -24,6 +25,7 @@ export function useStage() {
 
       const pos = result.target_position ?? result.targetPosition;
       if (pos) {
+        store.updatePosition(pos);
         store.addLog(
           `Moving to X:${pos.x.toFixed(0)} Y:${pos.y.toFixed(0)} Z:${pos.z.toFixed(0)}`,
           "info",

@@ -67,6 +67,38 @@ const piClient = axios.create({
   },
 });
 
+function shouldLogApiRequest(method?: string, url?: string): boolean {
+  const normalizedMethod = method?.toUpperCase() || "REQUEST";
+  const normalizedUrl = url || "";
+
+  if (normalizedMethod !== "GET") {
+    return true;
+  }
+
+  return ![
+    "/api/v1/stage/position",
+    "/api/v1/stage/limits",
+    "/api/v1/health",
+  ].some((path) => normalizedUrl.startsWith(path));
+}
+
+function shouldLogPiRequest(method?: string, url?: string): boolean {
+  const normalizedMethod = method?.toUpperCase() || "REQUEST";
+  const normalizedUrl = url || "";
+
+  if (normalizedMethod !== "GET") {
+    return true;
+  }
+
+  return ![
+    "/environment",
+    "/closet/state",
+    "/led-lamp/state",
+    "/led-flr/state",
+    "/psu/state",
+  ].some((path) => normalizedUrl.startsWith(path));
+}
+
 export const getActiveProfileHeaders = (): Record<string, string> => {
   const storedUser = localStorage.getItem("user");
 
@@ -97,7 +129,7 @@ apiClient.interceptors.request.use(
     const url = config.url || "";
     const logMessage = `${method} ${url}`;
 
-    if (window.__logToConsole) {
+    if (window.__logToConsole && shouldLogApiRequest(method, url)) {
       window.__logToConsole(logMessage, "info");
     }
 
@@ -121,7 +153,7 @@ apiClient.interceptors.response.use(
     const status = response.status;
     const logMessage = ` ${method} ${url} - ${status}`;
 
-    if (window.__logToConsole) {
+    if (window.__logToConsole && shouldLogApiRequest(method, url)) {
       window.__logToConsole(logMessage, "success");
     }
 
@@ -203,7 +235,7 @@ piClient.interceptors.request.use(
     const url = config.url || "";
     const logMessage = `${method} [Pi] ${url}`;
 
-    if (window.__logToConsole) {
+    if (window.__logToConsole && shouldLogPiRequest(method, url)) {
       window.__logToConsole(logMessage, "info");
     }
 
@@ -224,7 +256,7 @@ piClient.interceptors.response.use(
     const status = response.status;
     const logMessage = ` ${method} [Pi] ${url} - ${status}`;
 
-    if (window.__logToConsole) {
+    if (window.__logToConsole && shouldLogPiRequest(method, url)) {
       window.__logToConsole(logMessage, "success");
     }
 

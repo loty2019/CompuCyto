@@ -206,7 +206,7 @@ Content-Type: application/json
 **Position Validation:**
 - X range: 0 - 8500 (configurable via env)
 - Y range: 0 - 12000
-- Z range: 0 - 10000
+- Z range: 0 - 15000
 
 Returns 400 Bad Request if position is out of bounds.
 

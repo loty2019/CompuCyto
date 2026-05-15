@@ -538,7 +538,6 @@ let websocket: WebSocket | null = null;
 let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
 const isConnecting = ref(false);
 let environmentPollTimer: ReturnType<typeof setInterval> | null = null;
-let stagePollTimer: ReturnType<typeof setInterval> | null = null;
 
 const environment = ref<{
   temperature_c: number | null;
@@ -612,7 +611,6 @@ onMounted(async () => {
   await stage.updatePosition();
   await stage.updateLimitSensors();
   environmentPollTimer = setInterval(fetchEnvironment, 5000);
-  stagePollTimer = setInterval(stage.updatePosition, 2000);
 
   // Auto-start the feed
   //startFeed();
@@ -628,9 +626,6 @@ onUnmounted(() => {
   }
   if (environmentPollTimer) {
     clearInterval(environmentPollTimer);
-  }
-  if (stagePollTimer) {
-    clearInterval(stagePollTimer);
   }
 });
 
