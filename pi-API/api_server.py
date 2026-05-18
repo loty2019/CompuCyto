@@ -294,56 +294,115 @@ def sleep_precise(seconds: float) -> None:
 
 
 def setup_dht11():
-    """Initialize the DHT11 temperature/humidity sensor if its library is present."""
-    global dht11_device
+    """Log DHT11 configuration.
 
-    if adafruit_dht is None or board is None:
-        logger.warning(
-            "DHT11 support unavailable: install adafruit-circuitpython-dht (%s)",
-            dht11_import_error,
-        )
-        return
+    The Adafruit DHT decoder can miss valid pulses on some Pi 5/kernel
+    combinations, so reads use the lgpio pulse decoder below.
+    """
+    reserved_pins = {
+        LED_LAMP_PIN,
+        PSU_PIN,
+        LED_FLR_PIN,
+        SWITCH_SENSOR_PIN,
+        FRONT_PANEL_LED_PIN,
+        *LIMIT_SENSOR_PINS.values(),
+    }
+    for pins in MOTOR_AXES.values():
+        reserved_pins.add(pins["step"])
+        reserved_pins.add(pins["direction"])
 
-    board_pin_name = f"D{DHT11_PIN}"
-    board_pin = getattr(board, board_pin_name, None)
-    if board_pin is None:
-        logger.warning("DHT11 GPIO%s is not available as board.%s", DHT11_PIN, board_pin_name)
-        return
+    if DHT11_PIN in reserved_pins:
+        logger.warning("DHT11 GPIO%s is also assigned to another device", DHT11_PIN)
 
-    try:
-        dht11_device = adafruit_dht.DHT11(board_pin, use_pulseio=False)
-        logger.info("DHT11 initialized on GPIO%s (BCM numbering, physical header pin 18)", DHT11_PIN)
-    except Exception as e:
-        dht11_device = None
-        logger.error("Failed to initialize DHT11 on GPIO%s: %s", DHT11_PIN, e)
+    logger.info("DHT11 configured on GPIO%s using lgpio pulse decoder", DHT11_PIN)
 
 
 def cleanup_dht11():
     """Release DHT11 resources."""
-    global dht11_device
+    return
 
-    if dht11_device is not None:
+
+def micros() -> int:
+    """Return a monotonic timestamp in microseconds."""
+    return time.monotonic_ns() // 1000
+
+
+def capture_dht11_edges(pin: int) -> List[tuple[int, int]]:
+    """Send the DHT start pulse and capture input transitions."""
+    if h is None:
+        raise RuntimeError("GPIO is not initialized")
+
+    try:
+        lgpio.gpio_claim_output(h, pin, 1)
+        time.sleep(0.05)
+        lgpio.gpio_write(h, pin, 0)
+        time.sleep(0.020)
+        lgpio.gpio_write(h, pin, 1)
+        time.sleep(0.00004)
+
+        lgpio.gpio_free(h, pin)
+        lgpio.gpio_claim_input(h, pin, lgpio.SET_PULL_UP)
+
+        start = micros()
+        end = start + 10000
+        last = lgpio.gpio_read(h, pin)
+        edges = [(0, last)]
+
+        while micros() < end:
+            value = lgpio.gpio_read(h, pin)
+            if value != last:
+                edges.append((micros() - start, value))
+                last = value
+
+        return edges
+    finally:
         try:
-            dht11_device.exit()
-        except Exception as e:
-            logger.warning("DHT11 cleanup failed: %s", e)
-        finally:
-            dht11_device = None
+            lgpio.gpio_free(h, pin)
+        except Exception:
+            pass
+
+
+def decode_dht11_edges(edges: List[tuple[int, int]]) -> tuple[float, float]:
+    """Decode captured DHT11 transitions into temperature C and humidity."""
+    pulses = []
+    for index in range(len(edges) - 1):
+        start_us, level = edges[index]
+        end_us, _ = edges[index + 1]
+        pulses.append((level, end_us - start_us))
+
+    for offset in range(8):
+        bits = []
+        index = offset
+        while index + 1 < len(pulses) and len(bits) < 40:
+            low_level, _low_us = pulses[index]
+            high_level, high_us = pulses[index + 1]
+            if low_level == 0 and high_level == 1:
+                bits.append(1 if high_us > 45 else 0)
+                index += 2
+            else:
+                index += 1
+
+        if len(bits) != 40:
+            continue
+
+        data = []
+        for byte_index in range(5):
+            value = 0
+            for bit in bits[byte_index * 8:(byte_index + 1) * 8]:
+                value = (value << 1) | bit
+            data.append(value)
+
+        if (sum(data[:4]) & 0xFF) == data[4]:
+            humidity = float(data[0]) + (float(data[1]) / 10.0)
+            temperature_c = float(data[2]) + (float(data[3]) / 10.0)
+            return temperature_c, humidity
+
+    raise RuntimeError(f"DHT11 checksum decode failed after {len(edges)} edges")
 
 
 def read_dht11() -> EnvironmentReading:
     """Read temperature and humidity from the DHT11 sensor."""
     global dht11_last_read_at, dht11_last_reading
-
-    if dht11_device is None:
-        return EnvironmentReading(
-            temperature_c=None,
-            temperature_f=None,
-            humidity=None,
-            pin=DHT11_PIN,
-            healthy=False,
-            message="DHT11 is not initialized",
-        )
 
     with dht11_lock:
         now = time.monotonic()
@@ -353,15 +412,8 @@ def read_dht11() -> EnvironmentReading:
         last_error = None
         for attempt in range(1, DHT11_READ_ATTEMPTS + 1):
             try:
-                temperature_c = dht11_device.temperature
-                humidity = dht11_device.humidity
-
-                if temperature_c is None or humidity is None:
-                    last_error = "DHT11 did not return a reading"
-                    if attempt < DHT11_READ_ATTEMPTS:
-                        time.sleep(DHT11_RETRY_SECONDS)
-                    continue
-
+                edges = capture_dht11_edges(DHT11_PIN)
+                temperature_c, humidity = decode_dht11_edges(edges)
                 rounded_temperature_c = round(float(temperature_c), 1)
                 dht11_last_reading = EnvironmentReading(
                     temperature_c=rounded_temperature_c,
@@ -373,22 +425,10 @@ def read_dht11() -> EnvironmentReading:
                 )
                 dht11_last_read_at = time.monotonic()
                 return dht11_last_reading
-            except RuntimeError as e:
+            except Exception as e:
                 last_error = str(e)
                 if attempt < DHT11_READ_ATTEMPTS:
                     time.sleep(DHT11_RETRY_SECONDS)
-            except Exception as e:
-                logger.error("DHT11 read failed: %s", e)
-                dht11_last_reading = EnvironmentReading(
-                    temperature_c=None,
-                    temperature_f=None,
-                    humidity=None,
-                    pin=DHT11_PIN,
-                    healthy=False,
-                    message=f"DHT11 read failed: {e}",
-                )
-                dht11_last_read_at = time.monotonic()
-                return dht11_last_reading
 
         dht11_last_reading = EnvironmentReading(
             temperature_c=None,

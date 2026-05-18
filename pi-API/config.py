@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     host: str = "0.0.0.0"
     port: int = 8000
     jwt_secret: str = ""
-    dht11_pin: int = 24
+    dht11_pin: int = 23
     dht11_read_attempts: int = 3
     dht11_retry_seconds: float = 1.2
     limit_x_pin: int = 16
