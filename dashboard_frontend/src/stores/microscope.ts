@@ -145,9 +145,9 @@ export const useMicroscopeStore = defineStore("microscope", () => {
       type,
     });
 
-    // Keep only last 100 logs
-    if (logs.value.length > 100) {
-      logs.value = logs.value.slice(-100);
+    // Keep enough history for the hidden debug console without letting it grow forever.
+    if (logs.value.length > 500) {
+      logs.value = logs.value.slice(-500);
     }
   }
 

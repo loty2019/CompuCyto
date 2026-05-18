@@ -1,8 +1,8 @@
 <template>
   <div class="mx-auto max-w-screen-2xl px-2 pb-3 pt-2 sm:px-3">
     <!-- Main Control Panel: prioritize camera preview with a compact control rail -->
-    <div class="mb-3 grid grid-cols-1 gap-2 xl:grid-cols-[minmax(0,1fr)_300px] 2xl:grid-cols-[minmax(0,1fr)_320px]">
-      <div id="camera" class="min-w-0">
+    <div class="mb-3 grid grid-cols-1 items-stretch gap-2 xl:grid-cols-[minmax(0,1fr)_360px] 2xl:grid-cols-[minmax(0,1fr)_400px]">
+      <div id="camera" class="min-w-0 xl:h-full">
         <CameraControl />
       </div>
 
@@ -17,7 +17,6 @@
       <div id="video-gallery" class="min-w-0"><VideoGallery /></div>
     </section>
     <div id="jobs" class="mb-5"><JobManager /></div>
-    <div id="console" class="mb-5"><ConsoleLog /></div>
   </div>
 </template>
 
@@ -32,7 +31,6 @@ import StageControl from "@/components/StageControl.vue";
 import JobManager from "@/components/JobManager.vue";
 import ImageGallery from "@/components/ImageGallery.vue";
 import VideoGallery from "@/components/VideoGallery.vue";
-import ConsoleLog from "@/components/ConsoleLog.vue";
 
 const store = useMicroscopeStore();
 
@@ -87,8 +85,7 @@ onMounted(async () => {
 #stage,
 #map,
 #jobs,
-#gallery,
-#console {
+#gallery {
   @apply scroll-mt-24;
 }
 </style>

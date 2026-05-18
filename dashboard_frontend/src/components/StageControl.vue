@@ -6,11 +6,7 @@
       <h2 class="text-sm font-black uppercase tracking-wide text-slate-950">
         Stage
       </h2>
-      <span
-        class="rounded-full border border-slate-300 bg-slate-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-600"
-      >
-        Relative
-      </span>
+      
     </div>
 
     <div
@@ -53,12 +49,6 @@
 
     <div class="rounded-lg border border-slate-200 bg-slate-50 p-1.5">
       <div class="mb-1.5">
-        <div class="mb-1 flex items-center justify-between gap-2">
-          <span class="section-label">Jog</span>
-          <span class="text-[10px] font-bold text-slate-500"
-            >{{ activeJogProfile.label }}</span
-          >
-        </div>
         <div class="multiplier-grid">
           <button
             v-for="profile in jogProfiles"
@@ -81,10 +71,10 @@
         <div></div>
         <button
           @pointerdown.prevent="pressMoveButton('arrowup', 'y', 1)"
-          :disabled="movementButtonDisabled('y', 1)"
+          :aria-disabled="!!movementBlockedReason('y', 1)"
           class="stage-button stage-button-primary"
           :class="
-            movementButtonDisabled('y', 1)
+            movementBlockedReason('y', 1)
               ? 'cursor-not-allowed opacity-60'
               : 'cursor-pointer'
           "
@@ -97,10 +87,10 @@
 
         <button
           @pointerdown.prevent="pressMoveButton('arrowleft', 'x', 1)"
-          :disabled="movementButtonDisabled('x', 1)"
+          :aria-disabled="!!movementBlockedReason('x', 1)"
           class="stage-button stage-button-primary"
           :class="
-            movementButtonDisabled('x', 1)
+            movementBlockedReason('x', 1)
               ? 'cursor-not-allowed opacity-60'
               : 'cursor-pointer'
           "
@@ -115,7 +105,7 @@
             homeStage();
           "
           :disabled="homeDisabled"
-          class="stage-button stage-button-home"
+          class="stage-button stage-button-primary"
           :class="
             homeDisabled
               ? 'cursor-not-allowed opacity-60'
@@ -127,10 +117,10 @@
         </button>
         <button
           @pointerdown.prevent="pressMoveButton('arrowright', 'x', -1)"
-          :disabled="movementButtonDisabled('x', -1)"
+          :aria-disabled="!!movementBlockedReason('x', -1)"
           class="stage-button stage-button-primary"
           :class="
-            movementButtonDisabled('x', -1)
+            movementBlockedReason('x', -1)
               ? 'cursor-not-allowed opacity-60'
               : 'cursor-pointer'
           "
@@ -143,10 +133,10 @@
         <div></div>
         <button
           @pointerdown.prevent="pressMoveButton('arrowdown', 'y', -1)"
-          :disabled="movementButtonDisabled('y', -1)"
+          :aria-disabled="!!movementBlockedReason('y', -1)"
           class="stage-button stage-button-primary outline-none"
           :class="
-            movementButtonDisabled('y', -1)
+            movementBlockedReason('y', -1)
               ? 'cursor-not-allowed opacity-60'
               : 'cursor-pointer'
           "
@@ -176,6 +166,7 @@
 import { computed, ref, onMounted, onUnmounted } from "vue";
 import { useMicroscopeStore } from "@/stores/microscope";
 import { useStage } from "@/composables/useStage";
+import { STAGE_AXIS_MAX } from "@/config/stage";
 
 const store = useMicroscopeStore();
 const stage = useStage();
@@ -185,7 +176,6 @@ const jogProfiles = [
   { id: "fine", label: "Fine", steps: 100 },
   { id: "medium", label: "Medium", steps: 500 },
   { id: "bigger", label: "Bigger", steps: 2000 },
-  { id: "travel", label: "Travel", steps: 5000 },
 ] as const;
 const selectedJogProfileId = ref<(typeof jogProfiles)[number]["id"]>("medium");
 const activeJogProfile = computed(
@@ -285,7 +275,9 @@ function homeChipClass(axis: "x" | "y" | "z") {
 }
 
 function moveAxis(axis: "x" | "y", direction: 1 | -1) {
-  if (movementButtonDisabled(axis, direction)) {
+  const blockedReason = movementBlockedReason(axis, direction);
+  if (blockedReason) {
+    store.addLog(blockedReason, "warning");
     return;
   }
 
@@ -302,14 +294,28 @@ function pressMoveButton(buttonId: string, axis: "x" | "y", direction: 1 | -1) {
   moveAxis(axis, direction);
 }
 
-function movementButtonDisabled(axis: "x" | "y", direction: 1 | -1) {
+function movementBlockedReason(axis: "x" | "y", direction: 1 | -1) {
   if (xyMovementDisabled.value) {
-    return true;
+    if (isClosetOpen.value) return "Stage movement blocked: lid is open";
+    if (!stageReady.value) return "Home stage before movement";
+    return "Stage movement blocked while homing or moving";
   }
 
   const currentPosition = axis === "x" ? store.position.x : store.position.y;
   const requestedSteps = activeJogProfile.value.steps * direction;
-  return currentPosition + requestedSteps < 0;
+  const targetPosition = currentPosition + requestedSteps;
+  const axisLabel = axis.toUpperCase();
+  const axisMax = STAGE_AXIS_MAX[axis];
+
+  if (targetPosition < 0) {
+    return `${axisLabel} move blocked: target ${targetPosition.toFixed(0)} is below minimum 0`;
+  }
+
+  if (targetPosition > axisMax) {
+    return `${axisLabel} move blocked: target ${targetPosition.toFixed(0)} exceeds maximum ${axisMax}`;
+  }
+
+  return "";
 }
 
 function handleKeyDown(event: KeyboardEvent) {
@@ -400,10 +406,6 @@ function getButtonStyle(buttonId: string): string {
   @apply font-mono text-xs font-semibold tracking-tight text-slate-900;
 }
 
-.section-label {
-  @apply text-[10px] font-bold uppercase tracking-wide text-slate-500;
-}
-
 .home-chip {
   @apply flex h-6 items-center justify-between rounded border px-1.5 text-[9px] font-black uppercase tracking-wide;
 }
@@ -429,10 +431,6 @@ function getButtonStyle(buttonId: string): string {
   @apply border border-slate-700 bg-slate-800 text-white shadow-slate-300/50 hover:bg-slate-700;
 }
 
-.stage-button-home {
-  @apply border border-blue-700 bg-blue-700 text-white shadow-blue-300/40 hover:bg-blue-800;
-}
-
 .stage-button-secondary {
   @apply border border-slate-300 bg-white text-slate-700 shadow-slate-200/60 hover:border-slate-500 hover:text-slate-950;
 }
@@ -450,7 +448,7 @@ function getButtonStyle(buttonId: string): string {
 }
 
 .multiplier-grid {
-  @apply grid grid-cols-3 gap-1;
+  @apply grid grid-cols-4 gap-1;
 }
 
 @keyframes home-chip-pulse {

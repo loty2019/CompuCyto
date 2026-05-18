@@ -19,22 +19,49 @@
       :value="closetLabel"
       :alert="store.closetStatus === 'open'"
     />
-    <div
-      :class="[
-        'rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-wide',
-        store.isSystemHealthy
-          ? 'border border-green-200 bg-green-50 text-slate-700'
-          : 'border border-amber-200 bg-amber-50 text-amber-700',
-      ]"
-    >
-      {{ store.isSystemHealthy ? "System Healthy" : "System Degraded" }}
+    <div class="relative" ref="debugMenu">
+      <button
+        type="button"
+        @click="isDebugOpen = !isDebugOpen"
+        :class="[
+          'flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-wide transition-all hover:-translate-y-0.5 hover:shadow-sm',
+          store.isSystemHealthy
+            ? 'border border-green-200 bg-green-50 text-slate-700'
+            : 'border border-amber-200 bg-amber-50 text-amber-700',
+        ]"
+        :aria-expanded="isDebugOpen"
+        aria-label="Open debug logs"
+        title="System debug logs"
+      >
+        <span
+          :class="[
+            'h-2 w-2 rounded-full',
+            store.isSystemHealthy ? 'bg-teal-500' : 'bg-amber-500',
+          ]"
+        ></span>
+        <span>{{ store.isSystemHealthy ? "System Healthy" : "System Degraded" }}</span>
+        <span
+          v-if="importantLogCount > 0"
+          class="rounded-full bg-slate-900 px-1.5 py-px text-[9px] text-white"
+        >
+          {{ importantLogCount }}
+        </span>
+      </button>
+
+      <div
+        v-if="isDebugOpen"
+        class="absolute right-0 top-full z-50 mt-2 w-[min(92vw,760px)]"
+      >
+        <ConsoleLog embedded />
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, defineComponent, h, onMounted, onUnmounted } from "vue";
+import { computed, defineComponent, h, onMounted, onUnmounted, ref } from "vue";
 import { piAPI } from "@/api/client";
+import ConsoleLog from "@/components/ConsoleLog.vue";
 import { useMicroscopeStore } from "@/stores/microscope";
 import { useWebSocketStore } from "@/stores/websocket";
 import { storeToRefs } from "pinia";
@@ -44,7 +71,13 @@ const wsStore = useWebSocketStore();
 const { state: wsState } = storeToRefs(wsStore);
 
 const isWsConnected = computed(() => wsState.value.isConnected);
+const isDebugOpen = ref(false);
+const debugMenu = ref<HTMLElement | null>(null);
 let closetPollTimer: number | undefined;
+
+const importantLogCount = computed(
+  () => store.logs.filter((log) => log.type === "error").length,
+);
 
 const closetLabel = computed(() => {
   if (store.closetStatus === "unknown") {
@@ -109,12 +142,14 @@ const StatusPill = defineComponent({
 onMounted(() => {
   fetchClosetStatus();
   closetPollTimer = window.setInterval(fetchClosetStatus, 1000);
+  document.addEventListener("pointerdown", handleOutsideClick);
 });
 
 onUnmounted(() => {
   if (closetPollTimer !== undefined) {
     window.clearInterval(closetPollTimer);
   }
+  document.removeEventListener("pointerdown", handleOutsideClick);
 });
 
 async function fetchClosetStatus() {
@@ -128,6 +163,12 @@ async function fetchClosetStatus() {
 
 function isConnected(status: string): boolean {
   return status === "connected" || status === "running";
+}
+
+function handleOutsideClick(event: PointerEvent) {
+  if (!debugMenu.value?.contains(event.target as Node)) {
+    isDebugOpen.value = false;
+  }
 }
 </script>
 
