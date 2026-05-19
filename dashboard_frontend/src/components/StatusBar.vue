@@ -11,6 +11,10 @@
     <StatusPill
       label="Stage"
       :connected="isConnected(store.systemStatus.raspberryPi)"
+      :value="stageStatusValue"
+      :alert="psuIsOff"
+      alert-tone="warning"
+      :title="stageStatusTitle"
     />
     <StatusPill label="WebSocket" :connected="isWsConnected" />
     <StatusPill
@@ -18,6 +22,7 @@
       :connected="store.closetStatus !== 'unknown'"
       :value="closetLabel"
       :alert="store.closetStatus === 'open'"
+      alert-tone="danger"
     />
     <div class="relative" ref="debugMenu">
       <button
@@ -87,6 +92,20 @@ const closetLabel = computed(() => {
   return store.closetStatus === "open" ? "Open" : "Closed";
 });
 
+const psuIsOff = computed(() => store.psuStatus === "off");
+
+const stageStatusValue = computed(() => {
+  if (store.psuStatus === "off") {
+    return "PSU off";
+  }
+
+  return "";
+});
+
+const stageStatusTitle = computed(() =>
+  psuIsOff.value ? "The PSU is off" : undefined,
+);
+
 const StatusPill = defineComponent({
   props: {
     label: {
@@ -105,8 +124,23 @@ const StatusPill = defineComponent({
       type: Boolean,
       default: false,
     },
+    alertTone: {
+      type: String,
+      default: "danger",
+    },
+    title: {
+      type: String,
+      default: "",
+    },
   },
   setup(props) {
+    const alertClass = props.alertTone === "warning"
+      ? "stage-warning border-amber-300 bg-amber-50 text-amber-800"
+      : "closet-alert border-red-400 bg-red-100 text-red-800";
+    const alertDotClass = props.alertTone === "warning"
+      ? "stage-warning-dot bg-amber-500"
+      : "closet-alert-dot bg-red-600";
+
     return () =>
       h(
         "div",
@@ -114,17 +148,19 @@ const StatusPill = defineComponent({
           class: [
             "flex min-h-[26px] items-center gap-1.5 rounded-full border bg-white px-2 py-0.5 text-[11px] font-bold",
             props.alert
-              ? "closet-alert border-red-400 bg-red-100 text-red-800"
+              ? alertClass
               : "border-slate-200 text-slate-600",
           ],
-          title: props.value ? `${props.label}: ${props.value}` : props.label,
+          title:
+            props.title ||
+            (props.value ? `${props.label}: ${props.value}` : props.label),
         },
         [
           h("span", {
             class: [
               "h-2 w-2 rounded-full",
               props.alert
-                ? "closet-alert-dot bg-red-600"
+                ? alertDotClass
                 : props.connected
                   ? "bg-teal-500"
                   : "bg-slate-400",
@@ -140,8 +176,8 @@ const StatusPill = defineComponent({
 });
 
 onMounted(() => {
-  fetchClosetStatus();
-  closetPollTimer = window.setInterval(fetchClosetStatus, 1000);
+  fetchHardwareStatus();
+  closetPollTimer = window.setInterval(fetchHardwareStatus, 1000);
   document.addEventListener("pointerdown", handleOutsideClick);
 });
 
@@ -161,6 +197,19 @@ async function fetchClosetStatus() {
   }
 }
 
+async function fetchPsuStatus() {
+  try {
+    const response = await piAPI.getPsuState();
+    store.updatePsuStatus(response.is_on ? "on" : "off");
+  } catch {
+    store.updatePsuStatus("unknown");
+  }
+}
+
+async function fetchHardwareStatus() {
+  await Promise.allSettled([fetchClosetStatus(), fetchPsuStatus()]);
+}
+
 function isConnected(status: string): boolean {
   return status === "connected" || status === "running";
 }
@@ -177,8 +226,13 @@ function handleOutsideClick(event: PointerEvent) {
   animation: closet-alert-pulse 0.85s ease-in-out infinite;
 }
 
-.closet-alert-dot {
+.closet-alert-dot,
+.stage-warning-dot {
   animation: closet-dot-pulse 0.85s ease-in-out infinite;
+}
+
+.stage-warning {
+  animation: stage-warning-pulse 1.2s ease-in-out infinite;
 }
 
 @keyframes closet-alert-pulse {
@@ -200,6 +254,16 @@ function handleOutsideClick(event: PointerEvent) {
   50% {
     transform: scale(1.45);
     opacity: 1;
+  }
+}
+
+@keyframes stage-warning-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.36);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgba(245, 158, 11, 0.08);
   }
 }
 </style>

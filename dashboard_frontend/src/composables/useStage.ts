@@ -50,8 +50,12 @@ export function useStage() {
       if (result.limit_sensors) {
         store.updateLimitSensors(result.limit_sensors);
       }
+      if (result.psu_on !== undefined) {
+        store.updatePsuStatus(result.psu_on ? "on" : "off");
+      }
       await updatePosition();
       store.addLog("Stage homed on optical sensors", "success");
+      return result;
     } catch (error: any) {
       store.addLog(`Home failed: ${stageErrorMessage(error)}`, "error");
       throw error;
@@ -66,7 +70,13 @@ export function useStage() {
       if (result.limit_sensors) {
         store.updateLimitSensors(result.limit_sensors);
       }
+      if (result.psu_on !== undefined) {
+        store.updatePsuStatus(result.psu_on ? "on" : "off");
+      } else {
+        store.updatePsuStatus("off");
+      }
       store.addLog(result.message || "Emergency stop activated!", "warning");
+      return result;
     } catch (error: any) {
       store.addLog(`Stop failed: ${stageErrorMessage(error)}`, "error");
       throw error;

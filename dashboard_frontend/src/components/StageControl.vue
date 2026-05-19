@@ -153,13 +153,70 @@
 
     <div class="mt-3 border-t border-slate-200 pt-3">
       <button
-        @click="stage.stop()"
+        @click="stopStage"
         class="stage-button w-full cursor-pointer bg-red-600 text-white hover:bg-red-700"
         :style="getButtonStyle('stop')"
         title="Emergency Stop"
       >
         STOP
       </button>
+    </div>
+
+    <div
+      v-if="showStopResetPopup"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 px-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="stop-reset-title"
+    >
+      <div class="w-full max-w-sm rounded-lg border border-amber-200 bg-white p-4 shadow-xl">
+        <div class="mb-3 flex items-start justify-between gap-3">
+          <div>
+            <h3
+              id="stop-reset-title"
+              class="text-sm font-black uppercase tracking-wide text-slate-900"
+            >
+              Stage stopped
+            </h3>
+            <p class="mt-1 text-xs leading-5 text-slate-600">
+              The PSU is off. Reset the stage before moving again.
+            </p>
+          </div>
+          <button
+            type="button"
+            class="rounded px-2 py-1 text-sm font-bold text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+            aria-label="Close reset instructions"
+            @click="showStopResetPopup = false"
+          >
+            x
+          </button>
+        </div>
+
+        <ol class="space-y-2 text-xs leading-5 text-slate-700">
+          <li>1. Clear the stage area and close the lid if it is open.</li>
+          <li>2. Press Home to turn the PSU back on and re-home X, Y, and Z.</li>
+          <li>3. Wait until all home chips show Homed before jogging.</li>
+        </ol>
+
+        <div class="mt-4 flex justify-end gap-2">
+          <button
+            type="button"
+            class="stage-button stage-button-secondary min-w-20"
+            @click="showStopResetPopup = false"
+          >
+            OK
+          </button>
+          <button
+            type="button"
+            class="stage-button min-w-20 bg-slate-900 text-white hover:bg-slate-700"
+            :disabled="homeDisabled"
+            :class="homeDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'"
+            @click="homeFromStopPopup"
+          >
+            Home
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -188,6 +245,7 @@ const activeJogProfile = computed(
 const pressedKeys = ref<Set<string>>(new Set());
 const clickedButtons = ref<Set<string>>(new Set());
 const homingInProgress = ref(false);
+const showStopResetPopup = ref(false);
 const isClosetOpen = computed(() => store.closetStatus === "open");
 const stageReady = computed(
   () =>
@@ -254,6 +312,19 @@ async function homeStage() {
   } finally {
     homingInProgress.value = false;
   }
+}
+
+async function stopStage() {
+  handleButtonClick("stop");
+  await stage.stop();
+  await stage.updatePosition();
+  await stage.updateLimitSensors();
+  showStopResetPopup.value = true;
+}
+
+async function homeFromStopPopup() {
+  await homeStage();
+  showStopResetPopup.value = false;
 }
 
 function homeChipLabel(axis: "x" | "y" | "z") {

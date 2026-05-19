@@ -60,6 +60,7 @@ export const useMicroscopeStore = defineStore("microscope", () => {
     brightness: 100,
   });
   const closetStatus = ref<"open" | "closed" | "unknown">("unknown");
+  const psuStatus = ref<"on" | "off" | "unknown">("unknown");
   const limitSensors = ref<LimitSensors | null>(null);
 
   // Computed
@@ -166,6 +167,10 @@ export const useMicroscopeStore = defineStore("microscope", () => {
     closetStatus.value = status;
   }
 
+  function updatePsuStatus(status: "on" | "off" | "unknown") {
+    psuStatus.value = status;
+  }
+
   function updateLimitSensors(sensors: LimitSensors) {
     limitSensors.value = sensors;
   }
@@ -182,6 +187,7 @@ export const useMicroscopeStore = defineStore("microscope", () => {
     logs,
     lightStatus,
     closetStatus,
+    psuStatus,
     limitSensors,
 
     // Computed
@@ -208,6 +214,7 @@ export const useMicroscopeStore = defineStore("microscope", () => {
     clearLogs,
     updateLightStatus,
     updateClosetStatus,
+    updatePsuStatus,
     updateLimitSensors,
   };
 });

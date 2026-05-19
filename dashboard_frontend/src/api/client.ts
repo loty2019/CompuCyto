@@ -319,6 +319,7 @@ export const controlAPI = {
     status: string;
     message: string;
     limit_sensors?: LimitSensors;
+    psu_on?: boolean;
   }> {
     const { data } = await apiClient.post("/api/v1/stage/home");
     return data;
@@ -328,6 +329,7 @@ export const controlAPI = {
     status: string;
     message: string;
     limit_sensors?: LimitSensors;
+    psu_on?: boolean;
   }> {
     const { data } = await apiClient.post("/api/v1/stage/stop");
     return data;
