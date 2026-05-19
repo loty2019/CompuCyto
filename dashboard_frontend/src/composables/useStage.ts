@@ -66,7 +66,7 @@ export function useStage() {
       if (result.limit_sensors) {
         store.updateLimitSensors(result.limit_sensors);
       }
-      store.addLog("Emergency stop activated!", "warning");
+      store.addLog(result.message || "Emergency stop activated!", "warning");
     } catch (error: any) {
       store.addLog(`Stop failed: ${stageErrorMessage(error)}`, "error");
       throw error;

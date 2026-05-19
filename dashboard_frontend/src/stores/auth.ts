@@ -149,6 +149,16 @@ const syncProfileWithBackend = async (
   };
 };
 
+const deleteProfileFromBackend = async (profileId: number): Promise<void> => {
+  const response = await fetch(`/api/v1/auth/profiles/${profileId}`, {
+    method: "DELETE",
+  });
+
+  if (!response.ok) {
+    throw new Error("Could not delete profile");
+  }
+};
+
 export const useAuthStore = defineStore("auth", () => {
   const user = ref<UserProfile | null>(null);
   const profiles = ref<UserProfile[]>([]);
@@ -288,6 +298,31 @@ export const useAuthStore = defineStore("auth", () => {
     }
   };
 
+  const deleteProfile = async (profileId: number) => {
+    const profile = profiles.value.find((item) => item.id === profileId);
+
+    if (!profile) {
+      return { success: false, error: "Profile not found" };
+    }
+
+    try {
+      await deleteProfileFromBackend(profileId);
+      await refreshProfiles();
+
+      if (user.value?.id === profileId) {
+        logout();
+      }
+
+      if (window.__logToConsole) {
+        window.__logToConsole(`Profile deleted: ${profile.username}`, "info");
+      }
+
+      return { success: true };
+    } catch {
+      return { success: false, error: "Could not delete profile" };
+    }
+  };
+
   const login = async (profileIdOrName: number | string) => {
     if (typeof profileIdOrName === "number") {
       return selectProfile(profileIdOrName);
@@ -336,6 +371,7 @@ export const useAuthStore = defineStore("auth", () => {
     refreshProfiles,
     selectProfile,
     createProfile,
+    deleteProfile,
     login,
     register,
     logout,

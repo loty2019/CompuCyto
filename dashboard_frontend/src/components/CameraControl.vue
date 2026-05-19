@@ -1,40 +1,42 @@
 <template>
-  <div class="camera-panel flex h-full flex-col rounded-lg border border-slate-200/80 bg-white p-2.5 shadow-md">
-    <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+  <section id="camera" class="camera-live-panel lab-panel flex h-full min-h-[360px] flex-col">
+    <div class="lab-panel-header">
       <div class="flex items-center gap-2">
-        <h2 class="text-sm font-black uppercase tracking-wide text-slate-950">
+        <h2 class="lab-title">
           CAMERA
         </h2>
-        <span
-          class="rounded-full border border-slate-300 bg-slate-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-600"
-        >
+        <span class="lab-badge">
           Live
         </span>
       </div>
       <div class="flex items-center gap-2">
-          <span
-            v-if="feedUrl && !feedError && lightWarning"
-            class="flex items-center gap-1 rounded border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-700"
-            title="The microscope light is currently off"
-          >
-            ⚠️ Light is OFF
+        <div
+          v-if="feedUrl && !feedError && lightWarning"
+          class="lab-alert lab-alert-warning flex items-center gap-2 px-2 py-1 border border-amber-500/50"
+          title="The microscope light is currently off"
+        >
+          <span class="relative flex h-3 w-3">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-3 w-3 bg-amber-500"></span>
           </span>
+          <span class="font-bold">Light is off</span>
         </div>
         <button
           v-if="feedUrl && !feedError"
           @click="stopFeed"
-          class="rounded-md border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-bold text-red-700 shadow-sm transition-all hover:bg-red-100 hover:shadow"
+          class="lab-button lab-button-danger"
         >
           Stop Feed
         </button>
       </div>
+    </div>
+
     <!-- Live Camera Feed Section -->
-    <div class="mt-2 min-h-0 flex-1">
-      <div class="grid h-full items-start gap-2 xl:grid-cols-[minmax(0,1fr)_260px]">
-        <div
-          class="relative flex items-center justify-center overflow-hidden rounded-md border border-slate-300 bg-slate-100 shadow-inner"
-          style="aspect-ratio: 4/3; min-height: 245px"
-        >
+    <div class="camera-feed-stage mt-2 min-h-0 flex-1">
+      <div
+        class="camera-feed-frame relative flex items-center justify-center overflow-hidden rounded-md border border-slate-300 bg-slate-100"
+        :style="cameraViewportStyle"
+      >
         <div
           v-if="isLoadingFeed"
           class="flex h-full w-full flex-col items-center justify-center gap-3 p-8 text-slate-500"
@@ -42,21 +44,19 @@
           <div
             class="inline-block h-10 w-10 animate-spin rounded-full border-4 border-slate-400 border-t-transparent"
           ></div>
-          <p class="text-sm font-semibold">
-            Loading camera feed... (might take some time)
-          </p>
+          <p class="text-sm font-semibold">Loading camera feed...</p>
         </div>
         <div
           v-else-if="feedError"
           class="flex h-full w-full flex-col items-center justify-center gap-3 p-8 text-red-700"
         >
-          <span class="text-6xl mb-2">⚠️</span>
+          <span class="mb-2 text-5xl font-black">!</span>
           <p class="max-w-md text-center text-sm font-semibold">
             {{ feedError }}
           </p>
           <button
             @click="reconnectFeed"
-            class="rounded-md border border-slate-700 bg-slate-800 px-4 py-2 text-sm font-bold text-white shadow-sm transition-colors hover:bg-slate-700"
+            class="lab-button lab-button-primary"
           >
             Reconnect
           </button>
@@ -69,8 +69,7 @@
           <button
             @click="startFeed"
             :disabled="isClosetOpen"
-            class="rounded-md border border-slate-700 bg-slate-800 px-4 py-2 text-sm font-bold text-white shadow-sm transition-all hover:-translate-y-0.5 hover:bg-slate-700 hover:shadow-md"
-            :class="isClosetOpen ? 'cursor-not-allowed opacity-60 hover:translate-y-0 hover:bg-slate-900' : ''"
+            class="lab-button lab-button-primary"
           >
             Start Feed
           </button>
@@ -79,291 +78,333 @@
           v-else
           :src="feedUrl"
           alt="Live camera feed"
-          class="w-full h-full object-cover block"
+          class="camera-feed-image block object-cover"
           :style="cameraFeedStyle"
           @error="handleFeedError"
           @load="handleFeedLoad"
         />
-        </div>
-        <div class="space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-1.5">
-          <IlluminationControl />
-
-          <div class="rounded-lg border border-slate-200 bg-white p-2 shadow-sm">
-            <div class="mb-2 flex items-center justify-between gap-2">
-              <span class="text-[11px] font-black uppercase text-slate-700">Environment</span>
-              <span
-                :class="[
-                  'flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold',
-                  environment.healthy
-                    ? 'border-teal-200 bg-teal-50 text-teal-700'
-                    : 'border-slate-200 bg-slate-50 text-slate-500',
-                ]"
-              >
-                <span
-                  :class="[
-                    'h-1.5 w-1.5 rounded-full',
-                    environment.healthy ? 'bg-teal-500' : 'bg-slate-400',
-                  ]"
-                ></span>
-                {{ environment.healthy ? "Online" : "Unknown" }}
-              </span>
-            </div>
-            <div class="grid grid-cols-2 gap-1.5">
-              <div class="rounded border border-slate-200 bg-white p-2 shadow-sm">
-                <div class="text-[10px] font-bold uppercase text-slate-500">Temp</div>
-                <div class="mt-1 text-sm font-black text-slate-900">{{ temperatureLabel }}</div>
-              </div>
-              <div class="rounded border border-slate-200 bg-white p-2 shadow-sm">
-                <div class="text-[10px] font-bold uppercase text-slate-500">Humidity</div>
-                <div class="mt-1 text-sm font-black text-slate-900">{{ humidityLabel }}</div>
-              </div>
-            </div>
-          </div>
-
-          <div class="rounded-lg border border-slate-200 bg-white p-2 shadow-sm">
-            <div class="mb-2 flex items-center justify-between">
-              <span class="text-[11px] font-black uppercase text-slate-700">Camera Controls</span>
-              <span class="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-bold text-slate-600">Controls</span>
-            </div>
-            <div class="space-y-1.5">
-              <div class="rounded border border-slate-200 bg-white p-2 shadow-sm">
-                <label class="flex cursor-pointer items-center">
-                  <input
-                    type="checkbox"
-                    v-model="autoExposure"
-                    @change="toggleAutoExposure"
-                    :disabled="!autoExposureSupported"
-                    class="h-4 w-4 rounded border-gray-300 bg-gray-100 text-slate-800 focus:ring-2 focus:ring-slate-500 disabled:cursor-not-allowed disabled:opacity-50"
-                  />
-                  <span class="ml-2 text-xs font-semibold text-gray-700">
-                    Auto-Exposure
-                  </span>
-                  <span
-                    v-if="!autoExposureSupported"
-                    class="ml-2 text-xs text-red-600"
-                  >
-                    Not Supported
-                  </span>
-                </label>
-              </div>
-
-              <div
-                v-if="gammaSupported"
-                class="rounded border border-slate-200 bg-white p-2 shadow-sm"
-              >
-                <div class="flex justify-between items-center mb-1">
-                  <label class="text-xs font-semibold text-gray-700">Gamma</label>
-                  <span
-                    class="text-xs font-mono text-gray-900 bg-gray-100 px-2 py-0.5 rounded"
-                    >{{ gamma.toFixed(2) }}</span
-                  >
-                </div>
-                <input
-                  type="range"
-                  :value="gammaToSlider(gamma)"
-                  :min="0"
-                  :max="100"
-                  step="1"
-                  @input="onGammaSliderChange"
-                  class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
-                />
-                <div class="flex justify-between text-xs text-gray-500 mt-0.5">
-                  <span>{{ gammaMin.toFixed(1) }}</span>
-                  <span>{{ gammaMax.toFixed(1) }}</span>
-                </div>
-              </div>
-
-              <div
-                v-if="!autoExposure"
-                class="rounded border border-slate-200 bg-white p-2 shadow-sm"
-              >
-                <div class="flex justify-between items-center mb-1">
-                  <label class="text-xs font-semibold text-gray-700">
-                    Exposure
-                  </label>
-                  <span
-                    class="text-xs font-mono text-gray-900 bg-gray-100 px-2 py-0.5 rounded"
-                    >{{ exposure.toFixed(1) }} ms</span
-                  >
-                </div>
-                <input
-                  type="range"
-                  :value="exposureToSlider(exposure)"
-                  :min="0"
-                  :max="100"
-                  step="1"
-                  :disabled="autoExposure"
-                  @input="onExposureSliderChange"
-                  class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 slider"
-                />
-                <div class="flex justify-between text-xs text-gray-500 mt-0.5">
-                  <span>{{ exposureMin.toFixed(3) }} ms</span>
-                  <span>{{ exposureMax.toFixed(1) }} ms</span>
-                </div>
-              </div>
-
-              <div
-                v-if="!autoExposure"
-                class="rounded border border-slate-200 bg-white p-2 shadow-sm"
-              >
-                <div class="flex justify-between items-center mb-1">
-                  <label class="text-xs font-semibold text-gray-700">Gain</label>
-                  <span
-                    class="text-xs font-mono text-gray-900 bg-gray-100 px-2 py-0.5 rounded"
-                    >{{ gain.toFixed(2) }}x</span
-                  >
-                </div>
-                <input
-                  type="range"
-                  v-model.number="gain"
-                  :min="gainMin"
-                  :max="gainMax"
-                  step="0.01"
-                  :disabled="autoExposure"
-                  @input="onGainChange"
-                  class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 slider"
-                />
-                <div class="flex justify-between text-xs text-gray-500 mt-0.5">
-                  <span>{{ gainMin.toFixed(1) }}x</span>
-                  <span>{{ gainMax.toFixed(1) }}x</span>
-                </div>
-              </div>
-
-              <div class="zoom-control rounded border border-slate-200 bg-white p-2 shadow-sm">
-                <div class="mb-1.5 flex items-center justify-between gap-2">
-                  <div>
-                    <label class="text-xs font-black uppercase text-slate-700">Zoom</label>
-                  </div>
-                  <span class="font-mono text-[11px] font-black text-slate-700">
-                    {{ zTravelPercent }}%
-                  </span>
-                </div>
-
-                <div class="grid grid-cols-[34px_minmax(0,1fr)_34px] items-center gap-2">
-                  <button
-                    @pointerdown.prevent="moveFocus(-1)"
-                    :disabled="focusDisabled"
-                    class="zoom-arrow-button"
-                    :class="focusDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'"
-                    title="Zoom down (-)"
-                  >
-                    -
-                  </button>
-                  <div
-                    class="zoom-slider-track"
-                    :title="`${zRemainingPercent}% to max`"
-                  >
-                    <div
-                      class="zoom-slider-fill"
-                      :style="{ width: `${zTravelPercent}%` }"
-                    ></div>
-                  </div>
-                  <button
-                    @pointerdown.prevent="moveFocus(1)"
-                    :disabled="focusDisabled"
-                    class="zoom-arrow-button"
-                    :class="focusDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'"
-                    title="Zoom up (+)"
-                  >
-                    +
-                  </button>
-                </div>
-
-                <div class="mt-1.5 grid grid-cols-4 gap-1">
-                  <button
-                    v-for="option in zStepOptions"
-                    :key="option.id"
-                    @click="zMultiplier = option.multiplier"
-                    class="zoom-increment-button"
-                    :class="zMultiplier === option.multiplier ? 'zoom-increment-button-active' : ''"
-                    type="button"
-                  >
-                    {{ option.label }}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Live Feed Info -->
-      <div
-        v-if="feedUrl && !feedError"
-        class="hidden"
-      >
-        Live feed • Exposure: {{ exposure.toFixed(1) }}ms • Gain:
-        {{ gain.toFixed(2) }}x
-        <span v-if="gammaSupported"> • Gamma: {{ gamma.toFixed(2) }}</span>
       </div>
     </div>
 
+    <!-- Live Feed Info -->
     <div
-      v-if="isClosetOpen"
-      class="mt-2 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-xs font-black uppercase tracking-wide text-red-700"
+      v-if="feedUrl && !feedError"
+      class="hidden"
     >
-      Lid open - capture and recording locked
+      Live feed - Exposure: {{ exposure.toFixed(1) }}ms - Gain:
+      {{ gain.toFixed(2) }}x
+      <span v-if="gammaSupported"> - Gamma: {{ gamma.toFixed(2) }}</span>
     </div>
+  </section>
 
-    <div class="mt-2 grid gap-2 xl:grid-cols-[minmax(0,1fr)_260px]">
-      <div class="grid gap-2 sm:grid-cols-2">
-      <!-- Capture Image Button -->
-      <button
-        @click="capture"
-        :disabled="cameraActionDisabled"
-        class="action-button action-button-capture"
-        :title="isClosetOpen ? 'Close the lid before capture' : 'Capture image'"
-      >
-        <span
-          v-if="camera.isCapturing.value"
-          class="flex items-center justify-center gap-2"
-        >
-          <div
-            class="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"
-          ></div>
-          Capturing...
-        </span>
-        <span v-else class="flex items-center justify-center gap-2">
-          <span class="action-button-icon action-button-icon-camera"></span>
-          Capture Image
-        </span>
-      </button>
-
-      <!-- Record Video Button -->
-      <button
-        @click="toggleRecording"
-        :disabled="cameraActionDisabled"
-        :title="isClosetOpen ? 'Close the lid before recording' : 'Record video'"
-        :class="[
-          'action-button',
-          isRecording
-            ? 'action-button-recording'
-            : 'action-button-record',
-        ]"
-      >
-        <span v-if="isRecording" class="flex items-center justify-center gap-2">
-          <span class="action-button-icon action-button-icon-stop"></span>
-          Stop Recording ({{ recordingTime.toFixed(0) }}s)
-        </span>
-        <span v-else class="flex items-center justify-center gap-2">
-          <span class="action-button-icon action-button-icon-record"></span>
-          Record Video
-        </span>
-      </button>
+  <aside class="camera-controls-column flex min-w-0 flex-col gap-3">
+    <section class="camera-side-panel lab-panel-dense environment-panel">
+      <div class="lab-control-header">
+        <span class="lab-title text-[11px]">Environment</span>
       </div>
-    </div>
-  </div>
+      <div class="grid grid-cols-2 gap-1.5">
+        <div class="lab-metric-card">
+          <div class="text-[10px] font-bold uppercase text-slate-500">Temp</div>
+          <div class="mt-1 flex items-baseline gap-1.5">
+            <span class="text-sm font-black text-slate-900">{{ temperatureLabel }}</span>
+            <span
+              v-if="temperatureFahrenheitLabel"
+              class="text-[10px] font-semibold text-slate-400"
+            >
+              {{ temperatureFahrenheitLabel }}
+            </span>
+          </div>
+        </div>
+        <div class="lab-metric-card">
+          <div class="text-[10px] font-bold uppercase text-slate-500">Humidity</div>
+          <div class="mt-1 text-sm font-black text-slate-900">{{ humidityLabel }}</div>
+        </div>
+      </div>
+      <div class="mt-2 border-t border-slate-200 pt-2">
+        <IlluminationControl />
+      </div>
+    </section>
+
+    <section class="camera-side-panel lab-panel-dense camera-controls-panel">
+      <div class="lab-control-header">
+        <span class="lab-title text-[11px]">Camera Controls</span>
+      </div>
+      <div class="space-y-1.5">
+        <div class="lab-field-card border-t-0 pt-0">
+          <label class="flex cursor-pointer items-center">
+            <input
+              type="checkbox"
+              v-model="autoExposure"
+              @change="toggleAutoExposure"
+              :disabled="!autoExposureSupported"
+              class="h-4 w-4 rounded border-gray-300 bg-gray-100 text-slate-800 focus:ring-2 focus:ring-slate-500 disabled:cursor-not-allowed disabled:opacity-50"
+            />
+            <span class="ml-2 text-xs font-semibold text-gray-700">
+              Auto-Exposure
+            </span>
+            <span
+              v-if="!autoExposureSupported"
+              class="ml-2 text-xs text-red-600"
+            >
+              Not Supported
+            </span>
+          </label>
+        </div>
+
+        <div
+          v-if="gammaSupported"
+          class="lab-field-card"
+        >
+          <div class="flex justify-between items-center mb-1">
+            <label class="text-xs font-semibold text-gray-700">Gamma</label>
+            <span
+              class="lab-mono-value"
+              >{{ gamma.toFixed(2) }}</span
+            >
+          </div>
+          <input
+            type="range"
+            :value="gammaToSlider(gamma)"
+            :min="0"
+            :max="100"
+            step="1"
+            @input="onGammaSliderChange"
+            class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+          />
+          <div class="flex justify-between text-xs text-gray-500 mt-0.5">
+            <span>{{ gammaMin.toFixed(1) }}</span>
+            <span>{{ gammaMax.toFixed(1) }}</span>
+          </div>
+        </div>
+
+        <div
+          v-if="!autoExposure"
+          class="lab-field-card"
+        >
+          <div class="flex justify-between items-center mb-1">
+            <label class="text-xs font-semibold text-gray-700">
+              Exposure
+            </label>
+            <span
+              class="lab-mono-value"
+              >{{ exposure.toFixed(1) }} ms</span
+            >
+          </div>
+          <input
+            type="range"
+            :value="exposureToSlider(exposure)"
+            :min="0"
+            :max="100"
+            step="1"
+            :disabled="autoExposure"
+            @input="onExposureSliderChange"
+            class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 slider"
+          />
+          <div class="flex justify-between text-xs text-gray-500 mt-0.5">
+            <span>{{ exposureMin.toFixed(3) }} ms</span>
+            <span>{{ exposureMax.toFixed(1) }} ms</span>
+          </div>
+        </div>
+
+        <div
+          v-if="!autoExposure"
+          class="lab-field-card"
+        >
+          <div class="flex justify-between items-center mb-1">
+            <label class="text-xs font-semibold text-gray-700">Gain</label>
+            <span
+              class="lab-mono-value"
+              >{{ gain.toFixed(2) }}x</span
+            >
+          </div>
+          <input
+            type="range"
+            v-model.number="gain"
+            :min="gainMin"
+            :max="gainMax"
+            step="0.01"
+            :disabled="autoExposure"
+            @input="onGainChange"
+            class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 slider"
+          />
+          <div class="flex justify-between text-xs text-gray-500 mt-0.5">
+            <span>{{ gainMin.toFixed(1) }}x</span>
+            <span>{{ gainMax.toFixed(1) }}x</span>
+          </div>
+        </div>
+
+        <div class="zoom-control lab-field-card">
+          <div class="mb-1.5 flex items-center justify-between gap-2">
+            <div>
+              <label class="lab-title text-xs">Zoom</label>
+            </div>
+            <span class="lab-mono-value text-[11px]">
+              {{ zTravelPercent }}%
+            </span>
+          </div>
+
+          <div class="grid grid-cols-[34px_minmax(0,1fr)_34px] items-center gap-2">
+            <button
+              @pointerdown.prevent="moveFocus(-1)"
+              :disabled="focusDisabled"
+              class="zoom-arrow-button"
+              :class="focusDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'"
+              title="Zoom down (-)"
+            >
+              -
+            </button>
+            <div
+              class="zoom-slider-track"
+              :title="`${zRemainingPercent}% to max`"
+            >
+              <div
+                class="zoom-slider-fill"
+                :style="{ width: `${zTravelPercent}%` }"
+              ></div>
+            </div>
+            <button
+              @pointerdown.prevent="moveFocus(1)"
+              :disabled="focusDisabled"
+              class="zoom-arrow-button"
+              :class="focusDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'"
+              title="Zoom up (+)"
+            >
+              +
+            </button>
+          </div>
+
+          <div class="mt-1.5 grid grid-cols-4 gap-1">
+            <button
+              v-for="option in zStepOptions"
+              :key="option.id"
+              @click="zMultiplier = option.multiplier"
+              class="zoom-increment-button"
+              :class="zMultiplier === option.multiplier ? 'zoom-increment-button-active' : ''"
+              type="button"
+            >
+              {{ option.label }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div
+        v-if="isClosetOpen"
+        class="lab-alert lab-alert-danger mt-2 uppercase tracking-wide"
+      >
+        Lid open - capture and recording locked
+      </div>
+
+      <div class="camera-action-buttons mt-3 grid gap-2 border-t border-slate-200 pt-3">
+        <button
+          @click="capture"
+          :disabled="cameraActionDisabled"
+          class="action-button action-button-capture"
+          :title="isClosetOpen ? 'Close the lid before capture' : 'Capture image'"
+        >
+          <span
+            v-if="camera.isCapturing.value"
+            class="flex items-center justify-center gap-2"
+          >
+            <div
+              class="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"
+            ></div>
+            Capturing...
+          </span>
+          <span v-else class="flex items-center justify-center gap-2">
+            <span class="action-button-icon action-button-icon-camera"></span>
+            Capture Image
+          </span>
+        </button>
+
+        <button
+          @click="toggleRecording"
+          :disabled="cameraActionDisabled"
+          :title="isClosetOpen ? 'Close the lid before recording' : 'Record video'"
+          :class="[
+            'action-button',
+            isRecording
+              ? 'action-button-recording'
+              : 'action-button-record',
+          ]"
+        >
+          <span v-if="isRecording" class="flex items-center justify-center gap-2">
+            <span class="action-button-icon action-button-icon-stop"></span>
+            Stop Recording ({{ recordingTime.toFixed(0) }}s)
+          </span>
+          <span v-else class="flex items-center justify-center gap-2">
+            <span class="action-button-icon action-button-icon-record"></span>
+            Record Video
+          </span>
+        </button>
+      </div>
+    </section>
+  </aside>
 </template>
 
 <style scoped>
-.camera-panel {
-  background:
-    radial-gradient(circle at top left, rgba(148, 163, 184, 0.16), transparent 32%),
-    linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+.camera-live-panel,
+.camera-side-panel {
+  background: #ffffff;
+}
+
+.camera-live-panel {
+  overflow: hidden;
+}
+
+.camera-controls-column {
+  min-width: 0;
+}
+
+.camera-feed-stage {
+  align-items: center;
+  display: flex;
+  justify-content: center;
+  min-height: 0;
+  min-width: 0;
+  width: 100%;
+}
+
+.camera-feed-frame {
+  aspect-ratio: var(--camera-feed-aspect-ratio, 5 / 4);
+  justify-self: start;
+  min-height: clamp(190px, 44vw, 280px);
+  max-height: min(58vh, 680px);
+  width: 100%;
+}
+
+.camera-feed-image {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  max-width: none;
+  transform-origin: center;
+}
+
+@media (min-width: 1024px) {
+  .camera-feed-stage {
+    container-type: size;
+    height: 100%;
+    width: 100%;
+  }
+
+  .camera-feed-frame {
+    aspect-ratio: var(--camera-feed-aspect-ratio, 5 / 4);
+    height: min(
+      100cqh,
+      calc(100cqw / var(--camera-feed-aspect-number, 1.25))
+    );
+    max-height: 100%;
+    min-height: 0;
+    width: min(
+      100cqw,
+      calc(100cqh * var(--camera-feed-aspect-number, 1.25))
+    );
+  }
 }
 
 .action-button {
-  @apply flex min-h-[40px] w-full cursor-pointer items-center justify-center rounded-md px-3 py-2 text-sm font-black shadow-sm transition-all disabled:cursor-not-allowed disabled:opacity-60;
+  @apply flex min-h-[40px] w-full cursor-pointer items-center justify-center rounded-md px-3 py-2 text-sm font-black transition-all disabled:cursor-not-allowed disabled:opacity-60;
 }
 
 .action-button:hover:not(:disabled) {
@@ -375,23 +416,23 @@
 }
 
 .action-button-capture {
-  @apply border border-slate-700 bg-slate-800 text-white shadow-slate-300/50 hover:bg-slate-700 hover:shadow-md;
+  @apply border border-slate-700 bg-slate-800 text-white hover:bg-slate-700;
 }
 
 .action-button-record {
-  @apply border border-slate-700 bg-slate-800 text-white shadow-slate-300/50 hover:bg-slate-700 hover:shadow-md;
+  @apply border border-slate-700 bg-slate-800 text-white hover:bg-slate-700;
 }
 
 .action-button-recording {
-  @apply border border-red-400 bg-red-600 text-white shadow-red-200/70 hover:bg-red-700 hover:shadow-md;
+  @apply border border-red-400 bg-red-600 text-white hover:bg-red-700;
 }
 
 .zoom-arrow-button {
-  @apply flex h-8 w-8 items-center justify-center rounded-md border border-slate-700 bg-slate-800 text-base font-black leading-none text-white shadow-sm transition-all hover:-translate-y-0.5 hover:bg-slate-700 hover:shadow-md active:translate-y-0;
+  @apply flex h-8 w-8 items-center justify-center rounded-md border border-slate-700 bg-slate-800 text-base font-black leading-none text-white transition-all hover:-translate-y-0.5 hover:bg-slate-700 active:translate-y-0;
 }
 
 .zoom-slider-track {
-  @apply relative h-3 overflow-hidden rounded-full border border-slate-300 bg-slate-100 shadow-inner;
+  @apply relative h-3 overflow-hidden rounded-full border border-slate-300 bg-slate-100;
 }
 
 .zoom-slider-fill {
@@ -585,8 +626,40 @@ const zTravelPercent = computed(() =>
   Math.round((clampedZPosition.value / zMaxPosition) * 100),
 );
 const zRemainingPercent = computed(() => Math.max(100 - zTravelPercent.value, 0));
+const normalizedCameraFeedRotation = computed(
+  () => ((CAMERA_FEED_ROTATION_DEGREES % 360) + 360) % 360,
+);
+const isCameraFeedQuarterTurn = computed(
+  () =>
+    normalizedCameraFeedRotation.value === 90 ||
+    normalizedCameraFeedRotation.value === 270,
+);
+const cameraFeedSourceAspect = computed(() => {
+  const { width, height } = store.cameraSettings.resolution;
+
+  if (!width || !height) {
+    return 5 / 4;
+  }
+
+  return width / height;
+});
+const cameraFeedDisplayAspect = computed(() =>
+  isCameraFeedQuarterTurn.value
+    ? 1 / cameraFeedSourceAspect.value
+    : cameraFeedSourceAspect.value,
+);
+const cameraViewportStyle = computed(() => ({
+  "--camera-feed-aspect-ratio": `${cameraFeedDisplayAspect.value}`,
+  "--camera-feed-aspect-number": `${cameraFeedDisplayAspect.value}`,
+}));
 const cameraFeedStyle = computed(() => ({
-  transform: `rotate(${CAMERA_FEED_ROTATION_DEGREES}deg)`,
+  height: isCameraFeedQuarterTurn.value
+    ? `${(1 / cameraFeedSourceAspect.value) * 100}%`
+    : "100%",
+  transform: `translate(-50%, -50%) rotate(${CAMERA_FEED_ROTATION_DEGREES}deg)`,
+  width: isCameraFeedQuarterTurn.value
+    ? `${cameraFeedSourceAspect.value * 100}%`
+    : "100%",
 }));
 const temperatureLabel = computed(() => {
   if (environment.value.temperature_c === null) {
@@ -594,6 +667,13 @@ const temperatureLabel = computed(() => {
   }
 
   return `${environment.value.temperature_c.toFixed(1)} C`;
+});
+const temperatureFahrenheitLabel = computed(() => {
+  if (environment.value.temperature_c === null) {
+    return "";
+  }
+
+  return `${((environment.value.temperature_c * 9) / 5 + 32).toFixed(1)} F`;
 });
 const humidityLabel = computed(() => {
   if (environment.value.humidity === null) {
@@ -609,7 +689,7 @@ watch(
   (isOn, wasOn) => {
     // Only log if feed is active and light status changed
     if (feedUrl.value && wasOn !== undefined && !isOn && wasOn) {
-      store.addLog("⚠️ Camera light turned OFF", "warning");
+      store.addLog("Camera light turned off", "warning");
     }
   },
 );
@@ -698,12 +778,12 @@ async function loadCameraSettings() {
 
     // Warn if auto-exposure not supported
     if (!autoExposureSupported.value) {
-      store.addLog("⚠️ Auto-exposure not supported by this camera", "warning");
+      store.addLog("Auto-exposure not supported by this camera", "warning");
     }
 
     // Warn if gamma not supported
     if (!gammaSupported.value) {
-      store.addLog("⚠️ Gamma not supported by this camera", "warning");
+      store.addLog("Gamma not supported by this camera", "warning");
     }
   } catch (error) {
     console.error("Failed to load camera settings:", error);
@@ -913,7 +993,7 @@ async function startFeed() {
     store.updateLightStatus(response.is_on);
 
     if (!response.is_on) {
-      store.addLog("⚠️ Camera light is OFF", "warning");
+      store.addLog("Camera light is off", "warning");
     }
   } catch (error) {
     console.error("Failed to check light status:", error);
@@ -934,7 +1014,7 @@ async function startFeed() {
     websocket = new WebSocket(wsUrl);
 
     websocket.onopen = () => {
-      console.log("✅ WebSocket connected");
+      console.log("WebSocket connected");
       // Stop loading immediately when connection opens
       isLoadingFeed.value = false;
       isConnecting.value = false;
@@ -955,7 +1035,7 @@ async function startFeed() {
           // Update the feed with base64 encoded JPEG
           feedUrl.value = `data:image/jpeg;base64,${message.data}`;
         } else if (message.type === "connected") {
-          console.log("🔌 Camera stream connected:", message);
+          console.log("Camera stream connected:", message);
         }
       } catch (error) {
         console.error("Error parsing WebSocket message:", error);
@@ -997,7 +1077,7 @@ async function startFeed() {
 }
 
 function stopFeed() {
-  console.log("🛑 Stopping feed...");
+  console.log("Stopping feed...");
 
   // Clear reconnection timeout
   if (reconnectTimeout) {
@@ -1019,7 +1099,7 @@ function stopFeed() {
       websocket.readyState === WebSocket.CONNECTING
     ) {
       websocket.close(1000, "User stopped feed");
-      console.log("✅ WebSocket closed");
+      console.log("WebSocket closed");
     }
     websocket = null;
   }
@@ -1134,7 +1214,7 @@ async function stopRecording() {
       const durationSec = result.duration?.toFixed(1) || "?";
 
       store.addLog(
-        `✅ Video saved: ${result.filename} (${durationSec}s, ${fileSizeMB}MB)`,
+        `Video saved: ${result.filename} (${durationSec}s, ${fileSizeMB}MB)`,
         "success",
       );
 

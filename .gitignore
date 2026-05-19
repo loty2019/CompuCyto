@@ -90,6 +90,7 @@ ENV/
 captures/
 *.jpg
 *.png
+!dashboard_frontend/src/assets/link-biosystems-logo.png
 *.bmp
 
 # IDE

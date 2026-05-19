@@ -2,30 +2,30 @@
   <div
     :class="[
       embedded
-        ? 'rounded-lg border border-slate-200 bg-white p-3 shadow-2xl'
-        : 'rounded-lg bg-white p-5 shadow-md',
+        ? 'lab-panel border-slate-300 shadow-lg'
+        : 'lab-panel',
     ]"
   >
-    <div class="mb-4 flex items-start justify-between gap-4">
+    <div class="lab-panel-header mb-3 items-start">
       <div>
-        <h2 class="m-0 text-sm font-black uppercase tracking-wide text-gray-900">
+        <h2 class="lab-title">
           Debug Console
         </h2>
         <p class="mt-1 text-xs text-slate-500">
           API, WebSocket, stage, camera, and browser warnings.
         </p>
       </div>
-      <div class="flex flex-wrap gap-2">
+      <div class="lab-segment-group flex-wrap gap-1 border-0 bg-transparent p-0">
         <button
           v-for="filter in logFilters"
           :key="filter.type"
           @click="toggleFilter(filter.type)"
           :title="`Toggle ${filter.label} logs`"
           :class="[
-            'rounded border px-2 py-1 text-xs transition-all',
+            'lab-segment border border-slate-300 bg-white',
             activeFilters.includes(filter.type)
-              ? 'border-blue-600 bg-blue-500 text-white'
-              : 'border-gray-300 bg-gray-100 text-gray-600 hover:bg-gray-200',
+              ? 'lab-segment-active'
+              : '',
           ]"
         >
           {{ filter.label }}
@@ -35,10 +35,10 @@
 
     <div
       :class="[
-        'mb-4 flex items-center justify-between rounded px-3 py-2 text-xs',
+        'mb-3 flex items-center justify-between rounded-md border px-3 py-2 text-xs font-semibold',
         wsStore.state.isConnected
-          ? 'bg-green-50 text-green-800'
-          : 'bg-red-50 text-red-800',
+          ? 'border-teal-200 bg-teal-50 text-teal-800'
+          : 'border-red-200 bg-red-50 text-red-800',
       ]"
     >
       <span>WebSocket: {{ wsStore.state.isConnected ? "Connected" : "Disconnected" }}</span>
@@ -47,21 +47,21 @@
 
     <div
       ref="logContainer"
-      class="mb-2.5 max-h-[min(58vh,460px)] overflow-y-auto rounded bg-gray-900 p-4 font-mono text-xs text-gray-300"
+      class="mb-2.5 max-h-[min(58vh,460px)] overflow-y-auto rounded-md border border-slate-800 bg-slate-950 p-4 font-mono text-xs text-slate-300"
     >
       <div
         v-for="(log, index) in filteredLogs"
         :key="index"
         class="mb-1 flex gap-2"
       >
-        <span class="shrink-0 text-gray-500">[{{ formatTime(log.timestamp) }}]</span>
+        <span class="shrink-0 text-slate-500">[{{ formatTime(log.timestamp) }}]</span>
         <span
           :class="[
             'min-w-0 flex-1 break-words',
             log.type === 'error' && 'font-medium text-red-400',
-            log.type === 'success' && 'text-green-400',
-            log.type === 'info' && 'text-blue-300',
-            log.type === 'warning' && 'text-orange-400',
+            log.type === 'success' && 'text-teal-300',
+            log.type === 'info' && 'text-slate-300',
+            log.type === 'warning' && 'text-amber-300',
           ]"
         >
           {{ log.message }}
@@ -69,7 +69,7 @@
       </div>
       <div
         v-if="filteredLogs.length === 0"
-        class="py-8 text-center text-gray-500 italic"
+        class="py-8 text-center italic text-slate-500"
       >
         No logs to display
       </div>
@@ -78,13 +78,13 @@
     <div class="flex gap-2">
       <button
         @click="store.clearLogs()"
-        class="flex-1 cursor-pointer rounded bg-gray-600 py-2 text-xs font-medium text-white transition-colors hover:bg-gray-700"
+        class="lab-button lab-button-secondary flex-1"
       >
         Clear Logs
       </button>
       <button
         @click="downloadLogs()"
-        class="flex-1 cursor-pointer rounded bg-blue-600 py-2 text-xs font-medium text-white transition-colors hover:bg-blue-700"
+        class="lab-button lab-button-primary flex-1"
       >
         Download Logs
       </button>

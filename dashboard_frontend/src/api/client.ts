@@ -381,6 +381,20 @@ export const controlAPI = {
 };
 
 // Image endpoints
+export const normalizeImage = (image: any): Image => {
+  return {
+    ...image,
+    thumbnail_path: image.thumbnail_path ?? image.thumbnailPath ?? null,
+    captured_at: image.captured_at ?? image.capturedAt ?? "",
+    x_position: image.x_position ?? image.xPosition ?? null,
+    y_position: image.y_position ?? image.yPosition ?? null,
+    z_position: image.z_position ?? image.zPosition ?? null,
+    exposure_time: image.exposure_time ?? image.exposureTime ?? null,
+    file_size: image.file_size ?? image.fileSize ?? null,
+    job_id: image.job_id ?? image.jobId ?? null,
+  };
+};
+
 export const imageAPI = {
   async listImages(params?: {
     skip?: number;
@@ -394,7 +408,7 @@ export const imageAPI = {
     const { data } = await apiClient.get<any>("/api/v1/images", { params });
     // Transform NestJS response format to expected format
     return {
-      images: data.data || [],
+      images: (data.data || []).map(normalizeImage),
       total: data.pagination?.total || 0,
       skip: ((data.pagination?.page || 1) - 1) * (data.pagination?.limit || 20),
       limit: data.pagination?.limit || 20,
@@ -403,7 +417,7 @@ export const imageAPI = {
 
   async getImage(imageId: number): Promise<Image> {
     const { data } = await apiClient.get<Image>(`/api/v1/images/${imageId}`);
-    return data;
+    return normalizeImage(data);
   },
 
   async deleteImage(

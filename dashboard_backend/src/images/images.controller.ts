@@ -131,6 +131,7 @@ export class ImagesController {
       effectiveFilter === 'mine' ? userId : null,
       page,
       limit,
+      userId,
     );
 
     console.log('📸 [CONTROLLER] Returning images:', {
@@ -183,10 +184,7 @@ export class ImagesController {
     status: 403,
     description: 'Forbidden - Not your image',
   })
-  async deleteImage(
-    @Request() req,
-    @Param('id', ParseIntPipe) imageId: number,
-  ) {
+  async deleteImage(@Request() req, @Param('id', ParseIntPipe) imageId: number) {
     const userId = req.user.id;
     const isAdmin = req.user.role === 'admin';
 

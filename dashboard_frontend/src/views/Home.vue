@@ -1,27 +1,27 @@
 <template>
-  <div class="mx-auto max-w-screen-2xl px-2 pb-3 pt-2 sm:px-3">
+  <div class="mx-auto max-w-screen-2xl px-2 pb-4 pt-2 sm:px-3">
     <!-- Main Control Panel: prioritize camera preview with a compact control rail -->
-    <div class="mb-3 grid grid-cols-1 items-stretch gap-2 xl:grid-cols-[minmax(0,1fr)_360px] 2xl:grid-cols-[minmax(0,1fr)_400px]">
-      <div id="camera" class="min-w-0 xl:h-full">
-        <CameraControl />
-      </div>
+    <div class="main-control-grid mb-3 grid grid-cols-1 items-stretch gap-3">
+      <CameraControl />
 
-      <aside class="flex min-w-0 flex-col gap-2 xl:sticky xl:top-20 xl:self-start">
+      <aside
+        class="stage-map-column flex min-w-0 flex-col gap-3 xl:sticky xl:top-20 xl:self-start"
+      >
         <div id="stage"><StageControl /></div>
         <div id="map"><MicroscopeMap compact /></div>
       </aside>
     </div>
 
-    <section class="mb-5 grid grid-cols-1 gap-2 xl:grid-cols-2">
+    <section class="mb-3 grid grid-cols-1 gap-3 xl:grid-cols-2">
       <div id="gallery" class="min-w-0"><ImageGallery /></div>
       <div id="video-gallery" class="min-w-0"><VideoGallery /></div>
     </section>
-    <div id="jobs" class="mb-5"><JobManager /></div>
+    <div id="jobs" class="mb-4"><JobManager /></div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted } from "vue";
+import { onBeforeUnmount, onMounted } from "vue";
 import { useMicroscopeStore } from "@/stores/microscope";
 import { controlAPI } from "@/api/client";
 import { useWebSocket } from "@/composables/useWebSocket";
@@ -33,6 +33,8 @@ import ImageGallery from "@/components/ImageGallery.vue";
 import VideoGallery from "@/components/VideoGallery.vue";
 
 const store = useMicroscopeStore();
+
+let healthPollInterval: ReturnType<typeof setInterval> | null = null;
 
 // Initialize WebSocket
 useWebSocket();
@@ -63,7 +65,7 @@ onMounted(async () => {
   }
 
   // Poll health status every 10 seconds
-  setInterval(async () => {
+  healthPollInterval = setInterval(async () => {
     try {
       const health = await controlAPI.getHealth();
       store.updateSystemStatus({
@@ -78,6 +80,12 @@ onMounted(async () => {
     }
   }, 10000);
 });
+
+onBeforeUnmount(() => {
+  if (healthPollInterval) {
+    clearInterval(healthPollInterval);
+  }
+});
 </script>
 
 <style scoped>
@@ -87,5 +95,11 @@ onMounted(async () => {
 #jobs,
 #gallery {
   @apply scroll-mt-24;
+}
+
+@media (min-width: 1280px) {
+  .main-control-grid {
+    grid-template-columns: minmax(0, 1fr) 300px 320px;
+  }
 }
 </style>

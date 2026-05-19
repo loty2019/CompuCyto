@@ -1,9 +1,7 @@
 <template>
-  <div
-    class="stage-panel overflow-hidden rounded-lg border border-slate-200/80 bg-white p-2 shadow-md"
-  >
-    <div class="mb-1.5 flex items-center justify-between gap-2">
-      <h2 class="text-sm font-black uppercase tracking-wide text-slate-950">
+  <div class="stage-panel lab-panel-dense overflow-hidden">
+    <div class="lab-panel-header mb-1.5">
+      <h2 class="lab-title">
         Stage
       </h2>
       
@@ -11,14 +9,14 @@
 
     <div
       v-if="isClosetOpen"
-      class="mb-1.5 rounded-md border border-red-300 bg-red-50 px-2 py-1 text-[10px] font-black uppercase tracking-wide text-red-700"
+      class="lab-alert lab-alert-danger mb-1.5 px-2 py-1 text-[10px] uppercase tracking-wide"
     >
       Lid open - stage locked
     </div>
 
     <div
       v-if="!stageReady"
-      class="mb-1.5 rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-[10px] font-black uppercase tracking-wide text-amber-700"
+      class="lab-alert lab-alert-warning mb-1.5 px-2 py-1 text-[10px] uppercase tracking-wide"
     >
       Home required before movement
     </div>
@@ -34,21 +32,25 @@
       </div>
     </div>
 
-    <div
-      class="mb-1.5 grid grid-cols-2 gap-1 rounded-md border border-slate-200 bg-slate-50 p-1 shadow-inner"
-    >
+    <div class="mb-2 mt-3 grid grid-cols-2 gap-1.5 border-t border-slate-200 pt-3 pb-1.5">
       <div class="position-chip">
         <span class="position-axis">X</span>
-        <span class="position-value">{{ store.position.x.toFixed(1) }}</span>
+        <span class="position-reading">
+          <span class="position-value">{{ store.position.x.toFixed(1) }}</span>
+          <span class="position-limit">/ {{ STAGE_AXIS_MAX.x.toFixed(1) }}</span>
+        </span>
       </div>
       <div class="position-chip">
         <span class="position-axis">Y</span>
-        <span class="position-value">{{ store.position.y.toFixed(1) }}</span>
+        <span class="position-reading">
+          <span class="position-value">{{ store.position.y.toFixed(1) }}</span>
+          <span class="position-limit">/ {{ STAGE_AXIS_MAX.y.toFixed(1) }}</span>
+        </span>
       </div>
     </div>
 
-    <div class="rounded-lg border border-slate-200 bg-slate-50 p-1.5">
-      <div class="mb-1.5">
+    <div class="mt-2 border-t border-slate-200 pt-3">
+      <div class="mb-3">
         <div class="multiplier-grid">
           <button
             v-for="profile in jogProfiles"
@@ -105,7 +107,7 @@
             homeStage();
           "
           :disabled="homeDisabled"
-          class="stage-button stage-button-primary"
+          class="stage-button stage-button-secondary"
           :class="
             homeDisabled
               ? 'cursor-not-allowed opacity-60'
@@ -149,10 +151,10 @@
       </div>
     </div>
 
-    <div class="mt-1.5">
+    <div class="mt-3 border-t border-slate-200 pt-3">
       <button
         @click="stage.stop()"
-        class="stage-button w-full cursor-pointer bg-red-600 text-white shadow-md shadow-red-300/40 hover:bg-red-700"
+        class="stage-button w-full cursor-pointer bg-red-600 text-white hover:bg-red-700"
         :style="getButtonStyle('stop')"
         title="Emergency Stop"
       >
@@ -385,25 +387,27 @@ function getButtonStyle(buttonId: string): string {
 
 <style scoped>
 .stage-panel {
-  background:
-    radial-gradient(
-      circle at top left,
-      rgba(148, 163, 184, 0.16),
-      transparent 34%
-    ),
-    linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  background: #ffffff;
 }
 
 .position-chip {
-  @apply flex flex-col rounded border border-slate-200 bg-white px-1.5 py-0.5 shadow-sm;
+  @apply flex flex-col rounded-md border border-slate-200/70 bg-slate-50/80 px-2 py-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)];
 }
 
 .position-axis {
   @apply text-[9px] font-bold uppercase tracking-wide text-slate-500;
 }
 
+.position-reading {
+  @apply flex items-baseline gap-1 whitespace-nowrap font-mono;
+}
+
 .position-value {
-  @apply font-mono text-xs font-semibold tracking-tight text-slate-900;
+  @apply text-xs font-semibold tracking-tight text-slate-900;
+}
+
+.position-limit {
+  @apply text-[10px] font-medium tracking-tight text-slate-400;
 }
 
 .home-chip {
@@ -424,15 +428,15 @@ function getButtonStyle(buttonId: string): string {
 }
 
 .stage-button {
-  @apply flex min-h-[34px] items-center justify-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-bold shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md active:translate-y-0;
+  @apply flex min-h-[34px] items-center justify-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-bold transition-all hover:-translate-y-0.5 active:translate-y-0;
 }
 
 .stage-button-primary {
-  @apply border border-slate-700 bg-slate-800 text-white shadow-slate-300/50 hover:bg-slate-700;
+  @apply border border-slate-800 bg-slate-900 text-white hover:bg-slate-700;
 }
 
 .stage-button-secondary {
-  @apply border border-slate-300 bg-white text-slate-700 shadow-slate-200/60 hover:border-slate-500 hover:text-slate-950;
+  @apply border border-slate-300 bg-white text-slate-700 hover:border-slate-500 hover:bg-slate-50 hover:text-slate-950;
 }
 
 .stage-button-symbol {

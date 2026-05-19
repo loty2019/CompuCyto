@@ -1,14 +1,7 @@
 <template>
-  <section
-    :class="[
-      'map-panel rounded-lg border border-slate-200/80 bg-white shadow-md',
-      compact ? 'p-1.5' : 'p-3',
-    ]"
-  >
-    <div class="mb-1.5 flex items-center justify-between gap-2">
-      <h2 class="text-sm font-black uppercase tracking-wide text-slate-950">
-        MAP
-      </h2>
+  <section :class="['map-panel lab-panel-dense', compact ? 'p-1.5' : 'p-3']">
+    <div class="lab-panel-header mb-1.5">
+      <h2 class="lab-title">MAP</h2>
 
       <button
         type="button"
@@ -21,10 +14,7 @@
       </button>
     </div>
 
-    <div
-      v-if="pickMode"
-      class="destination-strip"
-    >
+    <div v-if="pickMode" class="destination-strip">
       <span>Destination</span>
       <strong>X {{ destinationLabel("x") }}</strong>
       <strong>Y {{ destinationLabel("y") }}</strong>
@@ -41,234 +31,250 @@
       @pointermove="handleMapPointerMove"
       @pointerleave="hoverTarget = null"
     >
-        <defs>
-          <linearGradient id="stagePlate" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stop-color="#ffffff" />
-            <stop offset="62%" stop-color="#f1f5f9" />
-            <stop offset="100%" stop-color="#e2e8f0" />
-          </linearGradient>
-          <pattern id="stageGrid" width="18" height="18" patternUnits="userSpaceOnUse">
-            <path
-              d="M 18 0 L 0 0 0 18"
-              fill="none"
-              stroke="#d8dee8"
-              stroke-width="0.7"
-            />
-          </pattern>
-          <pattern id="stageMajorGrid" width="90" height="90" patternUnits="userSpaceOnUse">
-            <path
-              d="M 90 0 L 0 0 0 90"
-              fill="none"
-              stroke="#aab4c4"
-              stroke-width="1"
-            />
-          </pattern>
-          <clipPath id="stageClip">
-            <rect
-              :x="stageLeft"
-              :y="stageTop"
-              :width="stageWidth"
-              :height="stageHeight"
-              rx="7"
-            />
-          </clipPath>
-        </defs>
-
-        <g>
-          <rect
-            :x="stageLeft"
-            :y="stageTop"
-            :width="stageWidth"
-            :height="stageHeight"
-            rx="4"
-            fill="url(#stagePlate)"
-            stroke="#334155"
-            stroke-width="1.5"
-          />
+      <defs>
+        <linearGradient id="stagePlate" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#ffffff" />
+          <stop offset="62%" stop-color="#fafafa" />
+          <stop offset="100%" stop-color="#f4f4f5" />
+        </linearGradient>
+        <pattern
+          id="stageGrid"
+          width="18"
+          height="18"
+          patternUnits="userSpaceOnUse"
+        >
           <path
-            :d="`M ${stageLeft + 2} ${stageBottom - 3} H ${stageRight - 2} M ${stageRight - 3} ${stageTop + 2} V ${stageBottom - 2}`"
-            stroke="#0f172a"
-            stroke-width="1"
-            opacity="0.14"
+            d="M 18 0 L 0 0 0 18"
             fill="none"
+            stroke="#e5e5e5"
+            stroke-width="0.7"
           />
-        </g>
-
-        <g clip-path="url(#stageClip)">
+        </pattern>
+        <pattern
+          id="stageMajorGrid"
+          width="90"
+          height="90"
+          patternUnits="userSpaceOnUse"
+        >
+          <path
+            d="M 90 0 L 0 0 0 90"
+            fill="none"
+            stroke="#d4d4d4"
+            stroke-width="1"
+          />
+        </pattern>
+        <clipPath id="stageClip">
           <rect
             :x="stageLeft"
             :y="stageTop"
             :width="stageWidth"
             :height="stageHeight"
-            fill="url(#stageGrid)"
-            opacity="0.85"
+            rx="7"
           />
-          <rect
-            :x="stageLeft"
-            :y="stageTop"
-            :width="stageWidth"
-            :height="stageHeight"
-            fill="url(#stageMajorGrid)"
-            opacity="0.55"
-          />
-          <line
-            :x1="stageLeft"
-            :y1="stageTop"
-            :x2="stageRight"
-            :y2="stageTop"
-            stroke="#0f172a"
-            stroke-width="2"
-            opacity="0.26"
-          />
-          <line
-            :x1="stageRight"
-            :y1="stageTop"
-            :x2="stageRight"
-            :y2="stageBottom"
-            stroke="#0f172a"
-            stroke-width="2"
-            opacity="0.26"
-          />
-        </g>
+        </clipPath>
+      </defs>
 
+      <g>
         <rect
           :x="stageLeft"
           :y="stageTop"
           :width="stageWidth"
           :height="stageHeight"
-          fill="transparent"
-          :class="pickMode ? 'stage-pick-zone' : ''"
+          rx="4"
+          fill="url(#stagePlate)"
+          stroke="#334155"
+          stroke-width="1.5"
         />
+        <path
+          :d="`M ${stageLeft + 2} ${stageBottom - 3} H ${stageRight - 2} M ${stageRight - 3} ${stageTop + 2} V ${stageBottom - 2}`"
+          stroke="#0f172a"
+          stroke-width="1"
+          opacity="0.14"
+          fill="none"
+        />
+      </g>
 
-        <g class="map-labels">
-          <text
-            :x="stageRight + 6"
-            :y="stageBottom - 3"
-            text-anchor="start"
-            fill="#475569"
-          >
-            X max
-          </text>
-          <text
-            :x="stageLeft - 8"
-            :y="stageTop + 2"
-            text-anchor="end"
-            fill="#475569"
-            :transform="`rotate(-90 ${stageLeft - 8} ${stageTop + 2})`"
-          >
-            Y max
-          </text>
-          <text
-            :x="stageLeft - 7"
-            :y="stageBottom + 6"
-            text-anchor="end"
-            fill="#64748b"
-          >
-            0
-          </text>
-        </g>
+      <g clip-path="url(#stageClip)">
+        <rect
+          :x="stageLeft"
+          :y="stageTop"
+          :width="stageWidth"
+          :height="stageHeight"
+          fill="url(#stageGrid)"
+          opacity="0.85"
+        />
+        <rect
+          :x="stageLeft"
+          :y="stageTop"
+          :width="stageWidth"
+          :height="stageHeight"
+          fill="url(#stageMajorGrid)"
+          opacity="0.55"
+        />
+        <line
+          :x1="stageLeft"
+          :y1="stageTop"
+          :x2="stageRight"
+          :y2="stageTop"
+          stroke="#0f172a"
+          stroke-width="2"
+          opacity="0.26"
+        />
+        <line
+          :x1="stageRight"
+          :y1="stageTop"
+          :x2="stageRight"
+          :y2="stageBottom"
+          stroke="#0f172a"
+          stroke-width="2"
+          opacity="0.26"
+        />
+      </g>
 
-        <g v-if="pickMode && hoverTarget" :transform="`translate(${hoverMarkerX}, ${hoverMarkerY})`">
-          <line
-            :x1="stageLeft - hoverMarkerX"
-            y1="0"
-            :x2="stageRight - hoverMarkerX"
-            y2="0"
-            stroke="#0f172a"
-            stroke-width="1.2"
-            opacity="0.58"
-          />
-          <line
-            x1="0"
-            :y1="stageTop - hoverMarkerY"
-            x2="0"
-            :y2="stageBottom - hoverMarkerY"
-            stroke="#0f172a"
-            stroke-width="1.2"
-            opacity="0.58"
-          />
-        </g>
+      <rect
+        :x="stageLeft"
+        :y="stageTop"
+        :width="stageWidth"
+        :height="stageHeight"
+        fill="transparent"
+        :class="pickMode ? 'stage-pick-zone' : ''"
+      />
 
-        <g
-          class="stage-marker"
-          :class="isMoving ? 'stage-marker-moving' : ''"
-          :transform="`translate(${markerX}, ${markerY})`"
+      <g class="map-labels">
+        <text
+          :x="stageRight + 6"
+          :y="stageBottom - 3"
+          text-anchor="start"
+          fill="#475569"
         >
-          <line
-            :x1="stageLeft - markerX"
-            y1="0"
-            :x2="stageRight - markerX"
-            y2="0"
-            stroke="#334155"
-            stroke-width="1"
-            stroke-dasharray="3 4"
-            opacity="0.32"
-          />
-          <line
-            x1="0"
-            :y1="stageTop - markerY"
-            x2="0"
-            :y2="stageBottom - markerY"
-            stroke="#334155"
-            stroke-width="1"
-            stroke-dasharray="3 4"
-            opacity="0.32"
-          />
-          <rect
-            class="stage-marker-ping"
-            x="-9"
-            y="-9"
-            width="18"
-            height="18"
-            rx="2"
-            fill="none"
-            stroke="#2563eb"
-            stroke-width="1.4"
-          />
-          <rect
-            class="stage-marker-core"
-            x="-7"
-            y="-7"
-            width="14"
-            height="14"
-            rx="2"
-            fill="#0f172a"
-          />
-          <path
-            class="stage-marker-crosshair"
-            d="M -13 0 H -8 M 8 0 H 13 M 0 -13 V -8 M 0 8 V 13"
-            stroke="#0f172a"
-            stroke-width="1.4"
-            stroke-linecap="round"
-          />
-          <circle
-            v-if="isMoving"
-            class="stage-marker-ring"
-            r="15"
-            fill="none"
-            stroke="#2563eb"
-            stroke-width="1.8"
-            opacity="0.55"
-          />
-        </g>
+          X max
+        </text>
+        <text
+          :x="stageLeft - 8"
+          :y="stageTop + 2"
+          text-anchor="end"
+          fill="#475569"
+          :transform="`rotate(-90 ${stageLeft - 8} ${stageTop + 2})`"
+        >
+          Y max
+        </text>
+        <text
+          :x="stageLeft - 7"
+          :y="stageBottom + 6"
+          text-anchor="end"
+          fill="#64748b"
+        >
+          0
+        </text>
+      </g>
 
-        <g v-if="lastPickedTarget" :transform="`translate(${targetMarkerX}, ${targetMarkerY})`">
-          <rect x="-9" y="-9" width="18" height="18" fill="none" stroke="#2563eb" stroke-width="1.8" stroke-dasharray="3 3" />
-          <circle r="2.5" fill="#2563eb" />
-        </g>
+      <g
+        v-if="pickMode && hoverTarget"
+        :transform="`translate(${hoverMarkerX}, ${hoverMarkerY})`"
+      >
+        <line
+          :x1="stageLeft - hoverMarkerX"
+          y1="0"
+          :x2="stageRight - hoverMarkerX"
+          y2="0"
+          stroke="#0f172a"
+          stroke-width="1.2"
+          opacity="0.58"
+        />
+        <line
+          x1="0"
+          :y1="stageTop - hoverMarkerY"
+          x2="0"
+          :y2="stageBottom - hoverMarkerY"
+          stroke="#0f172a"
+          stroke-width="1.2"
+          opacity="0.58"
+        />
+      </g>
 
-        <g>
-          <text
-            :x="mapWidth / 2"
-            :y="stageBottom + 12.5"
-            text-anchor="middle"
-            fill="#475569"
-            font-size="8"
-            font-weight="900"
-          >
-            LID SIDE / FRONT
-          </text>
-        </g>
+      <g
+        class="stage-marker"
+        :class="isMoving ? 'stage-marker-moving' : ''"
+        :transform="`translate(${markerX}, ${markerY})`"
+      >
+        <line
+          :x1="stageLeft - markerX"
+          y1="0"
+          :x2="stageRight - markerX"
+          y2="0"
+          stroke="#334155"
+          stroke-width="1"
+          stroke-dasharray="3 4"
+          opacity="0.32"
+        />
+        <line
+          x1="0"
+          :y1="stageTop - markerY"
+          x2="0"
+          :y2="stageBottom - markerY"
+          stroke="#334155"
+          stroke-width="1"
+          stroke-dasharray="3 4"
+          opacity="0.32"
+        />
+        <rect
+          class="stage-marker-ping"
+          x="-9"
+          y="-9"
+          width="18"
+          height="18"
+          rx="2"
+          fill="none"
+          stroke="#2563eb"
+          stroke-width="1.4"
+        />
+        <rect
+          class="stage-marker-core"
+          x="-7"
+          y="-7"
+          width="14"
+          height="14"
+          rx="2"
+          fill="#0f172a"
+        />
+        <path
+          class="stage-marker-crosshair"
+          d="M -13 0 H -8 M 8 0 H 13 M 0 -13 V -8 M 0 8 V 13"
+          stroke="#0f172a"
+          stroke-width="1.4"
+          stroke-linecap="round"
+        />
+      </g>
+
+      <g
+        v-if="lastPickedTarget"
+        :transform="`translate(${targetMarkerX}, ${targetMarkerY})`"
+      >
+        <rect
+          x="-9"
+          y="-9"
+          width="18"
+          height="18"
+          fill="none"
+          stroke="#2563eb"
+          stroke-width="1.8"
+          stroke-dasharray="3 3"
+        />
+        <circle r="2.5" fill="#2563eb" />
+      </g>
+
+      <g>
+        <text
+          :x="mapWidth / 2"
+          :y="stageBottom + 12.5"
+          text-anchor="middle"
+          fill="#475569"
+          font-size="8"
+          font-weight="900"
+        >
+          LID SIDE / FRONT
+        </text>
+      </g>
     </svg>
   </section>
 </template>
@@ -314,7 +320,11 @@ const stageReady = computed(
     !!store.limitSensors?.z.homed,
 );
 const pickModeDisabled = computed(
-  () => isMoving.value || stage.isMoving.value || isClosetOpen.value || !stageReady.value,
+  () =>
+    isMoving.value ||
+    stage.isMoving.value ||
+    isClosetOpen.value ||
+    !stageReady.value,
 );
 
 const markerX = computed(() => positionToMapX(currentX.value));
@@ -386,7 +396,10 @@ async function handleMapClick(event: MouseEvent) {
 
   const target = pointToStageTarget(point);
   if (!target) {
-    store.addLog("Map move blocked: choose a point inside the stage area", "warning");
+    store.addLog(
+      "Map move blocked: choose a point inside the stage area",
+      "warning",
+    );
     return;
   }
 
@@ -482,7 +495,7 @@ function wait(ms: number) {
 }
 
 .microscope-map {
-  @apply block h-auto w-full border rounded border-slate-200 bg-transparent;
+  @apply block h-auto w-full rounded-md border border-slate-200 bg-transparent;
 }
 
 .microscope-map-pick,
@@ -491,7 +504,7 @@ function wait(ms: number) {
 }
 
 .map-action {
-  @apply flex min-h-[30px] items-center justify-center rounded-md border border-slate-300 bg-white px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-slate-700 shadow-sm transition-all hover:-translate-y-0.5 hover:border-slate-500 hover:bg-slate-50 hover:text-slate-950 hover:shadow-md active:translate-y-0;
+  @apply inline-flex min-h-[30px] items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-slate-700 transition-all hover:-translate-y-0.5 hover:border-slate-500 hover:bg-slate-50 hover:text-slate-950 active:translate-y-0;
 }
 
 .map-action[aria-disabled="true"] {
@@ -499,7 +512,7 @@ function wait(ms: number) {
 }
 
 .map-action-active {
-  @apply border-slate-800 bg-slate-800 text-white shadow-slate-300/50 hover:border-slate-800 hover:bg-slate-700 hover:text-white;
+  @apply border-slate-800 bg-slate-900 text-white hover:border-slate-800 hover:bg-slate-700 hover:text-white;
 }
 
 .stage-marker {
@@ -508,7 +521,6 @@ function wait(ms: number) {
 
 .stage-marker-core,
 .stage-marker-crosshair,
-.stage-marker-ring,
 .stage-marker-ping {
   transform-box: fill-box;
   transform-origin: center;
@@ -516,10 +528,6 @@ function wait(ms: number) {
 
 .stage-marker-moving .stage-marker-core {
   animation: marker-core-breathe 1.15s ease-in-out infinite;
-}
-
-.stage-marker-moving .stage-marker-ring {
-  animation: marker-ring-breathe 1.15s ease-in-out infinite;
 }
 
 .stage-marker-ping {
@@ -537,7 +545,7 @@ function wait(ms: number) {
 }
 
 .destination-strip {
-  @apply mb-1.5 flex items-center gap-2 rounded border border-slate-300 bg-slate-50 px-2 py-1 font-mono text-xs text-slate-900;
+  @apply mb-1.5 flex items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-2 py-1 font-mono text-xs text-slate-900;
 }
 
 .destination-strip span {
@@ -555,16 +563,6 @@ function wait(ms: number) {
   }
   50% {
     opacity: 1;
-  }
-}
-
-@keyframes marker-ring-breathe {
-  0%,
-  100% {
-    opacity: 0.32;
-  }
-  50% {
-    opacity: 0.58;
   }
 }
 

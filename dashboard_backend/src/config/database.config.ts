@@ -10,7 +10,7 @@ import { ConfigService } from './config.service';
  * Features:
  * - Auto-loads all entities from **\/*.entity.ts files
  * - Auto-synchronize schema in development (creates/updates tables)
- * - Logging enabled in development for debugging
+ * - SQL logging can be enabled with DATABASE_LOGGING=true
  * - Migrations support for production deployments
  *
  * IMPORTANT: synchronize: true should NEVER be used in production!
@@ -30,7 +30,7 @@ export const getDatabaseConfig = (
   database: configService.databaseName, // From DATABASE_NAME env var
   entities: [__dirname + '/../**/*.entity{.ts,.js}'], // Auto-load all entities
   synchronize: configService.isDevelopment, // DANGER: Only in dev! Auto-creates tables
-  logging: configService.isDevelopment, // SQL query logging in dev
+  logging: configService.databaseLogging,
   migrations: [__dirname + '/../database/migrations/*{.ts,.js}'], // Migration files location
   migrationsRun: false, // Don't auto-run migrations (use npm script)
 });

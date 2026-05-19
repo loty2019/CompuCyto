@@ -88,6 +88,7 @@ AXIS_MAX_POSITIONS = {
     "y": settings.max_y_position,
     "z": settings.max_z_position,
 }
+PSU_REACTIVATION_DELAY_SECONDS = max(settings.psu_reactivation_delay_seconds, 0.0)
 
 h = None
 led_lamp_isOn = False
@@ -100,6 +101,7 @@ axis_positions = {"x": 0, "y": 0, "z": 0}
 axis_is_moving = {"x": False, "y": False, "z": False}
 axis_is_homing = {"x": False, "y": False, "z": False}
 axis_is_homed = {"x": False, "y": False, "z": False}
+stage_requires_rehome = False
 axis_move_direction = {"x": 0, "y": 0, "z": 0}
 axis_stop_events = {axis: threading.Event() for axis in MOTOR_AXES}
 axis_motion_locks = {axis: threading.Lock() for axis in MOTOR_AXES}
@@ -177,6 +179,7 @@ class StageCommandResponse(BaseModel):
     status: str
     position: StagePosition
     limit_sensors: Dict[str, LimitSensorState]
+    psu_on: bool
     message: str
 
 
@@ -200,7 +203,7 @@ def read_limit_sensor(axis: str) -> LimitSensorState:
         pin=LIMIT_SENSOR_PINS[axis],
         active=active,
         raw_state=raw_state,
-        homed=axis_is_homed[axis],
+        homed=axis_is_homed[axis] and not stage_requires_rehome,
     )
 
 
@@ -263,6 +266,68 @@ def request_stage_stop():
                 lgpio.gpio_write(h, pins["step"], 0)
             except Exception as e:
                 logger.warning("Failed to drop step pin during stop: %s", e)
+
+
+def mark_stage_requires_homing() -> None:
+    """Invalidate home state after motor power is removed."""
+    global stage_requires_rehome
+
+    stage_requires_rehome = True
+    for axis in MOTOR_AXES:
+        axis_is_homed[axis] = False
+
+
+def clear_stage_requires_rehome_if_homed() -> None:
+    """Allow motion again once every axis has been homed under PSU power."""
+    global stage_requires_rehome
+
+    if all(axis_is_homed[axis] for axis in MOTOR_AXES):
+        stage_requires_rehome = False
+
+
+def read_psu_state() -> bool:
+    """Return the latest PSU output state."""
+    global psu_isOn
+
+    if h is None:
+        return psu_isOn
+
+    try:
+        psu_isOn = lgpio.gpio_read(h, PSU_PIN) == 1
+    except Exception as e:
+        logger.warning("Failed to read PSU state: %s", e)
+
+    return psu_isOn
+
+
+def set_psu_state(enabled: bool, reason: str = "") -> None:
+    """Set PSU output and invalidate homing when motor power is removed."""
+    global psu_isOn
+
+    if h is None:
+        raise RuntimeError("GPIO is not initialized")
+
+    lgpio.gpio_write(h, PSU_PIN, 1 if enabled else 0)
+    psu_isOn = enabled
+
+    if not enabled:
+        mark_stage_requires_homing()
+
+    if reason:
+        logger.warning("PSU turned %s: %s", "ON" if enabled else "OFF", reason)
+    else:
+        logger.info("PSU turned %s", "ON" if enabled else "OFF")
+
+
+def ensure_psu_ready_for_motion(action: str) -> None:
+    """Reactivate motor power before controlled motion."""
+    if read_psu_state():
+        return
+
+    set_psu_state(True, f"reactivating before {action}")
+
+    if PSU_REACTIVATION_DELAY_SECONDS > 0:
+        time.sleep(PSU_REACTIVATION_DELAY_SECONDS)
 
 
 def set_axis_direction(axis: str, direction: int) -> None:
@@ -547,6 +612,12 @@ def run_axis_move_synchronously(axis: str, target_position: int):
 
 def validate_axis_target(axis: str, target_position: int) -> None:
     """Reject unsafe moves before any axis thread is started."""
+    if stage_requires_rehome:
+        raise HTTPException(
+            status_code=409,
+            detail="Stage must be homed after PSU power loss",
+        )
+
     if not axis_is_homed[axis]:
         raise HTTPException(
             status_code=409,
@@ -620,6 +691,8 @@ def run_homing_sequence(axes: List[str]) -> None:
     """Home axes serially."""
     for axis in axes:
         run_axis_homing(axis)
+
+    clear_stage_requires_rehome_if_homed()
 
     if "z" in axes and Z_HOME_FOCUS_POSITION > 0:
         logger.info("Moving Z to post-home focus position %s", Z_HOME_FOCUS_POSITION)
@@ -844,7 +917,7 @@ async def root():
             "GET /limits": "Get X/Y/Z home sensor states",
             "POST /move": "Move X/Y/Z axes",
             "POST /home": "Home X/Y/Z axes by moving negative until optical sensors trigger",
-            "POST /stop": "Stop stage movement"
+            "POST /stop": "Stop stage movement, turn off PSU, and require homing before movement"
         }
     }
 
@@ -933,6 +1006,11 @@ async def move_stage(request: StageMoveRequest):
     for axis, target_position in targets.items():
         validate_axis_target(axis, target_position)
 
+    try:
+        ensure_psu_ready_for_motion("stage movement")
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
     for axis, target_position in targets.items():
         start_axis_move(axis, target_position)
 
@@ -960,6 +1038,11 @@ async def home_stage():
         raise HTTPException(status_code=409, detail="Stop movement before homing")
 
     try:
+        ensure_psu_ready_for_motion("stage homing")
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+    try:
         await asyncio.to_thread(run_homing_sequence, ["x", "y", "z"])
     except RuntimeError as e:
         request_stage_stop()
@@ -971,6 +1054,7 @@ async def home_stage():
         status="homed",
         position=current_stage_position(),
         limit_sensors=read_limit_sensors(),
+        psu_on=read_psu_state(),
         message=f"Stage homed at zero on optical sensors; Z parked at {Z_HOME_FOCUS_POSITION}",
     )
 
@@ -979,13 +1063,19 @@ async def home_stage():
 async def stop_stage():
     """Request an immediate stop for active stage movement."""
     request_stage_stop()
+    try:
+        set_psu_state(False, "emergency stop requested")
+    except Exception as e:
+        logger.error("Stage stopped, but PSU shutdown failed: %s", e)
+        raise HTTPException(status_code=500, detail=f"Stage stopped, but PSU shutdown failed: {e}")
 
     return StageCommandResponse(
         success=True,
         status="stopping" if any(axis_is_moving.values()) else "idle",
         position=current_stage_position(),
         limit_sensors=read_limit_sensors(),
-        message="Stage stop requested",
+        psu_on=read_psu_state(),
+        message="Emergency stop requested; PSU is OFF. Home stage to reactivate motor power.",
     )
 
 
@@ -1029,31 +1119,24 @@ async def toggle_led_lamp(user: dict = Depends(verify_jwt)):
 @app.get("/psu/state", response_model=LEDState)
 async def get_psu_state(user: dict = Depends(verify_jwt)):
     """Get the current state of the PSU. Protected endpoint."""
-    global psu_isOn
-    try:
-        current_state = lgpio.gpio_read(h, PSU_PIN)
-        psu_isOn = (current_state == 1)
-        return LEDState(is_on=psu_isOn, pin=PSU_PIN)
-    except Exception as e:
-        return LEDState(is_on=psu_isOn, pin=PSU_PIN)
+    return LEDState(is_on=read_psu_state(), pin=PSU_PIN)
 
 
 @app.post("/psu/toggle", response_model=ToggleResponse)
 async def toggle_psu(user: dict = Depends(verify_jwt)):
     """Toggle the PSU on or off. Protected endpoint."""
-    global psu_isOn
-    
     try:
-        current_state = lgpio.gpio_read(h, PSU_PIN)
-        psu_isOn = (current_state == 1)
-        psu_isOn = not psu_isOn
-        lgpio.gpio_write(h, PSU_PIN, 1 if psu_isOn else 0)
+        next_state = not read_psu_state()
+        set_psu_state(next_state, "manual toggle")
+        message = f"PSU turned {'ON' if next_state else 'OFF'}"
+        if not next_state:
+            message += "; stage home required before movement"
         
         return ToggleResponse(
             success=True,
-            is_on=psu_isOn,
+            is_on=next_state,
             pin=PSU_PIN,
-            message=f"PSU turned {'ON' if psu_isOn else 'OFF'}"
+            message=message,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to toggle PSU: {str(e)}")

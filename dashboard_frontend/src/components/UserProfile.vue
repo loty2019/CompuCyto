@@ -1,6 +1,6 @@
 <template>
-  <div class="rounded-lg bg-white p-6 shadow-md">
-    <h2 class="mb-4 text-2xl font-bold text-gray-900">Profile</h2>
+  <div class="lab-panel">
+    <h2 class="lab-title mb-4">Profile</h2>
 
     <div class="flex items-center gap-4">
       <div class="grid h-16 w-16 place-items-center rounded-full border border-slate-300 bg-slate-50 text-slate-700">

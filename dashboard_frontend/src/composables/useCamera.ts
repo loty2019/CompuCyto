@@ -18,16 +18,16 @@ export function useCamera() {
 
       // Check for warnings in response
       if (result.warning) {
-        store.addLog(`⚠️ Warning: ${result.warning}`, "warning");
+        store.addLog(`Warning: ${result.warning}`, "warning");
       }
 
       // Check if database save failed
       if (result.success && !result.databaseSaved) {
-        store.addLog("❌ Image captured but NOT saved to database!", "error");
+        store.addLog("Image captured but not saved to database", "error");
         store.addLog(`Image file: ${result.filename}`, "info");
       } else if (result.success && result.databaseSaved) {
         store.addLog(
-          `✅ Image captured and saved (DB ID: ${result.imageId})`,
+          `Image captured and saved (DB ID: ${result.imageId})`,
           "success"
         );
 
@@ -41,7 +41,7 @@ export function useCamera() {
         }, 500);
       }
 
-      store.addLog(`📸 Image: ${result.filename}`, "info");
+      store.addLog(`Image: ${result.filename}`, "info");
       return result;
     } catch (error: any) {
       store.addLog(`Capture failed: ${error.message}`, "error");

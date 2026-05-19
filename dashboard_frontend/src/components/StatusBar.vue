@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-wrap items-center gap-1.5 rounded-xl px-2 py-1.5">
+  <div class="flex flex-wrap items-center gap-1.5 px-1 py-1">
     <StatusPill
       label="Camera"
       :connected="isConnected(store.systemStatus.camera)"
@@ -24,7 +24,7 @@
         type="button"
         @click="isDebugOpen = !isDebugOpen"
         :class="[
-          'flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-wide transition-all hover:-translate-y-0.5 hover:shadow-sm',
+          'lab-button min-h-[26px] rounded-full px-2 py-0.5 text-[10px] uppercase tracking-wide',
           store.isSystemHealthy
             ? 'border border-green-200 bg-green-50 text-slate-700'
             : 'border border-amber-200 bg-amber-50 text-amber-700',
@@ -112,7 +112,7 @@ const StatusPill = defineComponent({
         "div",
         {
           class: [
-            "flex items-center gap-1.5 rounded-full border bg-white px-2 py-0.5 text-[11px] font-bold shadow-sm",
+            "flex min-h-[26px] items-center gap-1.5 rounded-full border bg-white px-2 py-0.5 text-[11px] font-bold",
             props.alert
               ? "closet-alert border-red-400 bg-red-100 text-red-800"
               : "border-slate-200 text-slate-600",
@@ -122,7 +122,7 @@ const StatusPill = defineComponent({
         [
           h("span", {
             class: [
-              "h-2 w-2 rounded-full shadow-sm",
+              "h-2 w-2 rounded-full",
               props.alert
                 ? "closet-alert-dot bg-red-600"
                 : props.connected

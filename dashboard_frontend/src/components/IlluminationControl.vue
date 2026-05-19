@@ -1,13 +1,8 @@
 <template>
-  <div class="illumination-panel flex h-full flex-col rounded-lg border border-slate-200/80 bg-white p-2 shadow-md">
-    <div class="mb-1.5 flex items-center justify-between">
-      <h2 class="text-sm font-black uppercase tracking-wide text-slate-950">Light</h2>
-      <span class="text-[10px] font-bold uppercase tracking-wide text-slate-400">L / F</span>
-    </div>
-
+  <div class="illumination-panel flex h-full flex-col">
     <div
       v-if="lightError || flrLightError"
-      class="mb-2 rounded-lg border border-red-200 bg-red-50 p-2 text-xs font-medium text-red-700"
+      class="lab-alert lab-alert-danger mb-2"
     >
       <span v-if="lightError" class="block">Main Light: {{ lightError }}</span>
       <span v-if="flrLightError" class="block">FLR Light: {{ flrLightError }}</span>
@@ -20,7 +15,7 @@
         :class="[
           'light-card',
           isLightOn
-            ? 'border-amber-300 bg-amber-50 text-slate-800 shadow-amber-200/50'
+            ? 'border-amber-300 bg-amber-50 text-slate-800'
             : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50',
           isToggling || lightLoading ? 'cursor-not-allowed opacity-70' : 'cursor-pointer',
         ]"
@@ -41,7 +36,7 @@
         :class="[
           'light-card',
           isFlrLightOn
-            ? 'border-indigo-300 bg-indigo-50 text-slate-800 shadow-indigo-200/50'
+            ? 'border-indigo-300 bg-indigo-50 text-slate-800'
             : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50',
           isFlrToggling || flrLightLoading ? 'cursor-not-allowed opacity-70' : 'cursor-pointer',
         ]"
@@ -165,17 +160,15 @@ function handleKeyDown(event: KeyboardEvent) {
 
 <style scoped>
 .illumination-panel {
-  background:
-    radial-gradient(circle at top right, rgba(148, 163, 184, 0.18), transparent 34%),
-    linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  background: transparent;
 }
 
 .light-card {
-  @apply flex min-h-[42px] items-center gap-2 rounded-md border px-2 py-1.5 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md active:translate-y-0;
+  @apply flex min-h-[42px] items-center gap-2 rounded-md border px-2 py-1.5 transition-all hover:-translate-y-0.5 active:translate-y-0;
 }
 
 .light-card-dot {
-  @apply h-2 w-2 rounded-full shadow-inner;
+  @apply h-2 w-2 rounded-full;
 }
 
 .light-card-dot-on {

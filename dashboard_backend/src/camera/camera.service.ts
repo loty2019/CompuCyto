@@ -5,6 +5,7 @@ import { Repository } from 'typeorm';
 import { ConfigService } from '../config/config.service';
 import { Image } from '../images/entities/image.entity';
 import { Video } from '../videos/entities/video.entity';
+import { StageService } from '../stage/stage.service';
 import { catchError, firstValueFrom } from 'rxjs';
 import { AxiosError } from 'axios';
 
@@ -30,6 +31,7 @@ export class CameraService {
     private imageRepository: Repository<Image>,
     @InjectRepository(Video)
     private videoRepository: Repository<Video>,
+    private stageService: StageService,
   ) {
     this.baseUrl = this.configService.pythonCameraUrl;
     this.timeout = this.configService.serviceTimeout;
@@ -52,6 +54,7 @@ export class CameraService {
     authHeader?: string,
   ): Promise<any> {
     try {
+      const stagePosition = await this.stageService.getPosition();
       const headers = authHeader ? { Authorization: authHeader } : {};
       const { data } = await firstValueFrom(
         this.httpService
@@ -85,13 +88,19 @@ export class CameraService {
             filename: data.filename,
             filepath: data.filepath,
             capturedAt: new Date(data.capturedAt),
+            xPosition: stagePosition.x,
+            yPosition: stagePosition.y,
+            zPosition: stagePosition.z,
             exposureTime: data.exposureTime,
             gain: data.gain,
             gamma: data.gamma ?? null,
             fileSize: data.fileSize,
             width: data.width,
             height: data.height,
-            metadata: data.metadata,
+            metadata: {
+              ...(data.metadata ?? {}),
+              stagePosition,
+            },
           });
 
           const savedImage = await this.imageRepository.save(image);

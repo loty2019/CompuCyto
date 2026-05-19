@@ -58,6 +58,15 @@ export class ConfigService {
     return this.configService.get<string>('DATABASE_NAME', 'microscope_db');
   }
 
+  /**
+   * Enable raw SQL query logging.
+   * @default false
+   */
+  get databaseLogging(): boolean {
+    const value = this.configService.get<string>('DATABASE_LOGGING', 'false');
+    return ['1', 'true', 'yes', 'on'].includes(value.toLowerCase());
+  }
+
   // ==================== Python Configuration ====================
 
   /**
@@ -194,10 +203,10 @@ export class ConfigService {
 
   /**
    * Path to store captured images
-   * @default './images'
+   * @default '../camera_backend/captures'
    */
   get imagesPath(): string {
-    return this.configService.get<string>('IMAGES_PATH', './images');
+    return this.configService.get<string>('IMAGES_PATH', '../camera_backend/captures');
   }
 
   /**

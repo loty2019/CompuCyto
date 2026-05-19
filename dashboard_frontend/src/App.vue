@@ -1,21 +1,28 @@
 <template>
-  <div class="min-h-screen bg-slate-200">
+  <div class="min-h-screen bg-slate-100">
     <header
       v-if="authStore.isAuthenticated"
-      class="sticky top-0 z-30 border-b border-slate-200/80 bg-white/90 shadow-sm backdrop-blur"
+      class="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur"
     >
       <div
-        class="mx-auto flex max-w-screen-xl flex-col gap-2 px-3 py-2 lg:flex-row lg:items-center lg:justify-between"
+        class="mx-auto flex max-w-screen-2xl flex-col gap-2 px-3 py-2 lg:flex-row lg:items-center lg:justify-between"
       >
         <div class="flex items-center justify-between gap-4">
-          <div>
-            <h1 class="text-2xl font-black tracking-tight text-slate-950">
-              CytoCore
-            </h1>
-            <div
-              class="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400"
-            >
-              LinkBiosystems
+          <div class="flex min-w-0 items-center gap-3">
+            <img
+              :src="linkLogo"
+              alt="Link Biosystems logo"
+              class="brand-logo-tile h-12 w-12 sm:h-14 sm:w-14"
+            />
+            <div class="min-w-0">
+              <h1 class="text-2xl font-black tracking-tight text-slate-950">
+                CytoCore
+              </h1>
+              <div
+                class="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400"
+              >
+                LinkBiosystems
+              </div>
             </div>
           </div>
           <span class="hidden text-sm text-slate-500 sm:inline">
@@ -30,7 +37,7 @@
           <div class="hidden h-7 w-px bg-slate-300 sm:block"></div>
           <button
             @click="handleLogout"
-            class="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 transition-all hover:-translate-y-0.5 hover:border-red-300 hover:bg-red-50 hover:text-red-700 hover:shadow-sm"
+            class="lab-button lab-button-secondary"
           >
             Switch Profile
           </button>
@@ -47,6 +54,7 @@ import { onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
 import StatusBar from "@/components/StatusBar.vue";
+import linkLogo from "@/assets/link-biosystems-logo.png";
 
 const router = useRouter();
 const authStore = useAuthStore();

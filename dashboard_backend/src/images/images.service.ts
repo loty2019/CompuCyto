@@ -25,16 +25,12 @@ export class ImagesService {
     userId: number | null,
     page: number = 1,
     limit: number = 20,
+    fallbackOwnerUserId?: number,
   ) {
-    const skip = (page - 1) * limit;
+    await this.syncCaptureFolder(fallbackOwnerUserId ?? userId ?? undefined);
+    await this.cleanupIncompleteImages();
 
-    console.log('🗄️ [SERVICE] Building database query:', {
-      userId: userId,
-      filteringByUser: userId !== null,
-      page: page,
-      limit: limit,
-      skip: skip,
-    });
+    const skip = (page - 1) * limit;
 
     const queryBuilder = this.imageRepository
       .createQueryBuilder('image')
@@ -43,58 +39,35 @@ export class ImagesService {
       .skip(skip)
       .take(limit);
 
-    // If userId is provided, filter by user
     if (userId !== null) {
-      console.log(`🔍 [SERVICE] Adding WHERE clause: image.userId = ${userId}`);
       queryBuilder.where('image.userId = :userId', { userId });
-    } else {
-      console.log('🔍 [SERVICE] No userId filter - fetching all images');
     }
 
     const [images, total] = await queryBuilder.getManyAndCount();
-
-    console.log('📊 [SERVICE] Database query result:', {
-      userId: userId,
-      imagesFound: images.length,
-      total: total,
-      sampleImages: images.slice(0, 3).map((img) => ({
-        id: img.id,
-        userId: img.userId,
-        username: img.user?.username,
-        filename: img.filename,
-      })),
-    });
-
-    // Auto-cleanup: Check if image files exist and remove database entries for missing ones
-    const capturesPath = '../backend-python/captures';
+    const capturesPath = await this.getCapturesPath();
     const missingImages: Image[] = [];
 
     for (const image of images) {
       const imagePath = path.join(capturesPath, image.filename);
       try {
         await fs.access(imagePath);
-        // File exists, keep it
       } catch {
-        // File doesn't exist, mark for removal
         this.logger.warn(
-          `🗑️ Image file missing, will remove from DB: ${image.filename} (ID: ${image.id})`,
+          `Image file missing, will remove from DB: ${image.filename} (ID: ${image.id})`,
         );
         missingImages.push(image);
       }
     }
 
-    // Remove missing images from the results and database
     let validImages = images;
     let adjustedTotal = total;
 
     if (missingImages.length > 0) {
-      // Remove from database
       await this.imageRepository.remove(missingImages);
       this.logger.log(
-        `🧹 Auto-cleanup: Removed ${missingImages.length} missing images from database`,
+        `Auto-cleanup: Removed ${missingImages.length} missing images from database`,
       );
 
-      // Filter out missing images from results
       const missingIds = new Set(missingImages.map((img) => img.id));
       validImages = images.filter((img) => !missingIds.has(img.id));
       adjustedTotal = total - missingImages.length;
@@ -124,7 +97,6 @@ export class ImagesService {
     imageId: number;
     fileDeleted: boolean;
   }> {
-    // Find the image
     const image = await this.imageRepository.findOne({
       where: { id: imageId },
     });
@@ -133,28 +105,20 @@ export class ImagesService {
       throw new NotFoundException(`Image with ID ${imageId} not found`);
     }
 
-    // Check permissions - user can only delete their own images unless admin
     if (!isAdmin && image.userId !== userId) {
-      throw new ForbiddenException(
-        'You do not have permission to delete this image',
-      );
+      throw new ForbiddenException('You do not have permission to delete this image');
     }
 
-    // Try to delete the file from disk
     let fileDeleted = false;
     try {
-      const imagePath = path.join('../backend-python/captures', image.filename);
+      const imagePath = path.join(await this.getCapturesPath(), image.filename);
       await fs.unlink(imagePath);
       fileDeleted = true;
       this.logger.log(`Deleted file: ${imagePath}`);
     } catch (error) {
-      this.logger.warn(
-        `Could not delete file ${image.filename}: ${error.message}`,
-      );
-      // Continue anyway to remove from database
+      this.logger.warn(`Could not delete file ${image.filename}: ${error.message}`);
     }
 
-    // Delete from database
     await this.imageRepository.remove(image);
     this.logger.log(
       `Deleted image ${imageId} from database (file deleted: ${fileDeleted})`,
@@ -166,5 +130,76 @@ export class ImagesService {
       imageId,
       fileDeleted,
     };
+  }
+
+  private async syncCaptureFolder(ownerUserId?: number): Promise<void> {
+    if (!ownerUserId) {
+      return;
+    }
+
+    this.logger.log(
+      'Skipping raw capture-folder import because image rows now require camera and stage metadata',
+    );
+  }
+
+  private async getCapturesPath(): Promise<string> {
+    const candidates = [
+      this.configService.imagesPath,
+      '../camera_backend/captures',
+      'camera_backend/captures',
+      './captures',
+      '../backend-python/captures',
+    ].filter(Boolean);
+
+    for (const candidate of candidates) {
+      const resolved = path.isAbsolute(candidate)
+        ? candidate
+        : path.resolve(process.cwd(), candidate);
+
+      try {
+        await fs.access(resolved);
+        return resolved;
+      } catch {
+        // Try the next known capture location.
+      }
+    }
+
+    return path.resolve(process.cwd(), '../camera_backend/captures');
+  }
+
+  private async cleanupIncompleteImages(): Promise<void> {
+    const incompleteImages = await this.imageRepository
+      .createQueryBuilder('image')
+      .where('image.xPosition IS NULL')
+      .orWhere('image.yPosition IS NULL')
+      .orWhere('image.zPosition IS NULL')
+      .orWhere('image.exposureTime IS NULL')
+      .orWhere('image.gain IS NULL')
+      .orWhere('image.gamma IS NULL')
+      .orWhere('image.fileSize IS NULL')
+      .orWhere('image.width IS NULL')
+      .orWhere('image.height IS NULL')
+      .getMany();
+
+    if (incompleteImages.length === 0) {
+      return;
+    }
+
+    const capturesPath = await this.getCapturesPath();
+
+    for (const image of incompleteImages) {
+      try {
+        await fs.unlink(path.join(capturesPath, image.filename));
+      } catch (error) {
+        this.logger.warn(
+          `Could not delete incomplete image file ${image.filename}: ${error.message}`,
+        );
+      }
+    }
+
+    await this.imageRepository.remove(incompleteImages);
+    this.logger.warn(
+      `Removed ${incompleteImages.length} old image record(s) missing required capture metadata`,
+    );
   }
 }

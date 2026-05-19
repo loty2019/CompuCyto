@@ -1,4 +1,14 @@
-import { Controller, Post, Body, Get, UseGuards, Request } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Get,
+  Delete,
+  Param,
+  ParseIntPipe,
+  UseGuards,
+  Request,
+} from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
@@ -76,6 +86,24 @@ export class AuthController {
     return {
       profiles: profiles.map((profile) => this.serializeProfile(profile)),
     };
+  }
+
+  @Delete('profiles/:id')
+  @ApiOperation({
+    summary: 'Delete local operator profile',
+    description:
+      'Removes a local profile only. Existing image and video records are preserved and reassigned to a hidden archive owner.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Profile deleted successfully',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Profile not found',
+  })
+  async deleteProfile(@Param('id', ParseIntPipe) id: number) {
+    return this.usersService.deleteLocalProfile(id);
   }
 
   /**

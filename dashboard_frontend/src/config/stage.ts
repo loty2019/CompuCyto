@@ -4,4 +4,4 @@ export const STAGE_AXIS_MAX = {
   z: 13200,
 } as const;
 
-export const CAMERA_FEED_ROTATION_DEGREES = 0;
+export const CAMERA_FEED_ROTATION_DEGREES = -90;

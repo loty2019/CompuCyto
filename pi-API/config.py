@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     homing_max_steps: int = 50000
     homing_backoff_steps: int = 300
     z_home_focus_position: int = 10000
+    psu_reactivation_delay_seconds: float = 0.5
     max_x_position: int = 8500
     max_y_position: int = 12000
     max_z_position: int = 13200

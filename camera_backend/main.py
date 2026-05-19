@@ -218,6 +218,7 @@ async def capture_image(request: CaptureRequest, user: dict = Depends(verify_jwt
             "capturedAt": result["capturedAt"],
             "exposureTime": result["exposureTime"],
             "gain": result["gain"],
+            "gamma": result["gamma"],
             "fileSize": result["fileSize"],
             "width": result["width"],
             "height": result["height"],
