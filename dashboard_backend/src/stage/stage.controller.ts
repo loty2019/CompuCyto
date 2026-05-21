@@ -47,7 +47,7 @@ export class StageController {
     
     **IMPORTANT**: All positions are validated against configured safety limits:
     - X axis: 0 to MAX_X_POSITION (default: 8700 steps)
-    - Y axis: 0 to MAX_Y_POSITION (default: 1190 steps)
+    - Y axis: 0 to MAX_Y_POSITION (default: 11900 steps)
     - Z axis: 0 to MAX_Z_POSITION (default: 13200 steps)
     
     Set relative=true for incremental movement from current position.

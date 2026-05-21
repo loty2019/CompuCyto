@@ -231,10 +231,10 @@ export class ConfigService {
   /**
    * Maximum Y axis position in motor steps
    * SAFETY LIMIT: Prevents stage from moving beyond physical bounds
-   * @default 1190
+   * @default 11900
    */
   get maxYPosition(): number {
-    return this.configService.get<number>('MAX_Y_POSITION', 1190);
+    return this.configService.get<number>('MAX_Y_POSITION', 11900);
   }
 
   /**

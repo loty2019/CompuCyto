@@ -302,10 +302,20 @@ const targetSnapSteps = 25;
 const targetArrivalTolerance = 35;
 
 const mapWidth = 300;
-const stageTop = 8;
-const stageHeight = 270;
-const stageWidth = stageHeight * (maxX / maxY);
+const mapHeight = 300;
+const stageMaxWidth = 270;
+const stageMaxHeight = 270;
+const stageAspectRatio = maxX / maxY;
+const stageWidth =
+  stageAspectRatio >= stageMaxWidth / stageMaxHeight
+    ? stageMaxWidth
+    : stageMaxHeight * stageAspectRatio;
+const stageHeight =
+  stageAspectRatio >= stageMaxWidth / stageMaxHeight
+    ? stageMaxWidth / stageAspectRatio
+    : stageMaxHeight;
 const stageLeft = (mapWidth - stageWidth) / 2;
+const stageTop = (mapHeight - stageHeight) / 2;
 const stageRight = stageLeft + stageWidth;
 const stageBottom = stageTop + stageHeight;
 

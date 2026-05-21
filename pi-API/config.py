@@ -32,7 +32,7 @@ class Settings(BaseSettings):
     z_home_focus_position: int = 10000
     psu_reactivation_delay_seconds: float = 0.5
     max_x_position: int = 8700
-    max_y_position: int = 1190
+    max_y_position: int = 11900
     max_z_position: int = 13200
 
 

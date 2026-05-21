@@ -110,6 +110,7 @@
           class="stage-button stage-button-secondary"
           :class="[
             !stageReady ? 'stage-button-home-required' : '',
+            homingInProgress ? 'stage-button-homing-pulse' : '',
             homeDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer',
           ]"
           :style="getButtonStyle('home')"
@@ -209,7 +210,10 @@
             type="button"
             class="stage-button min-w-20 bg-slate-900 text-white hover:bg-slate-700"
             :disabled="homeDisabled"
-            :class="homeDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'"
+            :class="[
+              homingInProgress ? 'stage-button-homing-pulse' : '',
+              homeDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer',
+            ]"
             @click="homeFromStopPopup"
           >
             Home
@@ -513,6 +517,10 @@ function getButtonStyle(buttonId: string): string {
   @apply border-slate-800 bg-slate-900 text-white hover:border-slate-800 hover:bg-slate-700 hover:text-white;
 }
 
+.stage-button-homing-pulse {
+  animation: home-button-pulse 0.85s ease-in-out infinite;
+}
+
 .stage-button-symbol {
   @apply text-lg leading-none;
 }
@@ -535,6 +543,20 @@ function getButtonStyle(buttonId: string): string {
     opacity: 0.72;
   }
   50% {
+    opacity: 1;
+  }
+}
+
+@keyframes home-button-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.32);
+    filter: brightness(0.96);
+    opacity: 0.78;
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgba(37, 99, 235, 0);
+    filter: brightness(1.08);
     opacity: 1;
   }
 }
