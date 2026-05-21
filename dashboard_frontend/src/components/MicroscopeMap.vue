@@ -142,9 +142,9 @@
 
       <g class="map-labels">
         <text
-          :x="stageRight + 6"
+          :x="stageLeft - 6"
           :y="stageBottom - 3"
-          text-anchor="start"
+          text-anchor="end"
           fill="#475569"
         >
           X max
@@ -159,9 +159,9 @@
           Y max
         </text>
         <text
-          :x="stageLeft - 7"
+          :x="stageRight + 7"
           :y="stageBottom + 6"
-          text-anchor="end"
+          text-anchor="start"
           fill="#64748b"
         >
           0

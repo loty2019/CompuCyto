@@ -108,11 +108,10 @@
           "
           :disabled="homeDisabled"
           class="stage-button stage-button-secondary"
-          :class="
-            homeDisabled
-              ? 'cursor-not-allowed opacity-60'
-              : 'cursor-pointer'
-          "
+          :class="[
+            !stageReady ? 'stage-button-home-required' : '',
+            homeDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer',
+          ]"
           :style="getButtonStyle('home')"
         >
           <span>{{ homingInProgress ? "Homing" : "Home" }}</span>
@@ -508,6 +507,10 @@ function getButtonStyle(buttonId: string): string {
 
 .stage-button-secondary {
   @apply border border-slate-300 bg-white text-slate-700 hover:border-slate-500 hover:bg-slate-50 hover:text-slate-950;
+}
+
+.stage-button-home-required {
+  @apply border-slate-800 bg-slate-900 text-white hover:border-slate-800 hover:bg-slate-700 hover:text-white;
 }
 
 .stage-button-symbol {

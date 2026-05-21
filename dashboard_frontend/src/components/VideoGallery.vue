@@ -39,20 +39,48 @@
           </span>
         </button>
         <button
-          @click="cleanupMode = !cleanupMode"
+          @click="toggleSelectionMode"
           :class="[
             'lab-button',
             'lab-button-primary',
           ]"
-          :title="cleanupMode ? 'Exit cleanup mode' : 'Enable cleanup mode to delete videos'"
+          :title="selectionMode ? 'Exit selection mode' : 'Select videos to download or delete'"
         >
-          {{ cleanupMode ? "Exit Cleanup" : "Cleanup" }}
+          {{ selectionMode ? "Exit Select" : "Select" }}
         </button>
       </div>
     </div>
 
-    <div v-if="cleanupMode" class="lab-alert lab-alert-danger mb-3">
-      Cleanup mode active. Deleting videos is permanent.
+    <div
+      v-if="selectionMode"
+      class="lab-alert lab-alert-info mb-3 flex flex-wrap items-center justify-between gap-2"
+    >
+      <span>
+        {{ selectedVideoCount }} video{{ selectedVideoCount === 1 ? "" : "s" }} selected.
+      </span>
+      <div class="flex flex-wrap items-center gap-2">
+        <button
+          @click="toggleSelectAllVideos"
+          class="lab-button lab-button-secondary min-h-[30px]"
+          :disabled="visibleVideos.length === 0"
+        >
+          {{ allVisibleVideosSelected ? "Clear All" : "Select All" }}
+        </button>
+        <button
+          @click="downloadSelectedVideos"
+          class="lab-button lab-button-secondary min-h-[30px]"
+          :disabled="selectedVideoCount === 0"
+        >
+          Download
+        </button>
+        <button
+          @click="deleteSelectedVideos"
+          class="lab-button lab-button-danger min-h-[30px]"
+          :disabled="selectedVideoCount === 0"
+        >
+          Delete
+        </button>
+      </div>
     </div>
 
     <div v-if="loading" class="lab-panel-inset flex items-center justify-center p-8">
@@ -67,7 +95,8 @@
         v-for="video in visibleVideos"
         :key="video.id"
         class="lab-media-tile group aspect-video cursor-pointer bg-slate-950"
-        @click="!cleanupMode && playVideo(video)"
+        :class="isVideoSelected(video.id) ? 'ring-2 ring-slate-900 ring-offset-2' : ''"
+        @click="selectionMode ? toggleVideoSelection(video.id) : playVideo(video)"
       >
         <video
           v-if="video.filename"
@@ -99,19 +128,31 @@
         </div>
 
         <div
-          v-if="cleanupMode"
-          class="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-slate-950/60 p-3"
+          v-if="selectionMode"
+          :class="[
+            'absolute inset-0 z-20 bg-slate-950/20 transition-colors',
+            isVideoSelected(video.id) ? 'bg-slate-950/45' : '',
+          ]"
         >
-          <button
-            @click.stop="deleteVideo(video.id)"
-            class="lab-button lab-button-danger"
+          <span
+            :class="[
+              'absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-md border-2 border-white bg-white/85 shadow-sm',
+              isVideoSelected(video.id) ? 'bg-slate-900' : '',
+            ]"
+            aria-hidden="true"
           >
-            Delete
-          </button>
+            <span
+              v-if="isVideoSelected(video.id)"
+              class="h-2.5 w-2.5 rounded-sm bg-white"
+            ></span>
+          </span>
+          <span class="sr-only">
+            {{ isVideoSelected(video.id) ? "Selected" : "Not selected" }}
+          </span>
         </div>
 
         <div
-          v-if="!cleanupMode && videoFilter === 'all' && video.user"
+          v-if="!selectionMode && videoFilter === 'all' && video.user"
           class="absolute bottom-0 left-0 right-0 truncate bg-slate-950/75 px-2 py-1 text-xs text-white"
         >
           {{ video.user.username }}
@@ -274,7 +315,8 @@ const store = useMicroscopeStore();
 const videoFilter = ref<"mine" | "all">("mine");
 const likedOnly = ref(false);
 const loading = ref(false);
-const cleanupMode = ref(false);
+const selectionMode = ref(false);
+const selectedVideoIds = ref<Set<number>>(new Set());
 const selectedVideo = ref<Video | null>(null);
 const wheelNavigationAt = ref(0);
 const {
@@ -301,6 +343,18 @@ const visibleVideos = computed(() => {
 
   return likedVideos.value;
 });
+
+const selectedVideos = computed(() =>
+  visibleVideos.value.filter((video) => selectedVideoIds.value.has(video.id)),
+);
+
+const selectedVideoCount = computed(() => selectedVideoIds.value.size);
+
+const allVisibleVideosSelected = computed(
+  () =>
+    visibleVideos.value.length > 0 &&
+    visibleVideos.value.every((video) => selectedVideoIds.value.has(video.id)),
+);
 
 const navigationVideos = computed(() => {
   if (
@@ -386,6 +440,39 @@ const closeVideo = () => {
   selectedVideo.value = null;
 };
 
+const toggleSelectionMode = () => {
+  selectionMode.value = !selectionMode.value;
+
+  if (!selectionMode.value) {
+    selectedVideoIds.value = new Set();
+  }
+};
+
+const isVideoSelected = (videoId: number): boolean => {
+  return selectedVideoIds.value.has(videoId);
+};
+
+const toggleVideoSelection = (videoId: number) => {
+  const nextSelectedIds = new Set(selectedVideoIds.value);
+
+  if (nextSelectedIds.has(videoId)) {
+    nextSelectedIds.delete(videoId);
+  } else {
+    nextSelectedIds.add(videoId);
+  }
+
+  selectedVideoIds.value = nextSelectedIds;
+};
+
+const toggleSelectAllVideos = () => {
+  if (allVisibleVideosSelected.value) {
+    selectedVideoIds.value = new Set();
+    return;
+  }
+
+  selectedVideoIds.value = new Set(visibleVideos.value.map((video) => video.id));
+};
+
 const showPreviousVideo = () => {
   if (previousVideo.value) {
     selectedVideo.value = previousVideo.value;
@@ -448,6 +535,78 @@ const deleteVideo = async (videoId: number): Promise<boolean> => {
     store.addLog(`Failed to delete video: ${error.message}`, "error");
     return false;
   }
+};
+
+const deleteSelectedVideos = async () => {
+  const videosToDelete = selectedVideos.value;
+
+  if (videosToDelete.length === 0) {
+    return;
+  }
+
+  if (
+    !confirm(
+      `Delete ${videosToDelete.length} selected video${
+        videosToDelete.length === 1 ? "" : "s"
+      }? This cannot be undone.`,
+    )
+  ) {
+    return;
+  }
+
+  const failedVideoIds: number[] = [];
+
+  store.addLog(`Deleting ${videosToDelete.length} selected videos...`, "info");
+
+  for (const video of videosToDelete) {
+    try {
+      await videoAPI.deleteVideo(video.id);
+    } catch (error: any) {
+      console.error("Failed to delete video:", error);
+      failedVideoIds.push(video.id);
+    }
+  }
+
+  if (failedVideoIds.length > 0) {
+    store.addLog(
+      `Deleted ${videosToDelete.length - failedVideoIds.length} videos. Failed: ${failedVideoIds.join(", ")}`,
+      "warning",
+    );
+  } else {
+    store.addLog(`Deleted ${videosToDelete.length} selected videos`, "success");
+  }
+
+  selectedVideoIds.value = new Set();
+  await loadVideos();
+};
+
+const downloadFile = (href: string, filename: string) => {
+  const link = document.createElement("a");
+  link.href = href;
+  link.download = filename;
+  link.rel = "noopener";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+};
+
+const downloadSelectedVideos = () => {
+  const videosToDownload = selectedVideos.value;
+
+  if (videosToDownload.length === 0) {
+    return;
+  }
+
+  videosToDownload.forEach((video, index) => {
+    window.setTimeout(() => {
+      downloadFile(getVideoUrl(video.filename), video.filename);
+    }, index * 150);
+  });
+
+  store.addLog(
+    `Started download for ${videosToDownload.length} selected videos`,
+    "success",
+  );
 };
 
 const deleteSelectedVideo = async () => {
@@ -514,6 +673,11 @@ onUnmounted(() => {
 });
 
 watch(videoFilter, () => {
+  selectedVideoIds.value = new Set();
   loadVideos();
+});
+
+watch(likedOnly, () => {
+  selectedVideoIds.value = new Set();
 });
 </script>

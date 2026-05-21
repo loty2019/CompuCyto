@@ -39,20 +39,48 @@
           </span>
         </button>
         <button
-          @click="cleanupMode = !cleanupMode"
+          @click="toggleSelectionMode"
           :class="[
             'lab-button',
             'lab-button-primary',
           ]"
-          :title="cleanupMode ? 'Exit cleanup mode' : 'Enable cleanup mode to delete images'"
+          :title="selectionMode ? 'Exit selection mode' : 'Select images to download or delete'"
         >
-          {{ cleanupMode ? "Exit Cleanup" : "Cleanup" }}
+          {{ selectionMode ? "Exit Select" : "Select" }}
         </button>
       </div>
     </div>
 
-    <div v-if="cleanupMode" class="lab-alert lab-alert-danger mb-3">
-      Cleanup mode active. Deleting images is permanent.
+    <div
+      v-if="selectionMode"
+      class="lab-alert lab-alert-info mb-3 flex flex-wrap items-center justify-between gap-2"
+    >
+      <span>
+        {{ selectedImageCount }} image{{ selectedImageCount === 1 ? "" : "s" }} selected.
+      </span>
+      <div class="flex flex-wrap items-center gap-2">
+        <button
+          @click="toggleSelectAllImages"
+          class="lab-button lab-button-secondary min-h-[30px]"
+          :disabled="visibleImages.length === 0"
+        >
+          {{ allVisibleImagesSelected ? "Clear All" : "Select All" }}
+        </button>
+        <button
+          @click="downloadSelectedImages"
+          class="lab-button lab-button-secondary min-h-[30px]"
+          :disabled="selectedImageCount === 0"
+        >
+          Download
+        </button>
+        <button
+          @click="deleteSelectedImages"
+          class="lab-button lab-button-danger min-h-[30px]"
+          :disabled="selectedImageCount === 0"
+        >
+          Delete
+        </button>
+      </div>
     </div>
 
     <div v-if="loading" class="lab-panel-inset flex items-center justify-center p-8">
@@ -67,7 +95,8 @@
         v-for="image in visibleImages"
         :key="image.id"
         class="lab-media-tile group aspect-square cursor-pointer"
-        @click="!cleanupMode && viewImage(image)"
+        :class="isImageSelected(image.id) ? 'ring-2 ring-slate-900 ring-offset-2' : ''"
+        @click="selectionMode ? toggleImageSelection(image.id) : viewImage(image)"
       >
         <img
           :src="getImageUrl(image.filename)"
@@ -85,19 +114,31 @@
         </div>
 
         <div
-          v-if="cleanupMode"
-          class="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-slate-950/60 p-3"
+          v-if="selectionMode"
+          :class="[
+            'absolute inset-0 z-20 bg-slate-950/20 transition-colors',
+            isImageSelected(image.id) ? 'bg-slate-950/45' : '',
+          ]"
         >
-          <button
-            @click.stop="deleteImage(image.id)"
-            class="lab-button lab-button-danger"
+          <span
+            :class="[
+              'absolute left-2 top-2 flex h-6 w-6 items-center justify-center rounded-md border-2 border-white bg-white/85 shadow-sm',
+              isImageSelected(image.id) ? 'bg-slate-900' : '',
+            ]"
+            aria-hidden="true"
           >
-            Delete
-          </button>
+            <span
+              v-if="isImageSelected(image.id)"
+              class="h-2.5 w-2.5 rounded-sm bg-white"
+            ></span>
+          </span>
+          <span class="sr-only">
+            {{ isImageSelected(image.id) ? "Selected" : "Not selected" }}
+          </span>
         </div>
 
         <div
-          v-if="!cleanupMode && photoFilter === 'all' && image.user"
+          v-if="!selectionMode && photoFilter === 'all' && image.user"
           class="absolute bottom-0 left-0 right-0 truncate bg-slate-950/75 px-2 py-1 text-xs text-white"
         >
           {{ image.user.username }}
@@ -257,7 +298,8 @@ const store = useMicroscopeStore();
 const photoFilter = ref<"mine" | "all">("mine");
 const likedOnly = ref(false);
 const loading = ref(false);
-const cleanupMode = ref(false);
+const selectionMode = ref(false);
+const selectedImageIds = ref<Set<number>>(new Set());
 const selectedImage = ref<Image | null>(null);
 const wheelNavigationAt = ref(0);
 const {
@@ -287,6 +329,18 @@ const visibleImages = computed(() => {
 
   return likedImages.value;
 });
+
+const selectedImages = computed(() =>
+  visibleImages.value.filter((image) => selectedImageIds.value.has(image.id)),
+);
+
+const selectedImageCount = computed(() => selectedImageIds.value.size);
+
+const allVisibleImagesSelected = computed(
+  () =>
+    visibleImages.value.length > 0 &&
+    visibleImages.value.every((image) => selectedImageIds.value.has(image.id)),
+);
 
 const navigationImages = computed(() => {
   if (
@@ -364,6 +418,39 @@ const viewImage = (image: Image) => {
 
 const closeImage = () => {
   selectedImage.value = null;
+};
+
+const toggleSelectionMode = () => {
+  selectionMode.value = !selectionMode.value;
+
+  if (!selectionMode.value) {
+    selectedImageIds.value = new Set();
+  }
+};
+
+const isImageSelected = (imageId: number): boolean => {
+  return selectedImageIds.value.has(imageId);
+};
+
+const toggleImageSelection = (imageId: number) => {
+  const nextSelectedIds = new Set(selectedImageIds.value);
+
+  if (nextSelectedIds.has(imageId)) {
+    nextSelectedIds.delete(imageId);
+  } else {
+    nextSelectedIds.add(imageId);
+  }
+
+  selectedImageIds.value = nextSelectedIds;
+};
+
+const toggleSelectAllImages = () => {
+  if (allVisibleImagesSelected.value) {
+    selectedImageIds.value = new Set();
+    return;
+  }
+
+  selectedImageIds.value = new Set(visibleImages.value.map((image) => image.id));
 };
 
 const showPreviousImage = () => {
@@ -451,6 +538,78 @@ const deleteImage = async (imageId: number): Promise<boolean> => {
   }
 };
 
+const deleteSelectedImages = async () => {
+  const imagesToDelete = selectedImages.value;
+
+  if (imagesToDelete.length === 0) {
+    return;
+  }
+
+  if (
+    !confirm(
+      `Delete ${imagesToDelete.length} selected image${
+        imagesToDelete.length === 1 ? "" : "s"
+      }? This cannot be undone.`,
+    )
+  ) {
+    return;
+  }
+
+  const failedImageIds: number[] = [];
+
+  store.addLog(`Deleting ${imagesToDelete.length} selected images...`, "info");
+
+  for (const image of imagesToDelete) {
+    try {
+      await imageAPI.deleteImage(image.id);
+    } catch (error: any) {
+      console.error("Failed to delete image:", error);
+      failedImageIds.push(image.id);
+    }
+  }
+
+  if (failedImageIds.length > 0) {
+    store.addLog(
+      `Deleted ${imagesToDelete.length - failedImageIds.length} images. Failed: ${failedImageIds.join(", ")}`,
+      "warning",
+    );
+  } else {
+    store.addLog(`Deleted ${imagesToDelete.length} selected images`, "success");
+  }
+
+  selectedImageIds.value = new Set();
+  await loadImages();
+};
+
+const downloadFile = (href: string, filename: string) => {
+  const link = document.createElement("a");
+  link.href = href;
+  link.download = filename;
+  link.rel = "noopener";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+};
+
+const downloadSelectedImages = () => {
+  const imagesToDownload = selectedImages.value;
+
+  if (imagesToDownload.length === 0) {
+    return;
+  }
+
+  imagesToDownload.forEach((image, index) => {
+    window.setTimeout(() => {
+      downloadFile(getImageUrl(image.filename), image.filename);
+    }, index * 150);
+  });
+
+  store.addLog(
+    `Started download for ${imagesToDownload.length} selected images`,
+    "success",
+  );
+};
+
 const deleteSelectedImage = async () => {
   if (!selectedImage.value) {
     return;
@@ -515,6 +674,11 @@ onUnmounted(() => {
 });
 
 watch(photoFilter, () => {
+  selectedImageIds.value = new Set();
   loadImages();
+});
+
+watch(likedOnly, () => {
+  selectedImageIds.value = new Set();
 });
 </script>

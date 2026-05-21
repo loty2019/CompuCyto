@@ -21,7 +21,7 @@ export class MoveDto {
   @ApiProperty({
     description:
       'X axis position in motor steps (validated against safety limits)',
-    example: 8500,
+    example: 12750,
     required: false,
   })
   @IsOptional()
@@ -36,7 +36,7 @@ export class MoveDto {
   @ApiProperty({
     description:
       'Y axis position in motor steps (validated against safety limits)',
-    example: 12000,
+    example: 18000,
     required: false,
   })
   @IsOptional()
