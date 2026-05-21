@@ -1,6 +1,6 @@
 export const STAGE_AXIS_MAX = {
-  x: 12750,
-  y: 18000,
+  x: 8700,
+  y: 1190,
   z: 13200,
 } as const;
 
