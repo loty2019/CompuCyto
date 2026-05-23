@@ -222,10 +222,10 @@ export class ConfigService {
   /**
    * Maximum X axis position in motor steps
    * SAFETY LIMIT: Prevents stage from moving beyond physical bounds
-   * @default 8700
+   * @default 8800
    */
   get maxXPosition(): number {
-    return this.configService.get<number>('MAX_X_POSITION', 8700);
+    return this.configService.get<number>('MAX_X_POSITION', 8800);
   }
 
   /**

@@ -46,7 +46,7 @@ export class StageController {
     description: `Move stage to specified position. Supports absolute and relative movements.
     
     **IMPORTANT**: All positions are validated against configured safety limits:
-    - X axis: 0 to MAX_X_POSITION (default: 8700 steps)
+    - X axis: 0 to MAX_X_POSITION (default: 8800 steps)
     - Y axis: 0 to MAX_Y_POSITION (default: 11900 steps)
     - Z axis: 0 to MAX_Z_POSITION (default: 13200 steps)
     
