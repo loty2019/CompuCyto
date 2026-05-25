@@ -125,9 +125,12 @@ class SettingsUpdate(BaseModel):
 @app.get("/health")
 async def health_check():
     """Health check endpoint."""
+    camera_connected = camera.is_connected if camera else False
     return {
-        "status": "healthy",
-        "camera_connected": camera.is_connected if camera else False,
+        "status": "healthy" if camera_connected else "degraded",
+        "camera_connected": camera_connected,
+        "simulated_mode": not camera_connected,
+        "allow_simulated_camera": settings.allow_simulated_camera,
         "timestamp": datetime.now().isoformat()
     }
 

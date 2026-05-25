@@ -1,6 +1,7 @@
 // API Response Types
 
 export interface SystemStatus {
+  api: "connected" | "disconnected";
   camera: "connected" | "disconnected";
   stage: "connected" | "disconnected";
   database: "connected" | "disconnected";
@@ -14,7 +15,7 @@ export interface HealthCheck {
     database: boolean;
     pythonCamera: boolean;
     raspberryPi: boolean;
-    redis: boolean;
+    redis?: boolean;
   };
   timestamp: string;
 }

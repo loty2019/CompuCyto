@@ -141,14 +141,14 @@ export class CameraService {
    */
   async checkHealth(): Promise<boolean> {
     try {
-      await firstValueFrom(
+      const { data } = await firstValueFrom(
         this.httpService.get(`${this.baseUrl}/health`, { timeout: 5000 }).pipe(
           catchError(() => {
             throw new Error('Camera service unavailable');
           }),
         ),
       );
-      return true;
+      return data?.camera_connected === true;
     } catch {
       return false;
     }

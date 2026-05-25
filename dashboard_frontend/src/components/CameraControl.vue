@@ -906,9 +906,8 @@ async function updateSettingsToCamera(settings: {
 
     // Don't show log for every slider change to avoid spam
     // store.addLog("Camera settings updated", "success");
-  } catch (error: any) {
-    store.addLog(`Failed to update settings: ${error.message}`, "error");
-    throw error;
+  } catch {
+    // useCamera already logs the request failure; keep timer/watch callers quiet.
   }
 }
 
@@ -1034,6 +1033,11 @@ async function startFeed() {
           feedUrl.value = `data:image/jpeg;base64,${message.data}`;
         } else if (message.type === "connected") {
           console.log("Camera stream connected:", message);
+        } else if (message.type === "error") {
+          feedError.value = message.message || "Camera feed unavailable";
+          isLoadingFeed.value = false;
+          isConnecting.value = false;
+          store.addLog(feedError.value, "error");
         }
       } catch (error) {
         console.error("Error parsing WebSocket message:", error);
@@ -1051,13 +1055,15 @@ async function startFeed() {
     websocket.onclose = (event) => {
       console.log("WebSocket closed:", event.code, event.reason);
       isConnecting.value = false;
+      const shouldReconnect = Boolean(feedUrl.value) && !feedError.value;
 
       if (!feedError.value) {
         feedError.value = "Connection lost";
       }
 
-      // Auto-reconnect after 3 seconds if not manually stopped
-      if (!reconnectTimeout) {
+      // Auto-reconnect only after a dropped working connection. Do not loop on
+      // camera-unavailable errors.
+      if (shouldReconnect && !reconnectTimeout) {
         console.log("Scheduling reconnection in 3 seconds...");
         reconnectTimeout = setTimeout(() => {
           reconnectTimeout = null;

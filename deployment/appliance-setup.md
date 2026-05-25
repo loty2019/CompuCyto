@@ -1,26 +1,41 @@
-# CytoCore Windows Appliance Setup
+# CytoCore Native Windows Appliance Setup
 
-Use this on the Windows machine that will host CytoCore.
+This setup runs CytoCore before user login. It does not depend on Docker Desktop.
+
+Runtime layout:
+
+```text
+Windows services
+  CytoCoreCamera -> Python FastAPI camera service on 8001
+  CytoCoreApi    -> NestJS API on 3000
+  CytoCoreNginx  -> Nginx public web server on 80
+
+Windows Scheduled Task
+  CytoCore Native Update -> git pull, rebuild, publish frontend, restart services
+```
 
 ## 1. Install prerequisites
 
-Install:
+Install these on the Windows appliance:
 
 - Git for Windows
-- Docker Desktop with Linux containers enabled
+- Node.js LTS
+- Python 3.11
+- PostgreSQL for Windows
+- Nginx for Windows extracted to `C:\nginx`
+- NSSM extracted to `C:\nssm\nssm.exe`
+- Pixelink SDK/driver for Windows
 - Bonjour Print Services for Windows, if `cytocore.local` does not resolve on your LAN
 
-Rename the Windows PC to `cytocore`:
+Rename the Windows PC:
 
 ```powershell
 Rename-Computer -NewName "cytocore" -Restart
 ```
 
-After reboot, make sure Docker Desktop is running.
+After reboot, confirm the Pixelink camera works in Pixelink's own software.
 
 ## 2. Clone the repo
-
-Open PowerShell:
 
 ```powershell
 New-Item -ItemType Directory -Force C:\cytocore
@@ -28,90 +43,118 @@ git clone <your-github-repo-url> C:\cytocore\CompuCyto
 Set-Location C:\cytocore\CompuCyto
 ```
 
-## 3. Create the appliance env
+## 3. Create the runtime env
 
 ```powershell
-Copy-Item .env.appliance.example .env
-notepad .env
+Copy-Item .env.native.example .env.native
+notepad .env.native
 ```
 
-Set `PI_API_UPSTREAM` to the separate Pi API device URL. For example:
+Set real values for:
 
 ```text
-PI_API_UPSTREAM=http://192.168.100.1:8000
+DATABASE_USER
+DATABASE_PASSWORD
+DATABASE_NAME
+JWT_SECRET
+RASPBERRY_PI_URL
+PI_API_UPSTREAM
 ```
 
-## 4. Start the stack
-
-```powershell
-docker compose up -d --build
-docker compose ps
-```
-
-The app is served on one public port:
+The camera service should stay local:
 
 ```text
-http://cytocore.local
-http://cytocore
-http://<machine-ip>
+PYTHON_CAMERA_URL=http://127.0.0.1:8001
 ```
 
-If port 80 is blocked, allow Docker Desktop through Windows Firewall and make
-sure no other Windows service is already using port 80.
+## 4. Prepare PostgreSQL
 
-## 5. Auto-start and auto-update on boot/login
+Create a PostgreSQL database/user matching `.env.native`.
 
-This creates a Windows Scheduled Task. It runs the PowerShell startup helper,
-pulls the latest GitHub changes, then starts Docker Compose.
+Example from an elevated PowerShell or psql shell:
+
+```sql
+CREATE USER cytocore WITH PASSWORD 'replace-with-a-strong-password';
+CREATE DATABASE cytocore OWNER cytocore;
+```
+
+PostgreSQL should be installed as a Windows service and set to automatic start.
+
+## 5. Install CytoCore services
 
 Run PowerShell as Administrator:
 
 ```powershell
-$Action = New-ScheduledTaskAction `
-  -Execute "powershell.exe" `
-  -Argument "-NoProfile -ExecutionPolicy Bypass -File C:\cytocore\CompuCyto\deployment\cytocore-start.ps1"
-
-$Trigger = New-ScheduledTaskTrigger -AtLogOn
-
-$Settings = New-ScheduledTaskSettingsSet `
-  -AllowStartIfOnBatteries `
-  -DontStopIfGoingOnBatteries `
-  -StartWhenAvailable
-
-Register-ScheduledTask `
-  -TaskName "CytoCore Appliance" `
-  -Action $Action `
-  -Trigger $Trigger `
-  -Settings $Settings `
-  -Description "Pull latest CytoCore and start Docker Compose" `
-  -RunLevel Highest `
-  -Force
-```
-
-To run it manually:
-
-```powershell
-Start-ScheduledTask -TaskName "CytoCore Appliance"
-```
-
-To see logs:
-
-```powershell
 Set-Location C:\cytocore\CompuCyto
-docker compose logs -f
+powershell -ExecutionPolicy Bypass -File .\deployment\windows-native\install-services.ps1
 ```
 
-## Routes
+The installer:
 
-Internal routes:
+- installs frontend/backend/Python dependencies
+- builds Vue and NestJS
+- publishes Vue to `C:\cytocore\runtime\www`
+- renders Nginx config to `C:\cytocore\runtime\nginx\cytocore.conf`
+- installs Windows services with NSSM
+- installs the startup update scheduled task
+- starts all CytoCore services
+
+## 6. Verify
+
+```powershell
+Get-Service CytoCoreCamera,CytoCoreApi,CytoCoreNginx
+Invoke-RestMethod http://localhost:8001/health
+Invoke-RestMethod http://localhost:3000/api/v1/health
+```
+
+Then open:
 
 ```text
-/api        -> NestJS
-/python-api -> camera FastAPI
-/pi-api     -> external Pi API device
+http://localhost
+http://cytocore
+http://cytocore.local
+http://<machine-ip>
 ```
 
-## Linux note
+## Updating
 
-The Linux systemd files are still in `deployment/` for a future Linux appliance,
-but they are not used on the Windows host.
+Updates run automatically at Windows startup via `CytoCore Native Update`.
+
+Run an update manually:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File C:\cytocore\CompuCyto\deployment\windows-native\update-native.ps1
+```
+
+That command:
+
+- pulls latest GitHub changes
+- runs `npm ci`
+- rebuilds frontend and backend
+- updates Python dependencies
+- republishes frontend
+- restarts `CytoCoreCamera`, `CytoCoreApi`, and `CytoCoreNginx`
+
+## Logs
+
+Logs are written to:
+
+```text
+C:\cytocore\runtime\logs
+```
+
+Service names:
+
+```text
+CytoCoreCamera
+CytoCoreApi
+CytoCoreNginx
+```
+
+## Uninstall
+
+Run PowerShell as Administrator:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File C:\cytocore\CompuCyto\deployment\windows-native\uninstall-services.ps1
+```

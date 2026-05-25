@@ -1,12 +1,19 @@
 <template>
   <div class="flex flex-wrap items-center gap-1.5 px-1 py-1">
     <StatusPill
-      label="Camera"
-      :connected="isConnected(store.systemStatus.camera)"
+      label="App"
+      :connected="isConnected(store.systemStatus.api)"
+      title="Application service"
     />
     <StatusPill
-      label="Database"
+      label="Storage"
       :connected="isConnected(store.systemStatus.database)"
+      title="Image and profile storage"
+    />
+    <StatusPill
+      label="Camera"
+      :connected="isConnected(store.systemStatus.camera)"
+      title="Camera service"
     />
     <StatusPill
       label="Stage"
@@ -16,7 +23,11 @@
       alert-tone="warning"
       :title="stageStatusTitle"
     />
-    <StatusPill label="WebSocket" :connected="isWsConnected" />
+    <StatusPill
+      label="Live"
+      :connected="isWsConnected"
+      title="Live updates"
+    />
     <StatusPill
       label="Lid"
       :connected="store.closetStatus !== 'unknown'"
@@ -65,7 +76,7 @@
 
 <script setup lang="ts">
 import { computed, defineComponent, h, onMounted, onUnmounted, ref } from "vue";
-import { piAPI } from "@/api/client";
+import { controlAPI, piAPI } from "@/api/client";
 import ConsoleLog from "@/components/ConsoleLog.vue";
 import { useMicroscopeStore } from "@/stores/microscope";
 import { useWebSocketStore } from "@/stores/websocket";
@@ -79,6 +90,7 @@ const isWsConnected = computed(() => wsState.value.isConnected);
 const isDebugOpen = ref(false);
 const debugMenu = ref<HTMLElement | null>(null);
 let closetPollTimer: number | undefined;
+let healthPollTimer: number | undefined;
 
 const importantLogCount = computed(
   () => store.logs.filter((log) => log.type === "error").length,
@@ -176,12 +188,17 @@ const StatusPill = defineComponent({
 });
 
 onMounted(() => {
+  fetchServiceHealth();
   fetchHardwareStatus();
+  healthPollTimer = window.setInterval(fetchServiceHealth, 5000);
   closetPollTimer = window.setInterval(fetchHardwareStatus, 1000);
   document.addEventListener("pointerdown", handleOutsideClick);
 });
 
 onUnmounted(() => {
+  if (healthPollTimer !== undefined) {
+    window.clearInterval(healthPollTimer);
+  }
   if (closetPollTimer !== undefined) {
     window.clearInterval(closetPollTimer);
   }
@@ -208,6 +225,27 @@ async function fetchPsuStatus() {
 
 async function fetchHardwareStatus() {
   await Promise.allSettled([fetchClosetStatus(), fetchPsuStatus()]);
+}
+
+async function fetchServiceHealth() {
+  try {
+    const health = await controlAPI.getHealth();
+    store.updateSystemStatus({
+      api: "connected",
+      database: health.checks.database ? "connected" : "disconnected",
+      camera: health.checks.pythonCamera ? "connected" : "disconnected",
+      raspberryPi: health.checks.raspberryPi ? "connected" : "disconnected",
+      stage: health.checks.raspberryPi ? "connected" : "disconnected",
+    });
+  } catch {
+    store.updateSystemStatus({
+      api: "disconnected",
+      database: "disconnected",
+      camera: "disconnected",
+      raspberryPi: "disconnected",
+      stage: "disconnected",
+    });
+  }
 }
 
 function isConnected(status: string): boolean {

@@ -15,6 +15,7 @@ import type {
 export const useMicroscopeStore = defineStore("microscope", () => {
   // State
   const systemStatus = ref<SystemStatus>({
+    api: "disconnected",
     camera: "disconnected",
     stage: "disconnected",
     database: "disconnected",
@@ -67,7 +68,7 @@ export const useMicroscopeStore = defineStore("microscope", () => {
   const isSystemHealthy = computed(
     () =>
       systemStatus.value.camera === "connected" &&
-      systemStatus.value.stage === "connected" &&
+      systemStatus.value.api === "connected" &&
       systemStatus.value.database === "connected" &&
       systemStatus.value.raspberryPi === "connected",
   );

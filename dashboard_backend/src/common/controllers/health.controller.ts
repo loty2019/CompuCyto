@@ -4,6 +4,7 @@ import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { ConfigService } from '../../config/config.service';
 import { CameraService } from '../../camera/camera.service';
 import { firstValueFrom, catchError, of } from 'rxjs';
+import { DataSource } from 'typeorm';
 
 /**
  * Health Check Controller
@@ -25,7 +26,21 @@ export class HealthController {
     private httpService: HttpService,
     private configService: ConfigService,
     private cameraService: CameraService,
+    private dataSource: DataSource,
   ) {}
+
+  /**
+   * Check database health with a small query instead of assuming that
+   * this controller responding means TypeORM is fully usable.
+   */
+  private async checkDatabaseHealth(): Promise<boolean> {
+    try {
+      await this.dataSource.query('SELECT 1');
+      return true;
+    } catch {
+      return false;
+    }
+  }
 
   /**
    * Check Raspberry Pi health directly
@@ -70,15 +85,17 @@ export class HealthController {
     },
   })
   async check() {
-    const [pythonCamera, raspberryPi] = await Promise.all([
+    const [database, pythonCamera, raspberryPi] = await Promise.all([
+      this.checkDatabaseHealth(),
       this.cameraService.checkHealth().catch(() => false),
       this.checkPiHealth(),
     ]);
+    const healthy = database && pythonCamera && raspberryPi;
 
     return {
-      status: 'healthy',
+      status: healthy ? 'healthy' : 'degraded',
       checks: {
-        database: true,
+        database,
         pythonCamera,
         raspberryPi,
       },

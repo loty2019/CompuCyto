@@ -322,21 +322,24 @@ Add your frontend URL to:
 
 ## 📦 Deployment
 
-### Docker (Recommended)
-```bash
-# Coming soon - Docker Compose configuration
-docker-compose up
+### Native Windows Appliance
+
+CytoCore is deployed as native Windows services so it can start before user
+login and access the Windows Pixelink camera driver.
+
+See:
+
+```text
+deployment/appliance-setup.md
 ```
 
-### Manual Deployment
-1. Build all services: `npm run build`
-2. Setup PostgreSQL on server
-3. Configure environment variables
-4. Run migrations: `cd Nest && npm run typeorm:run-migrations`
-5. Start services:
-   - Frontend: Serve `frontend-vue/dist` with Nginx
-   - Backend: `cd Nest && npm run start:prod`
-   - Python: `cd backend-python && uvicorn main:app`
+Services:
+
+- `CytoCoreCamera` - Python camera API
+- `CytoCoreApi` - NestJS API
+- `CytoCoreNginx` - frontend and reverse proxy
+
+Startup updates are handled by the `CytoCore Native Update` scheduled task.
 
 ## 🤝 Contributing
 

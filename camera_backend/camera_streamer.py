@@ -19,6 +19,7 @@ from camera_utils import (
     capture_frame,
     generate_simulated_frame
 )
+from config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +56,13 @@ class CameraStreamer:
             logger.warning("Streaming already active")
             return
             
+        if (not PIXELINK_AVAILABLE or not self.camera_handle) and not settings.allow_simulated_camera:
+            logger.error("Camera stream requested, but no real camera is available")
+            await self._broadcast_error(
+                "Camera unavailable. Check that the Pixelink camera and SDK are available to the camera service."
+            )
+            return
+
         if not PIXELINK_AVAILABLE or not self.camera_handle:
             print(f"[STREAMER] No camera, using simulated stream")
             logger.warning("Camera not available, using simulated stream")
@@ -186,8 +194,13 @@ class CameraStreamer:
                 # Capture frame
                 if PIXELINK_AVAILABLE and self.camera_handle:
                     frame_data = await asyncio.to_thread(self._capture_real_frame)
-                else:
+                elif settings.allow_simulated_camera:
                     frame_data = await asyncio.to_thread(self._capture_simulated_frame)
+                else:
+                    await self._broadcast_error(
+                        "Camera unavailable. Live feed requires a connected Pixelink camera."
+                    )
+                    break
                 
                 if frame_data is None:
                     # Don't log every failure - only after multiple failures
@@ -299,6 +312,18 @@ class CameraStreamer:
             logger.info("⏹️ No clients remaining after cleanup, stopping stream")
             await self.stop_streaming()
     
+    async def _broadcast_error(self, message: str):
+        """Send a stream error to connected WebSocket clients."""
+        disconnected = set()
+        for client in list(self.active_clients):
+            try:
+                await client.send_json({"type": "error", "message": message})
+            except Exception:
+                disconnected.add(client)
+
+        for client in disconnected:
+            self.active_clients.discard(client)
+
     async def get_current_frame(self) -> Optional[bytes]:
         """Get the most recent frame (JPEG bytes)."""
         async with self.frame_lock:
