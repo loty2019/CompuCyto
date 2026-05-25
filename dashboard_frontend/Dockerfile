@@ -3,7 +3,8 @@ FROM node:22-bookworm-slim AS build
 WORKDIR /app
 
 COPY dashboard_frontend/package*.json ./
-RUN npm ci --include=optional
+RUN npm ci \
+  && npm install --no-save @rollup/rollup-linux-x64-gnu@4.52.4
 
 COPY dashboard_frontend ./
 
