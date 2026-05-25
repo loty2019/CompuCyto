@@ -1,0 +1,17 @@
+[Unit]
+Description=CytoCore appliance stack
+Wants=network-online.target docker.service
+After=network-online.target docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/cytocore/CompuCyto
+Environment=APP_DIR=/opt/cytocore/CompuCyto
+Environment=CYTOCORE_BRANCH=main
+ExecStart=/usr/local/bin/cytocore-start
+ExecStop=/usr/bin/docker compose down
+TimeoutStartSec=0
+
+[Install]
+WantedBy=multi-user.target

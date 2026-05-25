@@ -67,6 +67,18 @@ export class ConfigService {
     return ['1', 'true', 'yes', 'on'].includes(value.toLowerCase());
   }
 
+  /**
+   * Enable TypeORM schema synchronization.
+   * @default true in development, false otherwise
+   */
+  get databaseSynchronize(): boolean {
+    const value = this.configService.get<string>('DATABASE_SYNCHRONIZE');
+    if (value === undefined) {
+      return this.isDevelopment;
+    }
+    return ['1', 'true', 'yes', 'on'].includes(value.toLowerCase());
+  }
+
   // ==================== Python Configuration ====================
 
   /**

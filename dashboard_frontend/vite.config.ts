@@ -27,6 +27,12 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/camera-api/, ""),
       },
+      "/python-api": {
+        target: "http://localhost:8001",
+        changeOrigin: true,
+        ws: true,
+        rewrite: (path) => path.replace(/^\/python-api/, ""),
+      },
       "/pi-api": {
         target: "http://192.168.100.1:8000",
         changeOrigin: true,
@@ -49,6 +55,12 @@ export default defineConfig({
         target: "http://localhost:8001",
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/camera-api/, ""),
+      },
+      "/python-api": {
+        target: "http://localhost:8001",
+        changeOrigin: true,
+        ws: true,
+        rewrite: (path) => path.replace(/^\/python-api/, ""),
       },
       "/pi-api": {
         target: "http://192.168.100.1:8000",

@@ -29,7 +29,7 @@ export const getDatabaseConfig = (
   password: configService.databasePassword, // From DATABASE_PASSWORD env var
   database: configService.databaseName, // From DATABASE_NAME env var
   entities: [__dirname + '/../**/*.entity{.ts,.js}'], // Auto-load all entities
-  synchronize: configService.isDevelopment, // DANGER: Only in dev! Auto-creates tables
+  synchronize: configService.databaseSynchronize, // DANGER: Only enable for appliance/dev bootstrap
   logging: configService.databaseLogging,
   migrations: [__dirname + '/../database/migrations/*{.ts,.js}'], // Migration files location
   migrationsRun: false, // Don't auto-run migrations (use npm script)

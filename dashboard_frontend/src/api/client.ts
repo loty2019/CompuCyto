@@ -39,7 +39,7 @@ const PI_IP_ADDRESS = "192.168.100.1";
 
 // Python camera service URL
 const PYTHON_CAMERA_URL =
-  import.meta.env.VITE_PYTHON_CAMERA_URL || "/camera-api";
+  import.meta.env.VITE_PYTHON_CAMERA_URL || "/python-api";
 
 // Pi-API URL for direct GPIO control (lights, PSU, etc.)
 const PI_API_URL = import.meta.env.VITE_PI_API_URL || "/pi-api";
@@ -638,5 +638,21 @@ export const getVideoUrl = (filename: string): string => {
 
 // Export the base URL for components that need it
 export const CAMERA_BASE_URL = PYTHON_CAMERA_URL;
+
+export const getCameraWebSocketUrl = (): string => {
+  const cameraBase = PYTHON_CAMERA_URL.replace(/\/$/, "");
+  const cameraPath = `${cameraBase}/ws/camera/stream`;
+
+  if (/^https?:\/\//i.test(cameraPath)) {
+    return cameraPath.replace(/^http:/i, "ws:").replace(/^https:/i, "wss:");
+  }
+
+  if (typeof window === "undefined") {
+    return cameraPath;
+  }
+
+  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+  return `${protocol}//${window.location.host}${cameraPath}`;
+};
 
 export default apiClient;

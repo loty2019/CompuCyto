@@ -546,7 +546,11 @@ import { ref, onMounted, onUnmounted, computed, watch } from "vue";
 import { useMicroscopeStore } from "@/stores/microscope";
 import { useCamera } from "@/composables/useCamera";
 import { useStage } from "@/composables/useStage";
-import { getActiveProfileHeaders, piAPI } from "@/api/client";
+import {
+  getActiveProfileHeaders,
+  getCameraWebSocketUrl,
+  piAPI,
+} from "@/api/client";
 import IlluminationControl from "@/components/IlluminationControl.vue";
 import {
   CAMERA_FEED_ROTATION_DEGREES,
@@ -1000,13 +1004,7 @@ async function startFeed() {
   }
 
   // Connect to WebSocket stream
-  const wsBaseUrl = (
-    import.meta.env.VITE_API_BASE_URL || "http://localhost:3000"
-  )
-    .replace("http://", "ws://")
-    .replace("https://", "wss://");
-
-  const wsUrl = `${wsBaseUrl}/ws/camera/stream`.replace(":3000", ":8001");
+  const wsUrl = getCameraWebSocketUrl();
 
   console.log("Connecting to WebSocket:", wsUrl);
 

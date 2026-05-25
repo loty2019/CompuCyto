@@ -8,10 +8,14 @@
     "arrowup",
     "circuitpython",
     "customfav",
+    "cytocore",
     "cytopi",
     "dotenv",
     "fastapi",
     "gpiochip",
+    "healthcheck",
+    "INPROGRESS",
+    "isready",
     "lgpio",
     "pinia",
     "Pixelink",
@@ -20,6 +24,7 @@
     "topbar",
     "uvicorn",
     "VITE",
-    "zdown"
+    "zdown",
+    "CompuCyto"
   ]
 }
