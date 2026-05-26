@@ -10,6 +10,7 @@ if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administra
 }
 
 Unregister-ScheduledTask -TaskName "CytoCore Native Update" -Confirm:$false -ErrorAction SilentlyContinue
+Unregister-ScheduledTask -TaskName "CytoCore Console" -Confirm:$false -ErrorAction SilentlyContinue
 
 foreach ($service in @("CytoCoreNginx", "CytoCoreApi", "CytoCoreCamera")) {
     if (Get-Service -Name $service -ErrorAction SilentlyContinue) {

@@ -112,6 +112,24 @@ Register-ScheduledTask `
     -RunLevel Highest `
     -Force | Out-Null
 
+$consoleScript = Join-Path $PSScriptRoot "operator-console.ps1"
+$consoleAction = New-ScheduledTaskAction `
+    -Execute $powershell `
+    -Argument "-NoExit -NoProfile -ExecutionPolicy Bypass -File `"$consoleScript`" -RuntimeRoot `"$RuntimeRoot`""
+
+$consoleTrigger = New-ScheduledTaskTrigger -AtLogOn
+$consolePrincipal = New-ScheduledTaskPrincipal -GroupId "BUILTIN\Users" -RunLevel Limited
+$consoleSettings = New-ScheduledTaskSettingsSet -StartWhenAvailable -MultipleInstances IgnoreNew
+
+Register-ScheduledTask `
+    -TaskName "CytoCore Console" `
+    -Action $consoleAction `
+    -Trigger $consoleTrigger `
+    -Principal $consolePrincipal `
+    -Settings $consoleSettings `
+    -Description "Open a visible CytoCore status and log console when a user logs in" `
+    -Force | Out-Null
+
 Start-Service CytoCoreCamera
 Start-Service CytoCoreApi
 Start-Service CytoCoreNginx

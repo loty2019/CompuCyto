@@ -12,6 +12,7 @@ Windows services
 
 Windows Scheduled Task
   CytoCore Native Update -> git pull, rebuild, publish frontend, restart services
+  CytoCore Console       -> visible status/log console after user login
 ```
 
 ## 1. Install prerequisites
@@ -97,6 +98,7 @@ The installer:
 - renders Nginx config to `C:\cytocore\runtime\nginx\cytocore.conf`
 - installs Windows services with NSSM
 - installs the startup update scheduled task
+- installs the logon console scheduled task
 - starts all CytoCore services
 
 ## 6. Verify
@@ -149,6 +151,15 @@ Service names:
 CytoCoreCamera
 CytoCoreApi
 CytoCoreNginx
+```
+
+When a user logs in, the `CytoCore Console` scheduled task opens a visible
+PowerShell window with service status, health checks, and recent logs.
+
+Open it manually:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File C:\cytocore\CompuCyto\deployment\windows-native\operator-console.ps1
 ```
 
 ## Uninstall
