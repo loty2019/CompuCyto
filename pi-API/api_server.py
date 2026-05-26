@@ -909,6 +909,7 @@ async def root():
             "GET /led-flr/state": "Get current FLR LED state",
             "POST /led-flr/toggle": "Toggle FLR LED on/off",
             "POST /system/shutdown": "Shutdown the Raspberry Pi gracefully",
+            "POST /system/restart": "Restart the Raspberry Pi gracefully",
             "POST /scan/start": "Start scanning mode",
             "POST /scan/stop": "Stop scanning mode",
             "GET /closet/state": "Get current closet open/closed state",
