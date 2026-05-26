@@ -1,17 +1,21 @@
 param(
     [string]$RuntimeRoot = "C:\cytocore\runtime",
     [int]$RefreshSeconds = 5,
-    [int]$LogLines = 14
+    [int]$LogLines = 14,
+    [switch]$Once
 )
 
-$ErrorActionPreference = "SilentlyContinue"
+$ErrorActionPreference = "Continue"
+$OutputEncoding = [System.Text.UTF8Encoding]::new($false)
+[Console]::OutputEncoding = $OutputEncoding
+chcp 65001 | Out-Null
 
 $logsDir = Join-Path $RuntimeRoot "logs"
 $services = @("CytoCoreCamera", "CytoCoreApi", "CytoCoreNginx")
 $healthChecks = @(
-    @{ Name = "Public web"; Url = "http://localhost" },
-    @{ Name = "Main API"; Url = "http://localhost/api/v1/health" },
-    @{ Name = "Camera"; Url = "http://localhost:8001/health" }
+    @{ Name = "Public web"; Url = "http://127.0.0.1" },
+    @{ Name = "Main API"; Url = "http://127.0.0.1/api/v1/health" },
+    @{ Name = "Camera"; Url = "http://127.0.0.1:8001/health" }
 )
 
 function Write-State {
@@ -33,13 +37,20 @@ function Get-HealthState {
     param([string]$Url)
 
     try {
-        $response = Invoke-WebRequest -Uri $Url -UseBasicParsing -TimeoutSec 2
+        $response = Invoke-WebRequest -Uri $Url -UseBasicParsing -TimeoutSec 2 -Proxy $null -ErrorAction Stop
         if ($response.StatusCode -ge 200 -and $response.StatusCode -lt 400) {
-            return "OK"
+            $contentType = $response.Headers["Content-Type"]
+            if ($contentType -like "application/json*" -and $response.Content) {
+                $body = $response.Content | ConvertFrom-Json -ErrorAction SilentlyContinue
+                if ($body.status) {
+                    return "$($response.StatusCode) $($body.status)"
+                }
+            }
+            return "$($response.StatusCode) OK"
         }
         return "HTTP $($response.StatusCode)"
     } catch {
-        return "DOWN"
+        return "DOWN - $($_.Exception.Message)"
     }
 }
 
@@ -56,7 +67,7 @@ function Write-RecentLog {
         return
     }
 
-    $lines = Get-Content -LiteralPath $Path -Tail $LogLines
+    $lines = Get-Content -LiteralPath $Path -Tail $LogLines -Encoding UTF8
     if (-not $lines) {
         Write-Host "(empty)" -ForegroundColor DarkGray
         return
@@ -67,7 +78,7 @@ function Write-RecentLog {
     }
 }
 
-while ($true) {
+do {
     Clear-Host
     Write-Host "CytoCore Console" -ForegroundColor White
     Write-Host ("Updated: {0}" -f (Get-Date -Format "yyyy-MM-dd HH:mm:ss")) -ForegroundColor DarkGray
@@ -89,7 +100,7 @@ while ($true) {
         Write-State $check.Name (Get-HealthState -Url $check.Url)
     }
 
-    Write-RecentLog "Camera errors" (Join-Path $logsDir "camera.err.log")
+    Write-RecentLog "Camera log" (Join-Path $logsDir "camera.err.log")
     Write-RecentLog "API errors" (Join-Path $logsDir "api.err.log")
     Write-RecentLog "Nginx errors" (Join-Path $logsDir "nginx.err.log")
     Write-RecentLog "Camera output" (Join-Path $logsDir "camera.out.log")
@@ -97,5 +108,7 @@ while ($true) {
 
     Write-Host ""
     Write-Host "Press Ctrl+C to close this console. It will reopen at the next user login." -ForegroundColor DarkGray
-    Start-Sleep -Seconds $RefreshSeconds
-}
+    if (-not $Once) {
+        Start-Sleep -Seconds $RefreshSeconds
+    }
+} while (-not $Once)

@@ -1,4 +1,9 @@
 $ErrorActionPreference = "Stop"
+$OutputEncoding = [System.Text.UTF8Encoding]::new($false)
+[Console]::OutputEncoding = $OutputEncoding
+[Environment]::SetEnvironmentVariable("PYTHONUTF8", "1", "Process")
+[Environment]::SetEnvironmentVariable("PYTHONIOENCODING", "utf-8", "Process")
+[Environment]::SetEnvironmentVariable("NO_COLOR", "1", "Process")
 
 function Read-CytoCoreEnv {
     param(
