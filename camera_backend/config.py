@@ -3,6 +3,7 @@ Configuration module for FastAPI Camera Service
 Loads settings from environment variables with sensible defaults
 """
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import AliasChoices, Field
 from typing import List
 
 
@@ -13,7 +14,7 @@ class Settings(BaseSettings):
     
     # Server Configuration
     host: str = "0.0.0.0"
-    port: int = 8001
+    port: int = Field(8001, validation_alias=AliasChoices("PYTHON_PORT", "PORT", "port"))
     debug: bool = True
     
     # JWT Configuration (must match NestJS backend)

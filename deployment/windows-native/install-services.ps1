@@ -30,7 +30,7 @@ if (-not (Test-Path -LiteralPath $envFile)) {
 }
 
 New-Item -ItemType Directory -Force $RuntimeRoot, (Join-Path $RuntimeRoot "logs") | Out-Null
-$nginxRoot = Split-Path -Parent (Split-Path -Parent $NginxExe)
+$nginxRoot = Split-Path -Parent $NginxExe
 
 & (Join-Path $PSScriptRoot "update-native.ps1") `
     -RepoPath $RepoPath `

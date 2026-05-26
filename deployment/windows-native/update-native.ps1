@@ -31,6 +31,15 @@ if (-not $SkipGitPull) {
 
 $envValues = Read-CytoCoreEnv -RepoPath $RepoPath
 
+if (-not $SkipRestart) {
+    foreach ($service in @("CytoCoreNginx", "CytoCoreApi", "CytoCoreCamera")) {
+        $svc = Get-Service -Name $service -ErrorAction SilentlyContinue
+        if ($svc -and $svc.Status -ne "Stopped") {
+            Stop-Service -Name $service -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
 $logsDir = Join-Path $RuntimeRoot "logs"
 $wwwDir = Join-Path $RuntimeRoot "www"
 $nginxDir = Join-Path $RuntimeRoot "nginx"
@@ -40,13 +49,13 @@ New-Item -ItemType Directory -Force (Join-Path $mediaDir "captures"), (Join-Path
 
 Write-Host "Installing frontend dependencies..."
 Push-Location (Join-Path $RepoPath "dashboard_frontend")
-npm ci
+npm ci --workspaces=false
 npm run build
 Pop-Location
 
 Write-Host "Installing backend dependencies..."
 Push-Location (Join-Path $RepoPath "dashboard_backend")
-npm ci
+npm ci --workspaces=false
 npm run build
 Pop-Location
 

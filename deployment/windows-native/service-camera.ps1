@@ -7,6 +7,10 @@ param(
 $envValues = Read-CytoCoreEnv -RepoPath $RepoPath
 Set-CytoCoreProcessEnv -Values $envValues
 
+if ($envValues.ContainsKey("PYTHON_PORT") -and $envValues["PYTHON_PORT"] -ne "") {
+    [Environment]::SetEnvironmentVariable("PORT", [string]$envValues["PYTHON_PORT"], "Process")
+}
+
 $cameraDir = Join-Path $RepoPath "camera_backend"
 $python = Join-Path $cameraDir ".venv\Scripts\python.exe"
 
