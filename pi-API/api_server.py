@@ -1192,6 +1192,23 @@ async def shutdown_system(user: dict = Depends(verify_jwt)):
         raise HTTPException(status_code=500, detail=f"Failed to shutdown system: {str(e)}")
 
 
+@app.post("/system/restart", response_model=ShutdownResponse)
+async def restart_system(user: dict = Depends(verify_jwt)):
+    """Gracefully restart the Raspberry Pi. Protected endpoint."""
+    try:
+        logger.info("Restart command received via API")
+        cleanup_gpio()
+        result = subprocess.run(["sudo", "shutdown", "-r", "now"], capture_output=True, text=True)
+        logger.info(f"Restart command executed: stdout={result.stdout}, stderr={result.stderr}")
+        return ShutdownResponse(
+            success=True,
+            message="System restart initiated. Raspberry Pi will reboot shortly."
+        )
+    except Exception as e:
+        logger.error(f"Failed to initiate restart: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to restart system: {str(e)}")
+
+
 @app.post("/scan/start", response_model=ToggleResponse)
 async def start_scan(user: dict = Depends(verify_jwt)):
     """Start scanning mode. Protected endpoint."""

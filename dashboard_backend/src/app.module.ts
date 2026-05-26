@@ -11,6 +11,7 @@ import { StageModule } from './stage/stage.module';
 import { ImagesModule } from './images/images.module';
 import { VideosModule } from './videos/videos.module';
 import { HealthController } from './common/controllers/health.controller';
+import { ApplianceController } from './common/controllers/appliance.controller';
 import { EventsGateway } from './common/websocket/events.gateway';
 
 @Module({
@@ -29,7 +30,7 @@ import { EventsGateway } from './common/websocket/events.gateway';
     ImagesModule,
     VideosModule,
   ],
-  controllers: [HealthController],
+  controllers: [HealthController, ApplianceController],
   providers: [EventsGateway],
 })
 export class AppModule {}

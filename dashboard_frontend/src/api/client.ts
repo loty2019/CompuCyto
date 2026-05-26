@@ -289,6 +289,21 @@ export const controlAPI = {
     return data;
   },
 
+  async shutdownAppliance(): Promise<{ success: boolean; message: string }> {
+    const { data } = await apiClient.post("/api/v1/appliance/shutdown");
+    return data;
+  },
+
+  async restartWindows(): Promise<{ success: boolean; message: string }> {
+    const { data } = await apiClient.post("/api/v1/appliance/restart/windows");
+    return data;
+  },
+
+  async restartPi(): Promise<{ success: boolean; message: string }> {
+    const { data } = await apiClient.post("/api/v1/appliance/restart/pi");
+    return data;
+  },
+
   async captureImage(request: CaptureRequest): Promise<CaptureResponse> {
     const { data } = await apiClient.post<CaptureResponse>(
       "/api/v1/camera/capture",

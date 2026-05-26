@@ -35,6 +35,7 @@
         >
           <StatusBar />
           <div class="hidden h-7 w-px bg-slate-300 sm:block"></div>
+          <AppliancePowerMenu />
           <button
             @click="handleLogout"
             class="lab-button lab-button-secondary"
@@ -54,6 +55,7 @@ import { onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
 import StatusBar from "@/components/StatusBar.vue";
+import AppliancePowerMenu from "@/components/AppliancePowerMenu.vue";
 import linkLogo from "@/assets/link-biosystems-logo.png";
 
 const router = useRouter();
