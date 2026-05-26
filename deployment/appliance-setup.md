@@ -6,6 +6,7 @@ Runtime layout:
 
 ```text
 Windows services
+  CytoCoreMdns   -> advertises cytocore.local on the LAN
   CytoCoreCamera -> Python FastAPI camera service on 8001
   CytoCoreApi    -> NestJS API on 3000
   CytoCoreNginx  -> Nginx public web server on 80
@@ -26,7 +27,7 @@ Install these on the Windows appliance:
 - Nginx for Windows extracted to `C:\nginx`
 - NSSM extracted to `C:\nssm\nssm.exe`
 - Pixelink SDK/driver for Windows
-- Bonjour Print Services for Windows, if `cytocore.local` does not resolve on your LAN
+- Bonjour Print Services for Windows on client PCs, if `cytocore.local` does not resolve there
 
 Rename the Windows PC:
 
@@ -96,6 +97,7 @@ The installer:
 - builds Vue and NestJS
 - publishes Vue to `C:\cytocore\runtime\www`
 - renders Nginx config to `C:\cytocore\runtime\nginx\cytocore.conf`
+- opens Windows Firewall and discovery for LAN access
 - installs Windows services with NSSM
 - installs the startup update scheduled task
 - installs the logon console scheduled task
@@ -104,7 +106,7 @@ The installer:
 ## 6. Verify
 
 ```powershell
-Get-Service CytoCoreCamera,CytoCoreApi,CytoCoreNginx
+Get-Service CytoCoreMdns,CytoCoreCamera,CytoCoreApi,CytoCoreNginx
 Invoke-RestMethod http://localhost:8001/health
 Invoke-RestMethod http://localhost:3000/api/v1/health
 ```
@@ -117,6 +119,10 @@ http://cytocore
 http://cytocore.local
 http://<machine-ip>
 ```
+
+If hostname access does not resolve from another computer, test the appliance
+IP first. If the IP works but `cytocore` or `cytocore.local` does not, the
+remaining issue is LAN name resolution rather than CytoCore.
 
 ## Updating
 

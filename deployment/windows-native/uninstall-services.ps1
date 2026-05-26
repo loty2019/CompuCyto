@@ -12,7 +12,7 @@ if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administra
 Unregister-ScheduledTask -TaskName "CytoCore Native Update" -Confirm:$false -ErrorAction SilentlyContinue
 Unregister-ScheduledTask -TaskName "CytoCore Console" -Confirm:$false -ErrorAction SilentlyContinue
 
-foreach ($service in @("CytoCoreNginx", "CytoCoreApi", "CytoCoreCamera")) {
+foreach ($service in @("CytoCoreNginx", "CytoCoreApi", "CytoCoreCamera", "CytoCoreMdns")) {
     if (Get-Service -Name $service -ErrorAction SilentlyContinue) {
         Stop-Service -Name $service -Force -ErrorAction SilentlyContinue
         if (Test-Path -LiteralPath $NssmExe) {

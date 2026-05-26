@@ -11,7 +11,7 @@ $OutputEncoding = [System.Text.UTF8Encoding]::new($false)
 chcp 65001 | Out-Null
 
 $logsDir = Join-Path $RuntimeRoot "logs"
-$services = @("CytoCoreCamera", "CytoCoreApi", "CytoCoreNginx")
+$services = @("CytoCoreMdns", "CytoCoreCamera", "CytoCoreApi", "CytoCoreNginx")
 $healthChecks = @(
     @{ Name = "Public web"; Url = "http://127.0.0.1" },
     @{ Name = "Main API"; Url = "http://127.0.0.1/api/v1/health" },
@@ -103,6 +103,8 @@ do {
     Write-RecentLog "Camera log" (Join-Path $logsDir "camera.err.log")
     Write-RecentLog "API errors" (Join-Path $logsDir "api.err.log")
     Write-RecentLog "Nginx errors" (Join-Path $logsDir "nginx.err.log")
+    Write-RecentLog "Hostname discovery" (Join-Path $logsDir "mdns.out.log")
+    Write-RecentLog "Hostname discovery errors" (Join-Path $logsDir "mdns.err.log")
     Write-RecentLog "Camera output" (Join-Path $logsDir "camera.out.log")
     Write-RecentLog "API output" (Join-Path $logsDir "api.out.log")
 

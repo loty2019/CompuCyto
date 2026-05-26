@@ -32,6 +32,41 @@ if (-not (Test-Path -LiteralPath $envFile)) {
 New-Item -ItemType Directory -Force $RuntimeRoot, (Join-Path $RuntimeRoot "logs") | Out-Null
 $nginxRoot = Split-Path -Parent $NginxExe
 
+Get-NetConnectionProfile |
+    Where-Object { $_.InterfaceAlias -in @("Wi-Fi", "Ethernet") } |
+    Set-NetConnectionProfile -NetworkCategory Private
+
+$firewallRules = @(
+    @{ Name = "CytoCore Web HTTP"; Port = 80; Protocol = "TCP" },
+    @{ Name = "CytoCore mDNS"; Port = 5353; Protocol = "UDP" },
+    @{ Name = "CytoCore LLMNR"; Port = 5355; Protocol = "UDP" },
+    @{ Name = "CytoCore NetBIOS Name"; Port = 137; Protocol = "UDP" },
+    @{ Name = "CytoCore NetBIOS Datagram"; Port = 138; Protocol = "UDP" },
+    @{ Name = "CytoCore NetBIOS Session"; Port = 139; Protocol = "TCP" }
+)
+
+foreach ($rule in $firewallRules) {
+    $existing = Get-NetFirewallRule -DisplayName $rule.Name -ErrorAction SilentlyContinue
+    if ($existing) {
+        Set-NetFirewallRule -DisplayName $rule.Name -Enabled True -Direction Inbound -Action Allow -Profile Any | Out-Null
+    } else {
+        New-NetFirewallRule `
+            -DisplayName $rule.Name `
+            -Direction Inbound `
+            -Action Allow `
+            -Protocol $rule.Protocol `
+            -LocalPort $rule.Port `
+            -Profile Any | Out-Null
+    }
+}
+
+Enable-NetFirewallRule -DisplayGroup "Network Discovery" -ErrorAction SilentlyContinue | Out-Null
+Enable-NetFirewallRule -DisplayGroup "File and Printer Sharing" -ErrorAction SilentlyContinue | Out-Null
+
+Set-Service FDResPub -StartupType Automatic
+Set-Service FDphost -StartupType Automatic
+Start-Service FDResPub, FDphost -ErrorAction SilentlyContinue
+
 & (Join-Path $PSScriptRoot "update-native.ps1") `
     -RepoPath $RepoPath `
     -RuntimeRoot $RuntimeRoot `
@@ -44,6 +79,7 @@ $logsDir = Join-Path $RuntimeRoot "logs"
 $powershell = "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe"
 $apiScript = Join-Path $PSScriptRoot "service-api.ps1"
 $cameraScript = Join-Path $PSScriptRoot "service-camera.ps1"
+$mdnsScript = Join-Path $PSScriptRoot "service-mdns.ps1"
 $nginxConf = Join-Path $RuntimeRoot "nginx\cytocore.conf"
 
 function Install-NssmService {
@@ -71,6 +107,14 @@ function Install-NssmService {
     & $NssmExe set $Name AppRotateBytes 10485760 | Out-Null
     & $NssmExe set $Name Start SERVICE_AUTO_START | Out-Null
 }
+
+Install-NssmService `
+    -Name "CytoCoreMdns" `
+    -Application $powershell `
+    -Arguments "-NoProfile -ExecutionPolicy Bypass -File `"$mdnsScript`" -RepoPath `"$RepoPath`" -RuntimeRoot `"$RuntimeRoot`"" `
+    -Directory $RepoPath `
+    -Stdout (Join-Path $logsDir "mdns.out.log") `
+    -Stderr (Join-Path $logsDir "mdns.err.log")
 
 Install-NssmService `
     -Name "CytoCoreCamera" `
@@ -130,6 +174,7 @@ Register-ScheduledTask `
     -Description "Open a visible CytoCore status and log console when a user logs in" `
     -Force | Out-Null
 
+Start-Service CytoCoreMdns
 Start-Service CytoCoreCamera
 Start-Service CytoCoreApi
 Start-Service CytoCoreNginx
